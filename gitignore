@@ -1,0 +1,44 @@
+# BasicRNA no tiene build, así que aquí no se ignora nada generado: las cuatro
+# páginas HTML son a la vez la fuente y el producto, y se versionan enteras.
+# Lo que sigue es sólo ruido de las máquinas y de las herramientas.
+
+# Sistema operativo — se trabaja en Ubuntu y a veces en Windows
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+*~
+.fuse_hidden*
+.Trash-*
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.bak
+*.orig
+*.rej
+
+# Claude Code: CLAUDE.md y PROGRESO.md SÍ se versionan —son el puente entre
+# sesiones— pero la configuración local de cada máquina no.
+.claude/settings.local.json
+
+# Si en algún momento se agrega un arnés de verificación en node (montar la
+# página en Chrome sin cabeza, medir alturas, comprobar el gradiente) o un
+# guion en Python para regenerar los datos o los pesos horneados.
+node_modules/
+package-lock.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Capturas de pantalla de trabajo. Las figuras que sí sean parte de la
+# documentación van fuera de esta carpeta y se versionan.
+/capturas/
+
+# Registros y temporales sueltos
+*.log
+*.tmp

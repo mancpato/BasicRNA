@@ -3,7 +3,7 @@
 
 Herramientas interactivas en el navegador para el análisis geométrico y paramétrico de modelos de clasificación binaria basados en redes neuronales.
 
-Cada módulo es un archivo HTML autocontenido (Canvas 2D, JavaScript nativo `binary64`, sin dependencias ni compilación). Los parámetros se ajustan de forma manual mediante controles deslizantes para observar el impacto directo en la frontera de decisión ($\hat{y} = 0.5$) y en la tasa de error sin recurrir a rutinas de entrenamiento interactivo.
+Cada módulo es un archivo HTML autocontenido (Canvas 2D, JavaScript nativo `binary64`, sin dependencias ni compilación). En los tres primeros módulos los parámetros se ajustan de forma manual mediante controles deslizantes, para observar el impacto directo en la frontera de decisión ($\hat{y} = 0.5$) y en la tasa de error sin recurrir a rutinas de entrenamiento. El cuarto módulo sí entrena: implementa descenso por gradiente estocástico con una muestra por iteración y expone un único hiperparámetro, la tasa de aprendizaje.
 
 ## Módulos
 
@@ -52,6 +52,44 @@ Cada módulo es un archivo HTML autocontenido (Canvas 2D, JavaScript nativo `bin
 
 * **Rango del deslizador:** $[-12, 12]$ (paso 0.01) para permitir frecuencias angulares suficientes en la función seno.
 
+### 4. `4-Backprop.html` — Descenso por gradiente estocástico, un paso a la vez
+
+* **Arquitectura y parámetros:** idénticos a los del módulo 2 (red 2→4→1, salida sigmoide, 17 parámetros en el mismo orden), y sobre el mismo conjunto de datos. Activación oculta conmutable entre $\text{ReLU}$ y $\tanh$; cada una conserva su propio vector de pesos, su contador de iteraciones, su historia de pérdida y su sorteador de puntos, de modo que el selector no reinicia ningún entrenamiento.
+
+* **Función objetivo:** entropía cruzada binaria, es decir la log-verosimilitud negativa por punto,
+
+  $$\mathcal{L}(\theta) = -\frac{1}{N}\sum_{n=1}^{N}\Big[y_n \log \hat{y}_n + (1-y_n)\log(1-\hat{y}_n)\Big],$$
+
+  evaluada sobre las $N = 160$ muestras de entrenamiento tras cada actualización. El argumento del logaritmo se recorta a $[10^{-12}, 1-10^{-12}]$.
+
+* **Paso hacia atrás.** Componer la entropía cruzada con la sigmoide de salida cancela las dos derivadas y deja la diferencia sin factores:
+
+  $$\delta_y = \hat{y} - y, \qquad \delta_j = \delta_y\, v_j\, \varphi'(z_j),$$
+  $$\frac{\partial \mathcal{L}_n}{\partial w_{ij}} = \delta_j x_i, \qquad
+    \frac{\partial \mathcal{L}_n}{\partial b_{h_j}} = \delta_j, \qquad
+    \frac{\partial \mathcal{L}_n}{\partial v_j} = \delta_y a_j, \qquad
+    \frac{\partial \mathcal{L}_n}{\partial b_y} = \delta_y,$$
+
+  con actualización $\Delta\theta = -\eta\, \partial \mathcal{L}_n / \partial \theta$ sobre una sola muestra, sin momento y sin lote. Derivadas de activación: $\varphi'(z) = [z > 0]$ para $\text{ReLU}$ —mismo convenio con que se evalúa, $\varphi(z) = z\,[z>0]$— y $\varphi'(z) = 1 - a^2$ para $\tanh$.
+
+* **Inicialización:** Xavier uniforme, $w \sim U(-a, a)$ con $a = \sqrt{6/(n_{\text{ent}} + n_{\text{sal}})}$ por capa, es decir $a_1 = 1$ y $a_2 = \sqrt{6/5} \approx 1.0954$; sesgos en cero. Es constante del archivo, no perilla: se sortea con la semilla base, es la misma para las dos activaciones y el botón de reinicio devuelve exactamente ese vector. No se usa el muestreo uniforme sobre todo el recorrido del deslizador de los otros módulos: con pesos de magnitud 5 la sigmoide arranca saturada, el gradiente es casi nulo y la curva no baja en los primeros mil pasos.
+
+* **Único hiperparámetro expuesto:** tasa de aprendizaje $\eta \in [0.01, 0.30]$, paso 0.01, valor inicial 0.05. Se congela al comenzar cada paso animado, de modo que lo dibujado coincida con lo aplicado.
+
+* **Convergencia medida** (inicialización y semillas del archivo, $\eta = 0.05$): cero mal clasificados en ambas particiones en la iteración 1413 con $\text{ReLU}$ y 2401 con $\tanh$; en esas iteraciones $\max_i |\theta_i|$ vale 5.26 y 4.45 respectivamente. Continuando hasta $2\times10^4$ iteraciones el máximo ronda 7.8 con $\text{ReLU}$.
+
+* **Controles de avance:** un paso animado en siete fases (500, 780, 680, 560, 480, 800 y 900 ms; 4.7 s en total) y tandas de 10 y 100 iteraciones con la animación desactivada, que ejecutan exactamente el mismo paso. Al terminar una tanda se apaga el resalte, para no presentar el último punto como representativo del conjunto. Con `prefers-reduced-motion: reduce` el paso se aplica sin animación y se muestra su lectura final.
+
+* **Codificación visual del paso.** Se separan deliberadamente dos cantidades distintas definidas sobre la misma arista: la señal de error $\delta$, que depende del peso, y el ajuste $-\eta\,\delta_j a_i$, que además depende de la activación entrante.
+  * $\delta$ se dibuja **en el nodo**, como anillo de grosor proporcional a $\sqrt{|\delta| / \max|\delta|}$ del paso.
+  * El ajuste se dibuja **en la arista**, como pulso punteado de grosor proporcional a $\sqrt{|\Delta\theta_i| / \max_k |\Delta\theta_k|}$ del paso, con envolvente $\sin(\pi u)$.
+  * El signo del ajuste usa dos tonos propios (violeta para incremento, ocre para decremento), porque azul y rojo ya codifican el signo del peso.
+  * La propagación hacia adelante usa un marcador gris que recorre la arista con radio proporcional a la contribución $|\theta_i x_i|$ o $|\theta_i a_i|$ relativa a las de su grupo.
+  * **Advertencia de escala:** el grosor del pulso está normalizado contra el mayor ajuste *del mismo paso*, no contra la magnitud del peso. Es la única escala no absoluta de todo el directorio, y responde a que los diecisiete ajustes de un paso con $\eta$ realista son del orden de $10^{-2}$ o menores. Queda declarado en la leyenda de la página.
+
+* **Neuronas inactivas en el paso hacia atrás:** cuando $\varphi'(z_j) = 0$ —lo que con $\text{ReLU}$ ocurre siempre que $z_j \le 0$, y con $\tanh$ sólo por saturación numérica— la neurona no recibe señal y sus cinco aristas incidentes no cambian. La página atenúa esas aristas y rotula el nodo con $\varphi'=0$. Es el enlace con el escalón del módulo 3, cuya derivada es nula en todo punto donde existe.
+
+* **Curva de la pérdida:** $\mathcal{L}$ frente al número de iteraciones, trazada desde la iteración cero y diezmada a un valor por columna de píxel (valores reales, no promedios de tramo). Incluye una marca en $\ln 2 \approx 0.693$, el valor de un clasificador que asigna probabilidad $0.5$ a toda muestra. Existe porque el contador de mal clasificados es entero y, actualizando de a un punto, brinca y ocasionalmente empeora: sin una cantidad continua al lado no hay forma de ver que el descenso progresa.
 
 ## Especificaciones técnicas
 
@@ -60,9 +98,17 @@ Cada módulo es un archivo HTML autocontenido (Canvas 2D, JavaScript nativo `bin
   * La selección con el ratón sigue la regla de que ante la duda no se selecciona nada. Hay candidata sólo si se cumplen tres condiciones: la arista más cercana cae dentro de la tolerancia (6 px), la segunda está al menos al doble de distancia, y además está a una separación mínima absoluta de la primera (2.5 px). Cerca de un nodo convergen hasta cinco aristas, y señalar la equivocada haría que el alumno creyera mover un parámetro mientras mueve otro.
   * El orden del vector es $\theta_{i \cdot N_{\text{oculta}} + j}$ (entrada $i$, neurona oculta $j$). Con el orden traspuesto, $j \cdot N_{\text{ent}} + i$, sólo coincidirían dos de las ocho aristas de entrada.
   * En `3-EditActivFun.html` el ancla tiene una segunda mitad: el nodo que se señala es la activación que cambia. Los cuatro nodos ocultos son círculos iguales, así que una permutación entre ellos no daría error visible. Por eso los nodos también tienen descriptores verificados, con índice de neurona y centro en pantalla, y el glifo lee el mismo arreglo de activaciones que usa la evaluación, sin copias.
-* **Mapeo visual del vector de parámetros:**
-* El grosor de cada conexión se calcula en función de $\vert{}\theta_i\vert{}$ normalizado contra el valor absoluto máximo del deslizador (tope fijo $[-6, 6]$ o $[-12, 12]$), aplicando una transformación de raíz cuadrada para conservar resolución en magnitudes pequeñas cercanas a cero. En `2-EditParam.html` y `3-EditActivFun.html` la opacidad sigue la misma escala; en `1-Perceptron.html` el color es sólido y sólo varía el grosor.
-* Conexiones positivas en azul; negativas en rojo.
+  * En `4-Backprop.html` no hay selección con el ratón, y el enunciado se invierte: la arista que se ilumina es el peso que cambia. El pulso del ajuste lee $\Delta\theta$ en el mismo índice que da el grosor, sin cálculo intermedio. Cada descriptor declara además de qué neurona oculta depende, y la verificación comprueba esa declaración contra el índice, de modo que atenuar las cinco aristas de una neurona con $\varphi'=0$ no dependa de un conteo hecho a mano.
 
-* **Frontera de decisión:** Evaluada en una retícula regular de $50 \times 50$ en $[-1, 1]^2$, interpolando linealmente los puntos de cruce donde la probabilidad posterior estimada $\hat{y}$ cruza el umbral $0.5$.
-* **Muestreo de pesos iniciales:** Generador pseudoaleatorio determinista `splitmix32` con aritmética entera de 32 bits (`Math.imul`) sobre semillas fijas para reproducibilidad entre ejecuciones.
+* **Verificación del gradiente (`4-Backprop.html`):** antes de montar, los 17 gradientes analíticos se comparan con diferencias centradas de $\mathcal{L}_n$ ($h = 10^{-6}$, tolerancia relativa $10^{-6}$) sobre una muestra fija, en las dos activaciones. Con $\text{ReLU}$ se omite la comparación si alguna preactivación cae a menos de $10^{-4}$ del quiebre, donde la derivada no existe y la diferencia centrada promedia las pendientes laterales. Si la comprobación falla, la página no crea ningún lienzo y muestra el error: una animación de retropropagación que no retropropague la derivada de la función objetivo sería peor que su ausencia.
+
+* **Mapeo visual del vector de parámetros:**
+  * El grosor de cada conexión se calcula en función de $\vert{}\theta_i\vert{}$ normalizado contra un tope fijo —el valor absoluto máximo del deslizador, $[-6,6]$ o $[-12,12]$— aplicando una transformación de raíz cuadrada para conservar resolución en magnitudes pequeñas cercanas a cero. En `2-EditParam.html` y `3-EditActivFun.html` la opacidad sigue la misma escala; en `1-Perceptron.html` el color es sólido y sólo varía el grosor.
+  * `4-Backprop.html` carece de deslizador de parámetros pero conserva el mismo tope, 6, para que un grosor dado signifique lo mismo en los cuatro módulos. Los valores que lo excedan se dibujan al grosor máximo; con $\eta = 0.05$ esto no ocurre antes de alcanzar cero errores.
+  * Conexiones positivas en azul; negativas en rojo.
+
+* **Frontera de decisión:** Evaluada en una retícula regular de $50 \times 50$ en $[-1, 1]^2$, interpolando linealmente los puntos de cruce donde la probabilidad posterior estimada $\hat{y}$ cruza el umbral $0.5$. Los puntos de cruce se ordenan angularmente respecto de su centroide, lo que supone un lazo estrellado respecto de ese centroide; con pesos no entrenados la curva puede autointersecarse, situación transitoria que no se corrige.
+
+* **Muestreo pseudoaleatorio:** Generador determinista `splitmix32` con aritmética entera de 32 bits (`Math.imul`) sobre semillas fijas para reproducibilidad entre ejecuciones. En `4-Backprop.html` se usan dos flujos independientes: la semilla base para la inicialización de pesos y una semilla derivada para el sorteo de la muestra de cada iteración, de modo que la secuencia de puntos de una sesión de clase sea repetible.
+
+* **Disposición:** `4-Backprop.html` está dimensionada para caber íntegra en una ventana de 940 px de alto, sin desplazamiento durante la clase. Esa restricción determina que ningún dato aparezca dos veces: las coordenadas de la muestra se leen junto a los nodos de entrada y $\hat{y}$ junto al de salida, de modo que los paneles de texto sólo contienen lo que el diagrama no dice.

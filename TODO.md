@@ -1,90 +1,46 @@
 # Pendientes de BasicRNA
 
 Nada de esto está decidido salvo donde se diga. Son huecos y planes anotados
-después de terminar las tres páginas, para no volver a razonarlos desde cero.
-Los dos últimos esperan los comentarios de los profesores del DASC.
+para no volver a razonarlos desde cero. Los dos primeros esperan los comentarios
+de los profesores del DASC.
 
-## 1. Cuarta página: backpropagation paso a paso
+La cuarta página, `4-Backprop.html`, ya está construida, y con eso sale de aquí
+el pendiente que ocupaba este primer lugar. Las razones de cada decisión suya
+—los dos relojes, por qué δ va en el nodo y el ajuste en la arista, el
+presupuesto de color, la única escala que no es absoluta— viven en el comentario
+de cabecera de ese archivo, que es su sitio: ahí las encuentra quien vaya a
+tocarlo. Lo que quedó abierto al construirla está en el punto 3 de esta lista.
 
-Decidida en lo esencial; el código va en una sesión de trabajo aparte. Entrena,
-a diferencia de las otras tres, y vive en este mismo directorio.
+## 1. El corte de la función objetivo en `1-Perceptron.html`
 
-**Qué hace.** Se ilumina un punto de entrenamiento tomado al azar, sus dos
-coordenadas entran a la red, se ve cómo avanzan y activan las neuronas ocultas,
-se propagan a la salida y se toma una decisión. Se evalúa el error y se usa para
-ajustar pesos, iluminando aristas en reversa. Iteración tras iteración las
-líneas cambian de grosor.
+Era prerrequisito de la cuarta página. Ya no lo es —la cuarta trae su propia
+curva de pérdida por iteración—, y eso cambia el argumento pero no la
+conclusión: sigue valiendo la pena, y ahora por una razón propia.
 
-**Los dos relojes, y cómo se resuelven.** Ver un paso en detalle y ver que la
-red aprende están separados por tres órdenes de magnitud: una actualización con
-tasa usual mueve un peso en centésimas, invisible en el grosor. La solución
-acordada no son dos modos sino un paso a paso y botones de +10 y +50 que repiten
-el mismo paso con la animación apagada. Es un solo mecanismo, que es lo que hay
-que poder explicar.
-
-Dos detalles que ese diseño arrastra. Al terminar una tanda conviene apagar el
-resalte en vez de dejarlo en lo que tocó el último punto, porque sería señalar
-un caso particular como si resumiera los cincuenta. Y el salto de +1 a +10 va a
-decepcionar con una tasa realista: o el botón grande es +100, o la tasa de esta
-página es más alta que la de entrenar en serio, y entonces hay que decirlo en la
-página para que el alumno no lo generalice.
-
-**Qué viaja de regreso, y dónde se puede mentir.** Hacia atrás circula δ, la
-señal de error de cada neurona, que depende del peso. Lo que cambia cada arista
-es δ_j·a_i, que depende de la activación de entrada. Son dos cantidades
-distintas sobre la misma arista, y si se iluminan con el mismo recurso visual el
-alumno se lleva la idea de que el error corre por el cable y de paso lo modifica.
-Propuesta: δ en el nodo, con halo en el círculo; el ajuste en la arista, con
-pulso o cambio de grosor. El signo del ajuste no puede reusar el rojo y el azul,
-que ya significan el signo del peso.
-
-**La ganancia que sale gratis.** Backpropagation multiplica por φ'(z). Con ReLU
-eso vale 0 o 1, así que las neuronas con z negativo quedan muertas en el paso
-hacia atrás y no les llega nada, y eso se ve. Enlaza con la tercera página: el
-escalón tiene derivada cero en todas partes, que es por qué TalleRNA le pone la
-etiqueta ∇=0, y aquí se vería como que no regresa nada por ninguna arista.
-
-**Dos cosas menores.** El punto que se ilumina sale del sorteador con semilla,
-como todo lo demás, para poder repetir la misma secuencia en clase. Y el ancla
-crece otra vez: la arista que se ilumina es el peso que cambia.
-
-**La frontera con TalleRNA.** Exponer sólo la tasa de aprendizaje, que es la
-única cuyo efecto la animación vuelve visible. Momento, tamaño de lote e
-inicialización se quedan en TalleRNA; si se abren aquí, esta página ya es
-TalleRNA y el directorio pierde su límite.
-
-**Lo que obliga a cambiar en el README.** El primer párrafo dice hoy que aquí no
-se entrena nada. Cuando esta página exista, la frontera deja de ser «no se
-entrena» y pasa a ser «no se configura»: las tres primeras no entrenan y la
-cuarta entrena con lo mínimo expuesto. Es una frontera más honesta y además
-explica por qué esta página pertenece aquí y no a TalleRNA.
-
-## 2. No se ve nunca una cantidad continua que baje
-
-Prerrequisito de la cuarta página, no sólo mejora de la primera.
-
-**El hueco.** Las tres páginas miden con el contador de mal clasificados, que es
-entero y plano. El alumno arrastra un peso medio recorrido, la cifra no se
-inmuta, y después salta de golpe. De ahí pasa a TalleRNA, donde se le dice que
-hay un algoritmo que sigue una pendiente, sin haber visto nunca una pendiente.
-Lo que sí vio fue un indicador que se queda quieto mientras él se mueve, que es
-la lección contraria.
-
-**Por qué la cuarta página lo necesita.** Si se actualiza de a un punto, el
-contador entero va a brincar y a veces a empeorar. Sin una curva continua al
-lado, el alumno no tiene cómo ver que aun así se está bajando.
-
-**Dónde metería el arreglo.** En `1-Perceptron.html`, no en una página
-nueva. Es donde el espacio tiene tres parámetros y todo se puede decir en una
-frase, y donde el alumno todavía tiene atención libre. En las otras dos
-competiría con lo que ya están enseñando.
+**El hueco.** Las tres primeras páginas miden con el contador de mal
+clasificados, que es entero y plano. El alumno arrastra un peso medio recorrido,
+la cifra no se inmuta, y después salta de golpe. Lo que vio fue un indicador que
+se queda quieto mientras él se mueve, que es la lección contraria a la que hace
+falta.
 
 **Qué sería.** Al lado del contador, el error suave —la log-verosimilitud, que
 es exactamente lo que minimiza el descenso por gradiente— y, del parámetro
 seleccionado, su curva a lo largo de todo el recorrido del deslizador con la
 posición actual marcada. El alumno arrastra, ve el contador estancado y la curva
-bajando, y entiende que hay un fondo hacia el que conviene ir. Es un corte
-unidimensional de la función que TalleRNA va a bajar.
+bajando, y entiende que hay un fondo hacia el que conviene ir.
+
+**Qué cambia ahora que existe la cuarta página.** Las dos curvas no son la misma
+y conviene no confundirlas. La de la cuarta página es la pérdida **contra el
+tiempo**: baja porque el algoritmo trabaja. La de la primera sería la pérdida
+**contra un parámetro**, con la red quieta: un corte unidimensional del paisaje,
+que no baja sola y que el alumno recorre con la mano. La primera enseña que hay
+un fondo; la cuarta, que hay quien baje hacia él. En ese orden se leen mejor, y
+es un argumento para hacerla antes que después.
+
+**Dónde.** En `1-Perceptron.html`, no en una página nueva. Es donde el espacio
+tiene tres parámetros y todo se puede decir en una frase, y donde el alumno
+todavía tiene atención libre. En las otras dos competiría con lo que ya están
+enseñando.
 
 **Por qué es barato.** La curva se traza evaluando la misma red que ya se evalúa
 para el mapa, sobre los mismos puntos, variando un solo parámetro. No hace falta
@@ -98,9 +54,9 @@ aparece después, como los botones. Y si conviene decir en clase que el contador
 y el error suave pueden discrepar —bajar uno y subir el otro—, porque eso
 también es cierto y también es materia.
 
-## 3. Los cuarenta puntos de prueba no trabajan
+## 2. Los cuarenta puntos de prueba no trabajan
 
-**El hueco.** Las tres páginas parten los 200 puntos en 160 de entrenamiento y
+**El hueco.** Las cuatro páginas parten los 200 puntos en 160 de entrenamiento y
 40 de prueba, dibujan los primeros en círculo y los segundos en cruz, y cuentan
 las dos particiones por separado. Pero todas las soluciones horneadas dan cero y
 cero en las dos, así que la partición de prueba nunca dice nada distinto de la
@@ -112,16 +68,65 @@ generalización se trata donde de verdad se pueda mostrar. La otra es hacer que
 se gane su lugar, y para eso hay que construir un caso donde la prueba y el
 entrenamiento discrepen a ojo: menos puntos de entrenamiento, o con ruido en las
 etiquetas, o con los conjuntos muestreados de regiones que no se solapan del
-todo. Sobreajustar a mano con diecisiete parámetros es posible, pero hay que
-medir si se alcanza moviendo parámetros de uno en uno o si sólo se llega
-entrenando.
+todo.
 
-La cuarta página cambia el cálculo, porque ahí sí se entrena y el sobreajuste
-puede aparecer solo. Conviene decidir esto después de tenerla, no antes.
+**Lo que destraba la cuarta página.** Antes había que medir si el sobreajuste se
+alcanza moviendo parámetros de uno en uno, y eso era dudoso. Ahora hay un sitio
+donde la red entrena sola y el sobreajuste puede aparecer por su cuenta, así que
+el experimento es concreto y se puede correr: dejar `4-Backprop.html` avanzando
+bastante más allá de la convergencia y ver si el contador de prueba se separa
+del de entrenamiento con estos datos. Con la holgura que hay entre el disco y el
+anillo es posible que no se separe nunca, y en ese caso haría falta ensuciar las
+etiquetas o recortar el entrenamiento. Es una medición, no una discusión.
 
 **Cuál prefiero.** Ninguna de las dos sin medir antes. Lo que sí es claro es que
 el estado actual es el peor de los tres: paga el costo visual de la distinción
 sin cobrar el beneficio.
+
+## 3. Lo que dejó abierto la cuarta página
+
+Ninguno de estos es un defecto que impida usarla; son cosas que conviene mirar
+con los colegas antes de darla por cerrada.
+
+**La única escala que no es absoluta.** El grosor del pulso del ajuste compara
+los diecisiete ajustes de ese paso entre sí, no contra el tamaño del peso. Tenía
+que ser así para que se viera algo con centésimas, está declarado en la leyenda
+y el panel da además el mayor |Δθ| en número. La pregunta es si con eso basta o
+si hace falta algo más en el dibujo mismo, porque una escala relativa sin aviso
+es exactamente el tipo de cosa que el alumno se lleva mal aprendida.
+
+**Con tanh no se ve nada equivalente a la neurona muerta.** La ganancia que sale
+gratis es de la ReLU: φ′ vale 0 o 1 y la neurona con z ≤ 0 se apaga a la vista.
+Con tanh φ′ nunca es cero, sólo pequeño, así que el gradiente se desvanece sin
+que la página lo muestre. Es el fenómeno que más importa de las dos y es el que
+no tiene dibujo. Podría ser el grosor del anillo —que ya es |δ|— dicho de otro
+modo, o una marca cuando φ′ cae por debajo de algo; o podría ser deliberado
+dejarlo para TalleRNA. No está decidido.
+
+**El tope del grosor.** Se midió que con η = 0.05 ningún peso pasa de 6 antes de
+llegar a cero errores, así que la escala fija no estorba en el uso previsto.
+Entrenando mucho más allá sí lo pasan y esas líneas se dibujan todas iguales. Es
+el precio de que un grosor signifique lo mismo en las cuatro páginas, y me
+parece el precio correcto, pero conviene saberlo antes de que alguien lo
+descubra en clase.
+
+**El tamaño de la tanda.** Catorce apretones de +100 con ReLU y veinticuatro con
+tanh. Un botón más grande —o uno de «entrenar hasta el final»— lo haría cómodo y
+al mismo tiempo borraría la lección, que es justamente cuántos pasos hacen falta.
+Se quedó en +10 y +100 por eso. Si en clase resulta insufrible, la salida menos
+mala es un +500, no un botón que llegue solo al final.
+
+**La frontera enredada de los primeros pasos.** Los puntos de cruce se ordenan
+por ángulo alrededor de su centroide, lo que supone un lazo estrellado. Con los
+pesos iniciales no lo es y la curva se cruza a sí misma durante unos cientos de
+iteraciones. Dice la verdad sobre la red que hay, y se arregla sola, así que se
+dejó; sustituirlo por un seguimiento de contorno en regla es trabajo real y
+beneficia a las cuatro páginas, no sólo a ésta.
+
+**Las otras tres no caben proyectadas.** La cuarta se dimensionó para entrar
+entera en una ventana de 940 px y no usar el scroll en clase. Las tres primeras
+no lo hacen, y ahora la diferencia se nota al pasar de una a otra. Es una tarde
+de trabajo aplicar el mismo criterio a las tres, y probablemente valga la pena.
 
 ## Lo que no está pendiente
 
@@ -129,3 +134,8 @@ Que la tercera página se preste a un estudio más profundo —activaciones
 aprendidas, búsqueda sobre el espacio de funciones, la conexión con KAN— no es
 un pendiente de BasicRNA. Eso vive en la sección de redes especiales, después de
 TalleRNA, y estas páginas no tienen que prepararlo más de lo que ya lo hacen.
+
+Tampoco lo es abrir más hiperparámetros en la cuarta página. La frontera del
+directorio es que aquí no se configura: momento, tamaño de lote, épocas e
+inicialización son de TalleRNA. Si se abren aquí, esta página ya es TalleRNA y
+el directorio pierde su límite.
