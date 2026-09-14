@@ -74,7 +74,7 @@ la lección contraria.
 contador entero va a brincar y a veces a empeorar. Sin una curva continua al
 lado, el alumno no tiene cómo ver que aun así se está bajando.
 
-**Dónde metería el arreglo.** En `explorador-neurona.html`, no en una página
+**Dónde metería el arreglo.** En `1-Perceptron.html`, no en una página
 nueva. Es donde el espacio tiene tres parámetros y todo se puede decir en una
 frase, y donde el alumno todavía tiene atención libre. En las otras dos
 competiría con lo que ya están enseñando.

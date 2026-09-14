@@ -154,11 +154,11 @@ cada neurona aporta una forma al mapa y esa aportación se puede aislar apagando
 las otras tres. Con dos capas ocultas eso deja de ser cierto y la atribución se
 pierde.
 
-Es la página SIGUIENTE a explorador-parametros.html, que tiene la misma red
+Es la página SIGUIENTE a 2-EditParam.html, que tiene la misma red
 2→4→1 con una activación para toda la capa, elegida con un interruptor. Allá el
 alumno mueve diecisiete parámetros con la forma de la neurona ya decidida; aquí
 la forma también se decide, y se decide neurona por neurona. La progresión de
-las tres páginas es una sola: en explorador-neurona.html cada parámetro hace
+las tres páginas es una sola: en 1-Perceptron.html cada parámetro hace
 algo que se dice en una frase, en la segunda ya son diecisiete y la intuición no
 alcanza, y en ésta lo que se elige no es un número sino una forma.
 
@@ -226,7 +226,7 @@ presupuesto de cuatro que tiene la red.
 La banda es la entrada: una gaussiana sola basta, porque una banda es
 exactamente lo que una gaussiana aporta, mientras que ReLU necesita dos para
 fabricarla con dos rectas. Los círculos son los MISMOS puntos de
-explorador-parametros.html, para que el alumno llegue con el tablero conocido y
+2-EditParam.html, para que el alumno llegue con el tablero conocido y
 descubra que lo que allá le costó diecisiete parámetros aquí sale con dos
 neuronas. Las franjas son el que decide: la clase es el signo de sin(10·x1), o
 sea siete regiones dentro del cuadrado, y cuatro dobleces no hacen siete
@@ -251,7 +251,7 @@ Prof. Miguel Ángel Norzagaray Cosío
 */
 
 /* Los tres conjuntos y las tres soluciones horneadas. Los de círculos son los
-   mismos puntos de explorador-parametros.html, copiados sin tocar. */
+   mismos puntos de 2-EditParam.html, copiados sin tocar. */
 var TR_BANDA, TE_BANDA, TR_CIRCULOS, TE_CIRCULOS, TR_FRANJAS, TE_FRANJAS;
 var SOL_BANDA, SOL_CIRCULOS, SOL_FRANJAS;
 TR_BANDA = [
@@ -1054,7 +1054,7 @@ function frontera(g) {
   }
   return P;
 }
-/* IMPORTANTE, y es un cambio respecto de explorador-parametros.html: allá la
+/* IMPORTANTE, y es un cambio respecto de 2-EditParam.html: allá la
    frontera se ordenaba por ángulo alrededor del centroide y se cerraba como
    polígono, porque con una sola activación acotada el lazo era estrellado. Aquí
    NO se puede: con seno la frontera son varias franjas paralelas, con
@@ -1072,7 +1072,7 @@ function malClasificados(th, actos, puntos) {
 }
 
 /* ── Geometría del diagrama ────────────────────────────────────────────────
-   Misma que la de explorador-parametros.html, para que las dos páginas se
+   Misma que la de 2-EditParam.html, para que las dos páginas se
    vean iguales: las posiciones verticales siguen la regla (i+1)/(n+1) y el
    nodo de sesgo va entre capas, al 28 % del tramo. DIAG_W iguala el ancho útil
    del panel del mapa, para que las dos cajas salgan del mismo ancho. */
@@ -1344,7 +1344,7 @@ function dibujarMapa(vista, th, actos) {
 
    Y se mide contra el TOPE DEL DESLIZADOR, no contra el mayor |θ| de los
    diecisiete actuales. Con el normalizador móvil —que es como estaba, heredado
-   de explorador-parametros.html— arrastrar el parámetro más grande cambiaba el
+   de 2-EditParam.html— arrastrar el parámetro más grande cambiaba el
    grosor y la opacidad de las otras dieciséis líneas solas: mientras ese
    parámetro fuera el máximo, el normalizador viajaba con él. En esta página eso
    rompe el ancla, que promete que la línea señalada es la que se mueve y ninguna
