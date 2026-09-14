@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explorador de activaciones — una función por neurona</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --azul: #4b8bbe;
+    --naranja: #e8825a;
+    --positivo: #3c64d2;
+    --negativo: #d23c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 48px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 23px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.2px; }
+
+  .selector {
+    display: flex; align-items: center; gap: 14px;
+    margin: 0 0 20px; padding: 12px 16px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .selector > span { font-weight: 600; font-size: 14px; }
+  .selector label {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border: 1px solid var(--linea); border-radius: 6px;
+    cursor: pointer; background: #fbfcfd; font-size: 14px;
+  }
+  .selector label:hover { border-color: #aab4bd; }
+  .selector label.puesto { border-color: var(--tinta); background: #eef2f6; font-weight: 600; }
+  .selector .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 4px; }
+  .selector .ranura { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+  .selector .consigna { font-size: 13.5px; color: var(--tinta-suave); }
+  .selector button {
+    font: inherit; font-size: 13.5px; padding: 7px 14px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .selector button:hover { background: #eef2f6; border-color: #8f9aa3; }
+  .selector button:active { background: #e2e8ee; }
+
+  .tablero { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px 14px; max-width: 558px;
+  }
+
+  .contador {
+    display: flex; gap: 28px; align-items: baseline;
+    margin: 0 0 14px; padding: 10px 14px;
+    background: #f0f4f8; border: 1px solid var(--linea); border-radius: 6px;
+  }
+  .contador .par { display: flex; align-items: baseline; gap: 9px; }
+  .contador .cifra { font-size: 34px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .contador .cero { color: #2e8b57; }
+  .contador .noCero { color: var(--negativo); }
+  .contador .rotulo { font-size: 13px; color: var(--tinta-suave); }
+  .contador .de { font-size: 13px; color: #8b959d; }
+  /* El tercer par cuenta neuronas en uso, no errores: no se pinta de verde ni
+     de rojo, porque ahí no hay nada bueno ni malo, hay un presupuesto. */
+  .contador .neutro { color: var(--tinta); }
+
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 6px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  .mando { margin-bottom: 14px; }
+  .mando.apagado .pista,
+  .mando.apagado .pista-pie,
+  .mando.apagado .mando-val { opacity: 0.55; }
+  .mando-cab { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .mando-rot { font-size: 14px; font-weight: 600; }
+  .mando-rot.vacio { font-weight: 700; color: var(--tinta); }
+  .mando-val {
+    margin-left: auto; font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+  }
+  .mando-val.nada { color: #b9c2ca; font-weight: 400; font-size: 16px; }
+  .pista { position: relative; height: 30px; }
+  .pista input[type=range] { position: absolute; left: 0; top: 6px; margin: 0; }
+  .hito { position: absolute; top: 0; pointer-events: none; }
+  .hito-cero { width: 2px; height: 28px; background: #4a545d; border-radius: 1px; }
+  .pista-pie { display: flex; font-size: 12px; color: #8b959d; margin-top: 2px; }
+  .pista-pie .der { margin-left: auto; }
+  .mando-nota { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave);
+                display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .mando-nota .it { display: inline-flex; align-items: center; gap: 6px; }
+  .llave { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+
+  /* El lienzo de la red va dentro de un envoltorio posicionado, porque el menú
+     de activaciones se coloca ENCIMA de él, al lado del nodo que se tocó. */
+  .envoltura { position: relative; }
+  .menu {
+    position: absolute; z-index: 10;
+    background: var(--papel); border: 1px solid #9aa4ad; border-radius: 8px;
+    box-shadow: 0 6px 22px rgba(20,28,36,0.18);
+    padding: 5px; min-width: 158px;
+  }
+  .menu .cab {
+    font-size: 12px; color: var(--tinta-suave);
+    padding: 4px 8px 6px; border-bottom: 1px solid var(--linea); margin-bottom: 4px;
+  }
+  .menu .op {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    padding: 5px 8px; border: 1px solid transparent; border-radius: 5px;
+    background: transparent; cursor: pointer; font: inherit; font-size: 14px;
+    color: var(--tinta); text-align: left;
+  }
+  .menu .op:hover { background: #eef2f6; border-color: #c3ccd4; }
+  .menu .op.puesta { background: #e6edf5; border-color: #7f95ab; font-weight: 600; }
+  .menu .op canvas { border-radius: 50%; flex: 0 0 auto; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Explorador de activaciones — una función por neurona</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+
+/*
+Explorador de activaciones — una función por neurona
+
+Se hace clic en una neurona oculta y se elige su función de activación entre
+seis; se hace clic en una conexión y se mueve su peso o su sesgo con el
+deslizador. Las cuatro neuronas ocultas pueden llevar funciones distintas, que
+es lo que esta página existe para enseñar. Se puede pedir una solución, pero
+este ejercicio no es de entrenamiento: es de exploración.
+
+En clase debe explicarse que la costumbre de poner una capa entera con la misma
+activación es una conveniencia de implementación —una capa homogénea es una
+sola operación sobre un tensor— y no una ley; y que con una sola capa oculta la
+salida es una SUMA PESADA de cuatro funciones de una proyección lineal, así que
+cada neurona aporta una forma al mapa y esa aportación se puede aislar apagando
+las otras tres. Con dos capas ocultas eso deja de ser cierto y la atribución se
+pierde.
+
+Es la página SIGUIENTE a explorador-parametros.html, que tiene la misma red
+2→4→1 con una activación para toda la capa, elegida con un interruptor. Allá el
+alumno mueve diecisiete parámetros con la forma de la neurona ya decidida; aquí
+la forma también se decide, y se decide neurona por neurona. La progresión de
+las tres páginas es una sola: en explorador-neurona.html cada parámetro hace
+algo que se dice en una frase, en la segunda ya son diecisiete y la intuición no
+alcanza, y en ésta lo que se elige no es un número sino una forma.
+
+QUÉ ES LA PÁGINA
+Una red 2→4→1 con salida sigmoide y tres conjuntos de puntos para probarla. A la
+izquierda, lo que la red predice en cada punto del cuadrado; a la derecha, el
+diagrama: diecisiete líneas, una por parámetro, y cuatro nodos ocultos, cada uno
+con el dibujo de su activación en el centro. La página abre con pesos al azar y
+las cuatro neuronas en ReLU, que es la red convencional con la que se llegó
+desde la página anterior.
+
+Las seis activaciones no son un catálogo de fórmulas sino una casilla cada una,
+y la casilla se ve en el mapa. Con una sola capa oculta cada neurona aporta una
+función de w·x+b, constante a lo largo de las rectas perpendiculares a w, así
+que lo único que puede cambiar de una neurona a otra es cuántas franjas aporta y
+de qué clase:
+  lineal      ninguna frontera propia; cuatro lineales son una sola recta
+  escalón     una recta con salto: mesetas planas en vez de rampas
+  ReLU        una recta y un doblez
+  tanh        una recta difuminada
+  gaussiana   una banda, o sea dos rectas
+  seno        bandas repetidas, sin límite
+Casi todo el catálogo usual —sigmoide, softplus, ELU, leaky ReLU, SiLU, GELU—
+cae en la misma casilla que tanh: cambian el difuminado del borde y nada más.
+Por eso no están: alargarían el menú sin agregar un fenómeno.
+
+Parámetros
+  theta[0..3]    pesos de x1 a h1,h2,h3,h4
+  theta[4..7]    pesos de x2 a h1,h2,h3,h4
+  theta[8..11]   sesgos de h1,h2,h3,h4
+  theta[12..15]  pesos de h1,h2,h3,h4 a la salida
+  theta[16]      sesgo de la salida
+Y, aparte del vector, un arreglo de cuatro nombres de activación, uno por
+neurona oculta.
+
+EL ANCLA, EN SUS DOS MITADES
+La línea que se señala es el parámetro que se mueve, y el nodo que se señala es
+la activación que cambia. La primera mitad descansa en el orden
+theta[i*NOCULTA + j]: con el orden traspuesto, j*NENT + i, de las ocho aristas
+de entrada sólo coinciden dos y las otras seis se dibujarían con el grosor de
+otro peso.
+
+La segunda mitad es más frágil, y conviene saber por qué. Para las líneas el
+vínculo viaja por un solo número; para los nodos hay dos travesías, del clic al
+índice de neurona y del índice a la casilla del arreglo de activaciones. Y los
+cuatro nodos son círculos iguales en la misma columna, así que una permutación
+entre ellos no rompe nada, no dibuja nada torcido y no lanza ningún error: se
+cambiaría la activación de h2 y se movería la del mapa que produce h3. Por eso
+el glifo y la evaluación leen EL MISMO arreglo, sin copias, y por eso hay una
+prueba en la hoja de apoyo: poner las cuatro en lineal menos una, y ésa en
+gaussiana; el mapa queda con una sola banda, y la banda tiene que ser
+perpendicular a la dirección del peso de la neurona que se señaló.
+
+LOS TRES CONJUNTOS DE PUNTOS
+Todos de 200 puntos en [-1,1]^2, partidos en 160 de entrenamiento y 40 de
+prueba, y todos con una holgura entre clases para que el cero de errores sea
+alcanzable a mano. Se eligieron midiendo, no de oído: para cada conjunto y cada
+activación se buscó el mínimo de neuronas que llega a cero errores, con el
+presupuesto de cuatro que tiene la red.
+
+  banda      lineal —   escalón 2   ReLU 2   tanh 2   gaussiana 1   seno 1
+  círculos   lineal —   escalón 3   ReLU 3   tanh 3   gaussiana 2   seno 2
+  franjas    lineal —   escalón —   ReLU —   tanh —   gaussiana —   seno 1
+
+La banda es la entrada: una gaussiana sola basta, porque una banda es
+exactamente lo que una gaussiana aporta, mientras que ReLU necesita dos para
+fabricarla con dos rectas. Los círculos son los MISMOS puntos de
+explorador-parametros.html, para que el alumno llegue con el tablero conocido y
+descubra que lo que allá le costó diecisiete parámetros aquí sale con dos
+neuronas. Las franjas son el que decide: la clase es el signo de sin(10·x1), o
+sea siete regiones dentro del cuadrado, y cuatro dobleces no hacen siete
+regiones por mucho que se muevan; una sola neurona seno llega a cero.
+
+El recorrido del deslizador es ±12 y no ±6 como en la página anterior, y la
+razón es el seno: la frecuencia de las franjas vive en el peso, y con tope 6 no
+hay manera de escribir sin(10·x1). Los pesos del sorteo inicial sí se reparten
+en ±6, para que la página no abra con valores extremos.
+
+Las tres soluciones que enseña el botón están horneadas y verificadas: cero mal
+clasificados en las dos particiones de su conjunto. La del seno no se buscó, se
+escribió: peso 10 sobre x1, sesgo 0, peso de salida 4, y el resto en cero.
+
+Aritmética nativa de JavaScript, binary64. La retícula del mapa es de 50x50 y la
+frontera se traza por cambio de signo entre celdas vecinas. Un solo archivo, sin
+dependencias, sin build; se abre con doble clic y dibuja con canvas 2D.
+
+¡Feliz exploración! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+/* Los tres conjuntos y las tres soluciones horneadas. Los de círculos son los
+   mismos puntos de explorador-parametros.html, copiados sin tocar. */
+var TR_BANDA, TE_BANDA, TR_CIRCULOS, TE_CIRCULOS, TR_FRANJAS, TE_FRANJAS;
+var SOL_BANDA, SOL_CIRCULOS, SOL_FRANJAS;
+TR_BANDA = [
+  [0.2502, 0.7944, 0],
+  [0.5514, -0.5496, 0],
+  [-0.3997, 0.7471, 0],
+  [-0.9895, 0.6425, 0],
+  [0.5941, -0.0641, 1],
+  [-0.4903, -0.1098, 1],
+  [0.0091, 0.107, 1],
+  [0.991, 0.5853, 0],
+  [0.2444, 0.9779, 0],
+  [-0.5694, -0.6796, 0],
+  [0.2251, -0.9121, 0],
+  [-0.9286, 0.0298, 1],
+  [-0.0676, 0.8343, 0],
+  [0.2585, 0.0282, 1],
+  [-0.9764, -0.6152, 0],
+  [0.3841, -0.5988, 0],
+  [-0.2609, -0.9925, 0],
+  [0.6601, -0.6911, 0],
+  [-0.4648, 0.7607, 0],
+  [0.0196, 0.6943, 0],
+  [-0.817, 0.0823, 1],
+  [0.0155, 0.7427, 0],
+  [-0.2775, 0.1964, 1],
+  [-0.8815, -0.2247, 1],
+  [-0.3539, -0.6996, 0],
+  [0.6327, -0.2411, 1],
+  [0.9575, 0.18, 1],
+  [0.3529, -0.6984, 0],
+  [-0.1194, -0.5209, 0],
+  [-0.195, -0.8066, 0],
+  [0.9357, -0.57, 0],
+  [-0.7368, 0.6901, 0],
+  [0.8899, 0.8078, 0],
+  [0.1394, -0.7091, 0],
+  [-0.6151, 0.8558, 0],
+  [0.1047, -0.6389, 0],
+  [0.1394, -0.2474, 1],
+  [-0.1781, -0.521, 0],
+  [-0.9239, 0.7524, 0],
+  [-0.0645, 0.0953, 1],
+  [-0.9393, -0.7542, 0],
+  [-0.1436, 0.0475, 1],
+  [-0.2892, 0.0382, 1],
+  [0.5305, 0.8184, 0],
+  [-0.6979, 0.8668, 0],
+  [0.6211, -0.7265, 0],
+  [-0.1622, 0.6305, 0],
+  [0.586, 0.026, 1],
+  [0.4517, -0.5472, 0],
+  [0.8962, 0.1467, 1],
+  [0.9041, -0.111, 1],
+  [0.9608, 0.031, 1],
+  [0.0423, 0.7931, 0],
+  [0.4855, 0.1613, 1],
+  [-0.1467, 0.7564, 0],
+  [-0.1767, 0.8455, 0],
+  [-0.8626, -0.14, 1],
+  [0.039, 0.9019, 0],
+  [-0.498, 0.6121, 0],
+  [0.2592, 0.9431, 0],
+  [-0.3346, -0.2034, 1],
+  [-0.5942, -0.8986, 0],
+  [-0.5742, 0.8309, 0],
+  [0.6803, -0.7752, 0],
+  [0.2076, -0.0416, 1],
+  [-0.3867, 0.9227, 0],
+  [0.2705, -0.6322, 0],
+  [-0.8763, -0.177, 1],
+  [0.5281, 0.6304, 0],
+  [0.46, -0.7736, 0],
+  [0.8267, 0.6041, 0],
+  [0.7554, 0.0466, 1],
+  [0.8313, -0.9067, 0],
+  [-0.9394, -0.9596, 0],
+  [-0.625, 0.1341, 1],
+  [-0.922, 0.1808, 1],
+  [0.8767, 0.0768, 1],
+  [0.2215, -0.6175, 0],
+  [0.1488, -0.9206, 0],
+  [0.6033, 0.9201, 0],
+  [0.708, -0.8986, 0],
+  [0.7256, 0.5943, 0],
+  [-0.7417, 0.5337, 0],
+  [0.7652, -0.6054, 0],
+  [0.2187, -0.8075, 0],
+  [0.6478, 0.607, 0],
+  [0.7345, 0.7859, 0],
+  [-0.677, -0.9466, 0],
+  [0.3016, -0.5706, 0],
+  [0.1274, 0.8896, 0],
+  [-0.7978, -0.2388, 1],
+  [0.6611, -0.2463, 1],
+  [-0.2566, 0.079, 1],
+  [-0.3403, -0.0851, 1],
+  [-0.8449, 0.5264, 0],
+  [-0.7378, -0.7336, 0],
+  [-0.7386, -0.8375, 0],
+  [-0.3872, 0.6656, 0],
+  [0.2398, -0.6257, 0],
+  [-0.1304, 0.7678, 0],
+  [0.5529, 0.6515, 0],
+  [-0.8716, 0.0376, 1],
+  [0.5149, -0.6183, 0],
+  [-0.4675, 0.0722, 1],
+  [0.4967, 0.7932, 0],
+  [-0.7485, -0.6315, 0],
+  [0.4419, 0.9935, 0],
+  [0.8784, 0.6861, 0],
+  [0.5542, -0.21, 1],
+  [0.2825, -0.6311, 0],
+  [0.519, 0.5154, 0],
+  [0.4426, -0.1104, 1],
+  [-0.2436, -0.1605, 1],
+  [-0.9333, 0.6886, 0],
+  [0.0847, -0.225, 1],
+  [-0.2371, 0.6613, 0],
+  [0.8389, -0.2251, 1],
+  [-0.7244, 0.5207, 0],
+  [0.9859, -0.704, 0],
+  [0.4254, 0.6506, 0],
+  [0.8411, -0.7532, 0],
+  [-0.8164, 0.9757, 0],
+  [-0.7665, -0.6464, 0],
+  [0.1499, -0.1075, 1],
+  [0.5008, -0.6189, 0],
+  [0.8289, -0.5656, 0],
+  [0.5382, -0.8648, 0],
+  [-0.0532, -0.9349, 0],
+  [0.4395, -0.09, 1],
+  [-0.8865, 0.9907, 0],
+  [0.7774, 0.8326, 0],
+  [-0.5068, -0.2118, 1],
+  [-0.5456, -0.7502, 0],
+  [-0.934, 0.0067, 1],
+  [-0.7537, -0.6474, 0],
+  [0.721, -0.0315, 1],
+  [-0.4683, 0.0539, 1],
+  [-0.4341, 0.0323, 1],
+  [0.2571, 0.0724, 1],
+  [-0.2088, 0.5816, 0],
+  [0.7469, -0.6413, 0],
+  [-0.7274, -0.7736, 0],
+  [0.9592, 0.8832, 0],
+  [-0.5387, 0.9398, 0],
+  [-0.5844, 0.013, 1],
+  [-0.0052, 0.8299, 0],
+  [0.1999, -0.8672, 0],
+  [-0.5269, -0.0699, 1],
+  [0.7617, 0.5219, 0],
+  [0.658, 0.5221, 0],
+  [0.4154, 0.6994, 0],
+  [-0.3967, -0.6647, 0],
+  [0.513, -0.6683, 0],
+  [0.8389, 0.1933, 1],
+  [-0.3411, 0.8733, 0],
+  [-0.6897, 0.0289, 1],
+  [-0.8169, 0.9309, 0],
+  [0.1508, 0.6073, 0],
+  [-0.4362, 0.6036, 0],
+  [0.9011, -0.133, 1]
+];
+TE_BANDA = [
+  [0.3393, -0.5819, 0],
+  [0.1034, 0.5383, 0],
+  [-0.9691, 0.9167, 0],
+  [-0.0627, -0.1819, 1],
+  [0.4409, 0.0466, 1],
+  [0.4617, -0.8305, 0],
+  [0.1256, 0.1162, 1],
+  [0.8642, -0.9208, 0],
+  [0.1015, -0.8517, 0],
+  [0.1865, -0.5556, 0],
+  [-0.6089, 0.7574, 0],
+  [-0.6043, -0.0914, 1],
+  [0.1069, 0.6141, 0],
+  [-0.0684, 0.2408, 1],
+  [0.2837, -0.1877, 1],
+  [0.1166, -0.2078, 1],
+  [0.4886, -0.2391, 1],
+  [-0.0668, 0.5109, 0],
+  [0.6536, -0.2381, 1],
+  [0.6895, 0.5705, 0],
+  [-0.9312, -0.2204, 1],
+  [0.7207, 0.1591, 1],
+  [0.3553, 0.1672, 1],
+  [-0.1587, -0.633, 0],
+  [-0.1385, 0.9981, 0],
+  [-0.2949, -0.1052, 1],
+  [-0.2567, 0.1629, 1],
+  [0.8958, 0.7781, 0],
+  [0.7688, -0.0123, 1],
+  [0.3711, -0.8534, 0],
+  [-0.0109, -0.604, 0],
+  [-0.1595, 0.6561, 0],
+  [0.6552, -0.0527, 1],
+  [0.5358, -0.0839, 1],
+  [-0.2533, 0.0918, 1],
+  [0.4131, 0.541, 0],
+  [0.6349, -0.1096, 1],
+  [-0.4837, -0.0469, 1],
+  [-0.5937, 0.9241, 0],
+  [-0.4874, -0.865, 0]
+];
+TR_CIRCULOS = [
+  [-0.182692616843106, 0.17605809997490796, 0],
+  [0.1930328835294155, 0.26781643997095084, 0],
+  [0.13147337541431114, 0.24975721501476045, 0],
+  [-0.06196047685927286, -0.1181444203592541, 0],
+  [0.09995479807569252, 0.09135194729822249, 0],
+  [-0.3673394020055496, 0.6511734735152528, 1],
+  [-0.03137213187805965, -0.14614425888909988, 0],
+  [0.029628152647105832, 0.2254379548667862, 0],
+  [-0.034685339278826555, -0.09594361037148291, 0],
+  [-0.10983764320821565, -0.6736497097472506, 1],
+  [-0.21445646056146184, 0.2943378384561772, 0],
+  [-0.011359808342295552, 0.2656759418413861, 0],
+  [0.912849346317314, 0.07911942620533119, 1],
+  [0.08914945707235389, 0.6451728538164212, 1],
+  [-0.5199959117929349, 0.4236000500627013, 1],
+  [0.12031983115562284, 0.0789513619129909, 0],
+  [0.33870942455547803, 0.05836520662578093, 0],
+  [-0.8246765243996828, 0.09041555024377534, 1],
+  [0.18644368969463998, 0.09148670074649767, 0],
+  [-0.5109753028064983, 0.5554800746220068, 1],
+  [-0.02986978544281027, -0.1503665959871483, 0],
+  [0.2924337932325798, -0.07383677404617961, 0],
+  [0.12837057627250759, -0.9193850116785992, 1],
+  [-0.5526644406776773, 0.43835179913077393, 1],
+  [0.3455529010631573, -0.1260527681582705, 0],
+  [0.6757072824085528, -0.6546244976306861, 1],
+  [-0.5622421252323999, -0.5994834059125416, 1],
+  [-0.07394986852562668, -0.20498491996711066, 0],
+  [0.01808713118497418, -0.09280538592524001, 0],
+  [-0.8576144244924244, 0.054833541631138516, 1],
+  [0.23957830921789647, 0.19972006441586831, 0],
+  [0.2542037832856259, -0.19763027027772528, 0],
+  [0.44837814362498873, 0.46009534006270414, 1],
+  [-0.331671927183837, 0.05715626477876801, 0],
+  [-0.20849505274480873, -0.11348588036608032, 0],
+  [0.02726252873285251, -0.21914348750792956, 0],
+  [0.08412454827751503, -0.011354188484094863, 0],
+  [-0.6219247354970745, 0.8405754430828052, 1],
+  [-0.15258400060190302, 0.15930905011917518, 0],
+  [0.27086640159329667, 0.267660355710847, 0],
+  [0.33044502611411253, 0.13136507814743004, 0],
+  [0.05074230082166098, -0.23415531984395666, 0],
+  [-0.6600273050150789, 0.10237138160419534, 1],
+  [-0.09329377852036902, -0.19374278496415653, 0],
+  [-0.02053358425181162, 0.13563889684326402, 0],
+  [0.0007678523947096672, -0.3376276724740198, 0],
+  [0.2414050475192584, -0.1255684361960533, 0],
+  [0.11217879448738932, -0.1068096001881178, 0],
+  [-0.0990116691699855, -0.05437068670811318, 0],
+  [0.2593746338136895, -0.08210289031379692, 0],
+  [0.05603927709716605, 0.14939801803541575, 0],
+  [-0.6674110148170076, 0.5862781695859018, 1],
+  [-0.5157076545158643, 0.39073117667987667, 1],
+  [0.01934806274125611, 0.8105230945891275, 1],
+  [0.4733245731864022, -0.4852672769098395, 1],
+  [-0.2648294399315322, 0.1405484785647655, 0],
+  [-0.25390083589913603, -0.804264484375002, 1],
+  [0.17960927199773424, 0.7219544015637627, 1],
+  [-0.03217946551081008, -0.13681520294743, 0],
+  [0.017852162794639748, 0.14703142361767196, 0],
+  [-0.6131531116094554, 0.5488366878319741, 1],
+  [-0.25028718430508934, -0.6644822648107717, 1],
+  [-0.3596466336735209, -0.07724149051948426, 0],
+  [-0.9489152879884127, 0.4458276629894411, 1],
+  [-0.2127434868131547, -0.13503080372277765, 0],
+  [0.13732061025465003, -0.36187586197743127, 0],
+  [-0.0873251454179168, -0.08092738681555645, 0],
+  [0.8429153546641444, -0.426222189009533, 1],
+  [-0.8090744964807434, 0.46736370596921506, 1],
+  [-0.13856784666684774, -0.8529466981295857, 1],
+  [0.08813833738099164, -0.08902477350325899, 0],
+  [-0.3718573033090312, 0.7568388296853701, 1],
+  [-0.6786736620035556, 0.013518425396540579, 1],
+  [0.07244196178048834, -0.5929187188239256, 1],
+  [0.08384353310891712, -0.8762867188072407, 1],
+  [-0.007591835027941141, -0.8881124772266566, 1],
+  [0.33508188835854, -0.03544567952199551, 0],
+  [0.2592704561908059, 0.20251934526495274, 0],
+  [0.7947742065236658, 0.1565390929239996, 1],
+  [-0.12510494753266832, 0.23121815129951528, 0],
+  [-0.49302241976061045, 0.880745792872152, 1],
+  [-0.3095546335936903, 0.162015239097258, 0],
+  [0.482578593037279, -0.6874895777188996, 1],
+  [-0.23906408613018137, -0.0459830126254549, 0],
+  [0.12426149822044041, 0.9383197954503437, 1],
+  [0.382028874011467, 0.08242272625255098, 0],
+  [0.1672114288936375, -0.13159766049006094, 0],
+  [0.9827920980412357, 0.11483627214062153, 1],
+  [0.23134846504657336, -0.8926153824423476, 1],
+  [0.8066534172296003, -0.15180674383689063, 1],
+  [0.06654432343294236, -0.09272302520840847, 0],
+  [-0.5898059705196415, -0.6550494577848978, 1],
+  [0.10087328769019765, 0.24850652157563502, 0],
+  [0.27925651444132127, -0.5725597517934791, 1],
+  [0.589467427817874, -0.6066694223588969, 1],
+  [-0.15365631345630082, -0.09779312030167187, 0],
+  [-0.33918435960371995, -0.22708625973339835, 0],
+  [0.15786217268740765, 0.3741335794107008, 0],
+  [0.33981951576530767, -0.09859787343370996, 0],
+  [-0.28387842687890574, 0.1431353299781597, 0],
+  [0.4132787845553374, -0.5741967058588138, 1],
+  [-0.4369762269454197, 0.7978656062987395, 1],
+  [0.0640428572239542, -0.05078591968051882, 0],
+  [-0.7885933335714528, -0.13796309526927286, 1],
+  [0.23416746484225381, 0.6808617126615424, 1],
+  [0.15161656844085503, 0.13692952478106268, 0],
+  [-0.24267620206327178, 0.33129903732939403, 0],
+  [0.019199800048189886, 0.11805429486341756, 0],
+  [-0.775306105935939, 0.5113398749428697, 1],
+  [0.5758947757607678, -0.4968060214726854, 1],
+  [-0.29209437284135387, -0.25816867319556924, 0],
+  [-0.1764185863880411, -0.18628175278188208, 0],
+  [-1, 0.3321137735890358, 1],
+  [0.6591978307541944, 0.022466729142968545, 1],
+  [0.09992107641749404, 0.6988766328676781, 1],
+  [0.3199396990358987, 0.03702997344713532, 0],
+  [-0.9315021650353177, 0.4924144561982877, 1],
+  [-0.3397651592581101, 0.7503948006831982, 1],
+  [0.7155291004459257, 0.29045891062617857, 1],
+  [0.0642645335952996, -0.38344996557650635, 0],
+  [-0.6525721325703544, -0.2876188448604693, 1],
+  [-0.34699206211500644, 0.023189702631397635, 0],
+  [0.2201455037555493, 1, 1],
+  [-0.44305192612190325, -0.8776473241948693, 1],
+  [0.8533838742619477, -0.4511032978182238, 1],
+  [-0.8994120600546276, 0.38412846305987824, 1],
+  [-0.7759866400439152, 0.09776564439555502, 1],
+  [0.13218881713317, -0.05106102654526734, 0],
+  [-0.2915587373654479, 0.8342951993642773, 1],
+  [0.36342634871716184, 0.647742735975408, 1],
+  [0.07152375075470885, -0.25497671126151034, 0],
+  [-0.2575364849652789, 0.03989871948753221, 0],
+  [-0.5374273366610719, 0.4913305695841408, 1],
+  [0.8777056283333367, 0.3285505534903488, 1],
+  [0.21022477322103206, 0.06202411986778067, 0],
+  [0.44434796433578105, 0.5582648322051984, 1],
+  [-0.8678561540230203, -0.18922879276680893, 1],
+  [-0.1408459224061751, -0.0015092078939605846, 0],
+  [0.10216297265826202, -0.2315041780657745, 0],
+  [0.2018935865057312, -0.10986916295743143, 0],
+  [-0.2003774610072493, 0.32786204727399304, 0],
+  [-0.2454487138932383, -0.13901858968150393, 0],
+  [0.5773486391060192, 0.3054482263135694, 1],
+  [-0.07755532597120629, 0.10490902154098558, 0],
+  [0.2371056727558738, -0.12913860049889825, 0],
+  [-0.126279648665786, 0.002632254579729265, 0],
+  [-0.7061363162317313, 0.45200564967542856, 1],
+  [0.45662080850294773, -0.8260717147733759, 1],
+  [-0.020715748829625902, -0.7611320666380419, 1],
+  [0.8891701631081947, 0.5013706102662268, 1],
+  [0.14306982376891408, -0.13862674180441892, 0],
+  [0.18977109686853488, 0.8604078727426052, 1],
+  [1, 0.1346164751741703, 1],
+  [-0.23634097577852098, -0.2900484947057175, 0],
+  [0.5192093022929178, 0.47677246800584494, 1],
+  [0.6138787957905625, -0.17396005224936972, 1],
+  [-0.19876355490552344, -0.1506796899076498, 0],
+  [-0.1449453778048897, -0.3210389841308753, 0],
+  [-0.8091700036061946, -0.4105711069606607, 1],
+  [-0.11260809151236928, -0.07172856615589429, 0]
+];
+
+TE_CIRCULOS = [
+  [-0.8674646434810717, -0.04988156331084104, 1],
+  [0.24550761474696858, -0.9043144654976655, 1],
+  [0.9508207963633157, -0.16423633870557597, 1],
+  [0.4887637908768365, 0.5129023975370162, 1],
+  [0.8097122034455508, -0.03868637612018633, 1],
+  [0.13985250077148526, -0.3391609541606776, 0],
+  [-0.08569796898820603, -0.24432605002657126, 0],
+  [0.13009500994533862, -0.1713282220280521, 0],
+  [-0.14229705680681437, -0.032314756933888966, 0],
+  [0.16437268034868913, -0.08224669977365517, 0],
+  [0.06559579593944931, -1, 1],
+  [0.22542193044098124, 0.252349063967938, 0],
+  [-0.7472743780224687, -0.26101158733146657, 1],
+  [-0.06934356752758375, 0.37354114809369343, 0],
+  [0.3048051572815249, 0.9810887967400184, 1],
+  [0.6814928775206914, 0.2794938639688709, 1],
+  [-0.14694133428382394, -0.008024823091093203, 0],
+  [-0.31635555773508306, -0.890688116429263, 1],
+  [0.04096162417887195, 0.10560831682082794, 0],
+  [0.720524204260131, -0.40959562225406076, 1],
+  [-0.9615487928121039, 0.05935357764821925, 1],
+  [-0.14072550534928363, -0.6139017012776626, 1],
+  [0.157185557946804, 0.28170189550025726, 0],
+  [-0.5283528694363815, 0.8186791490531058, 1],
+  [-0.6747893432011709, -0.02667855446124412, 1],
+  [0.688394886723753, 0.24699333152338143, 1],
+  [0.20562848891585994, -0.0528739794746107, 0],
+  [0.19411060735809893, -0.19189980023307096, 0],
+  [-0.19521806556635368, -0.8870331671580668, 1],
+  [0.36510158010468996, 0.6234879771050312, 1],
+  [-0.13590221987985207, 0.8073074233130781, 1],
+  [0.35447526873722723, -0.005653991426860183, 0],
+  [0.5511211830033309, 0.6367227080770717, 1],
+  [-0.06709689164236776, -0.07720872419067737, 0],
+  [-0.7043559632479014, 0.5102965489266338, 1],
+  [-0.16331543365993229, -0.30659658918829513, 0],
+  [-0.8158410637218778, 0.4089764877504771, 1],
+  [0.6791380709835813, 0.7474721724996192, 1],
+  [-0.21408461838303672, 0.8842959784499935, 1],
+  [-0.09077026120193388, 0.13540551150631597, 0]
+];
+
+TR_FRANJAS = [
+  [-0.7429, -0.0014, 0],
+  [0.203, -0.9426, 1],
+  [-0.7041, 0.8564, 0],
+  [-0.8592, -0.7405, 0],
+  [0.8967, 0.2438, 1],
+  [-0.262, 0.0228, 0],
+  [-0.7241, 0.5761, 0],
+  [0.1075, -0.0328, 1],
+  [-0.5294, 0.6044, 1],
+  [0.7347, -0.7425, 1],
+  [-0.0659, -0.4457, 0],
+  [-0.8338, 0.7919, 0],
+  [-0.1401, -0.7046, 0],
+  [0.3467, -0.5956, 0],
+  [0.8029, -0.5657, 1],
+  [0.8123, 0.3947, 1],
+  [-0.6804, 0.9929, 0],
+  [-0.0806, 0.3821, 0],
+  [-0.8907, -0.9319, 0],
+  [0.6918, 0.1758, 1],
+  [-0.3826, -0.3652, 1],
+  [-0.8215, -0.6547, 0],
+  [-0.0674, -0.7456, 0],
+  [0.4785, -0.6087, 0],
+  [-0.8762, 0.1968, 0],
+  [0.7915, -0.9461, 1],
+  [-0.8142, -0.9641, 0],
+  [-0.414, 0.4542, 1],
+  [-0.5656, -0.3696, 1],
+  [-0.4837, 0.9566, 1],
+  [0.882, -0.3186, 1],
+  [-0.128, -0.3714, 0],
+  [0.493, -0.92, 0],
+  [-0.8651, -0.1919, 0],
+  [-0.5098, 0.6904, 1],
+  [0.4836, 0.0916, 0],
+  [0.5621, 0.855, 0],
+  [-0.7005, 0.2523, 0],
+  [-0.7128, -0.1137, 0],
+  [0.5726, 0.7894, 0],
+  [0.5185, -0.9292, 0],
+  [-0.2812, -0.6739, 0],
+  [0.9976, -0.712, 0],
+  [-0.5114, -0.2856, 1],
+  [-0.8782, 0.7408, 0],
+  [0.2727, -0.6805, 1],
+  [0.222, -0.5367, 1],
+  [0.1105, 0.274, 1],
+  [-0.3504, 0.2869, 1],
+  [-0.3696, -0.2095, 1],
+  [0.8253, -0.7687, 1],
+  [-0.8277, 0.123, 0],
+  [0.4005, -0.8665, 0],
+  [-0.7121, -0.0701, 0],
+  [-0.9014, 0.6038, 0],
+  [0.4373, 0.6093, 0],
+  [0.5208, -0.4655, 0],
+  [0.5795, -0.5017, 0],
+  [-0.7242, -0.2192, 0],
+  [0.2116, 0.205, 1],
+  [-0.5204, 0.2451, 1],
+  [-0.4192, 0.5976, 1],
+  [-0.1698, 0.1065, 0],
+  [0.3467, 0.0368, 0],
+  [-0.4848, 0.9588, 1],
+  [-0.8079, -0.3502, 0],
+  [0.0982, -0.9426, 1],
+  [-0.6902, 0.5985, 0],
+  [0.5676, 0.2739, 0],
+  [0.8036, 0.511, 1],
+  [-0.4024, 0.2897, 1],
+  [-0.2304, -0.6935, 0],
+  [0.7529, 0.3808, 1],
+  [0.4894, 0.1192, 0],
+  [0.5659, -0.1043, 0],
+  [0.1316, -0.8749, 1],
+  [0.1101, 0.6292, 1],
+  [0.4111, 0.6063, 0],
+  [-0.7834, 0.7514, 0],
+  [-0.2575, -0.8181, 0],
+  [0.2387, -0.0902, 1],
+  [-0.1433, 0.7041, 0],
+  [-0.7244, 0.2339, 0],
+  [-0.1725, 0.0565, 0],
+  [-0.8649, -0.0804, 0],
+  [0.9819, 0.0721, 0],
+  [-0.7597, -0.1629, 0],
+  [-0.5853, 0.4283, 1],
+  [0.083, -0.4241, 1],
+  [-0.4892, 0.734, 1],
+  [0.5325, -0.1276, 0],
+  [-0.189, 0.4749, 0],
+  [-0.6818, -0.2753, 0],
+  [-0.893, -0.5611, 0],
+  [-0.2281, 0.4786, 0],
+  [0.2198, -0.9416, 1],
+  [-0.91, -0.0959, 0],
+  [0.7497, 0.83, 1],
+  [-0.2698, 0.7747, 0],
+  [0.8582, -0.1868, 1],
+  [0.4921, -0.2693, 0],
+  [-0.6928, 0.1504, 0],
+  [-0.8272, 0.3267, 0],
+  [-0.104, -0.7652, 0],
+  [0.805, 0.7407, 1],
+  [0.3468, -0.2534, 0],
+  [0.4413, -0.35, 0],
+  [0.3832, 0.0043, 0],
+  [-0.102, 0.9353, 0],
+  [-0.6678, -0.0257, 0],
+  [-0.6806, 0.8749, 0],
+  [-0.6634, 0.1882, 0],
+  [-0.2021, -0.7456, 0],
+  [0.1663, 0.0377, 1],
+  [0.8001, 0.8232, 1],
+  [0.8726, 0.5994, 1],
+  [-0.0448, 0.0476, 0],
+  [-0.2054, -0.2009, 0],
+  [-0.508, -0.9413, 1],
+  [-0.067, 0.4357, 0],
+  [-0.1279, -0.2717, 0],
+  [-0.9773, 0.1848, 1],
+  [0.0609, 0.7316, 1],
+  [-0.1683, 0.5722, 0],
+  [0.1971, -0.5475, 1],
+  [-0.8655, -0.7445, 0],
+  [-0.2505, -0.3257, 0],
+  [0.1276, 0.7752, 1],
+  [-0.2686, -0.6317, 0],
+  [0.1561, -0.9957, 1],
+  [-0.2304, -0.3655, 0],
+  [-0.2252, -0.8984, 0],
+  [0.1084, 0.2483, 1],
+  [0.4989, 0.9149, 0],
+  [-0.1159, -0.5699, 0],
+  [0.7786, 0.4918, 1],
+  [0.8856, 0.6431, 1],
+  [0.8349, -0.7439, 1],
+  [-0.1757, 0.3753, 0],
+  [-0.1231, 0.0267, 0],
+  [0.522, -0.8588, 0],
+  [0.3566, -0.9025, 0],
+  [-0.5027, 0.4445, 1],
+  [0.3661, -0.1894, 0],
+  [-0.4109, 0.6562, 1],
+  [-0.4505, -0.9376, 1],
+  [-0.5055, -0.9576, 1],
+  [-0.3879, 0.1704, 1],
+  [-0.3836, -0.2414, 1],
+  [-0.7916, -0.2219, 0],
+  [0.8189, -0.4384, 1],
+  [-0.4582, 0.3585, 1],
+  [0.7658, -0.4083, 1],
+  [-0.2473, 0.4293, 0],
+  [0.5843, 0.2276, 0],
+  [0.5159, 0.4137, 0],
+  [0.7926, 0.5596, 1],
+  [-0.1576, -0.7335, 0],
+  [0.7809, 0.3911, 1],
+  [0.1528, 0.3637, 1]
+];
+TE_FRANJAS = [
+  [-0.2297, -0.3134, 0],
+  [0.1509, -0.0345, 1],
+  [0.4179, 0.8722, 0],
+  [0.6946, -0.2251, 1],
+  [-0.255, 0.8537, 0],
+  [-0.2108, 0.6005, 0],
+  [-0.8145, -0.0978, 0],
+  [0.0325, 0.6177, 1],
+  [0.7552, -0.6947, 1],
+  [0.2343, 0.2583, 1],
+  [-0.6969, 0.6671, 0],
+  [0.1069, 0.9234, 1],
+  [-0.3531, 0.285, 1],
+  [0.2161, 0.0249, 1],
+  [-0.3503, 0.0079, 1],
+  [-0.2555, 0.7816, 0],
+  [-0.077, -0.0495, 0],
+  [-0.4829, -0.4923, 1],
+  [0.9078, -0.372, 1],
+  [0.7367, 0.1896, 1],
+  [0.8831, 0.5449, 1],
+  [0.136, 0.4177, 1],
+  [0.4449, -0.1032, 0],
+  [0.269, -0.5429, 1],
+  [-0.0511, 0.8111, 0],
+  [-0.4719, 0.6359, 1],
+  [-0.6698, -0.5434, 0],
+  [-0.277, -0.7692, 0],
+  [-0.6986, -0.963, 0],
+  [0.8666, -0.2778, 1],
+  [0.2521, -0.0909, 1],
+  [0.4861, 0.6123, 0],
+  [-0.234, 0.0707, 0],
+  [-0.805, -0.429, 0],
+  [-0.5545, -0.3829, 1],
+  [-0.3511, 0.15, 1],
+  [0.6626, -0.9757, 1],
+  [-0.9895, -0.8858, 1],
+  [0.7311, 0.2675, 1],
+  [0.4559, 0.9154, 0]
+];
+SOL_BANDA = {"theta": [0.02, 0.0, 0.0, 0.0, -2.59, 0.0, 0.0, 0.0, -0.08, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, -1.98], "act": ["gauss", "lineal", "lineal", "lineal"]};
+SOL_CIRCULOS = {"theta": [0.92, -1.9, 0.0, 0.0, 2.14, 1.11, 0.0, 0.0, 0.03, -0.01, 0.0, 0.0, -3.26, -3.53, 0.0, 0.0, 4.0], "act": ["gauss", "gauss", "lineal", "lineal"]};
+SOL_FRANJAS = {"theta": [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0], "act": ["seno", "lineal", "lineal", "lineal"]};
+
+var NENT = 2, NOCULTA = 4, NPARAM = 17, RES = 50;
+
+/* Recorrido del deslizador. FIJO: el mismo para los 17 parámetros y el mismo en
+   los tres conjuntos, porque un recorrido que se mueve hace incomparables dos
+   posiciones del pomo. Es ±12 y no ±6 por el seno — ver el comentario de
+   arriba. El cero cae en el centro exacto. */
+var RANGO_MIN = -12, RANGO_MAX = 12, PASO = 0.01;
+/* El sorteo inicial se reparte sólo en ±6: con todo el recorrido la página
+   abriría con valores extremos y un mapa de un solo color. */
+var SORTEO_MIN = -6, SORTEO_MAX = 6;
+var PISTA_W = 520, POMO = 18;   // el ancho util de la caja del diagrama: no puede pasarse
+
+/* Sorteo CON SEMILLA, no Math.random: la razón es poder reproducir en clase un
+   caso que salga raro, así que la semilla avanza un paso en cada apretón.
+   Es splitmix32: aritmética entera de 32 bits con Math.imul, exacta, así que
+   reproducir un sorteo desde su semilla no depende de ningún redondeo. Lleva
+   mezclador de salida porque sin él las semillas consecutivas —que es lo que
+   produce un botón que avanza de uno en uno— dan primeras salidas
+   correlacionadas. */
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+var SEMILLA_BASE = 20260913, nSorteo = 0;
+
+/* Tolerancia de captura del ratón, en píxeles, y separación mínima absoluta
+   entre la primera candidata y la segunda. Viven AQUÍ y en ningún otro sitio,
+   para poder ajustarlas sin buscarlas. */
+var TOL_CAPTURA = 6;
+var MARGEN_SEPARACION = 2.5;
+
+var NOMBRES = [
+  'w x₁→h₁', 'w x₁→h₂', 'w x₁→h₃', 'w x₁→h₄',
+  'w x₂→h₁', 'w x₂→h₂', 'w x₂→h₃', 'w x₂→h₄',
+  'b h₁', 'b h₂', 'b h₃', 'b h₄',
+  'v h₁→y', 'v h₂→y', 'v h₃→y', 'v h₄→y',
+  'b y'
+];
+var SUB = ['₁', '₂', '₃', '₄'];
+
+/* ── Las seis activaciones ─────────────────────────────────────────────────
+   Una sola tabla: la evaluación, el glifo del nodo y el menú leen de aquí, y
+   el orden de esta tabla es el orden del menú. La de salida NO está en la
+   tabla y no se elige: es siempre sigmoide. */
+var ACTIVACIONES = [
+  { clave: 'lineal',  etiqueta: 'lineal',    f: function (z) { return z; } },
+  { clave: 'escalon', etiqueta: 'escalón',   f: function (z) { return z >= 0 ? 1 : 0; } },
+  { clave: 'relu',    etiqueta: 'ReLU',      f: function (z) { return z > 0 ? z : 0; } },
+  { clave: 'tanh',    etiqueta: 'tanh',      f: function (z) { return Math.tanh(z); } },
+  { clave: 'gauss',   etiqueta: 'gaussiana', f: function (z) { return Math.exp(-z * z); } },
+  { clave: 'seno',    etiqueta: 'seno',      f: function (z) { return Math.sin(z); } }
+];
+var POR_CLAVE = (function () {
+  var m = {};
+  for (var k = 0; k < ACTIVACIONES.length; k++) m[ACTIVACIONES[k].clave] = ACTIVACIONES[k];
+  return m;
+})();
+function aplicar(clave, z) {
+  var a = POR_CLAVE[clave];
+  if (!a) throw new Error('activación desconocida: ' + clave);
+  return a.f(z);
+}
+
+/* ── Los tres conjuntos ────────────────────────────────────────────────────*/
+var PROBLEMAS = [
+  { clave: 'banda', etiqueta: 'Banda', train: null, test: null, sol: null,
+    pie: 'una gaussiana sola basta; ReLU necesita dos para fabricar la banda con dos rectas' },
+  { clave: 'circulos', etiqueta: 'Círculos', train: null, test: null, sol: null,
+    pie: 'los mismos puntos de la página anterior: allá diecisiete parámetros, aquí dos neuronas' },
+  { clave: 'franjas', etiqueta: 'Franjas', train: null, test: null, sol: null,
+    pie: 'siete regiones: cuatro dobleces no las hacen, una neurona seno sí' }
+];
+PROBLEMAS[0].train = TR_BANDA;    PROBLEMAS[0].test = TE_BANDA;    PROBLEMAS[0].sol = SOL_BANDA;
+PROBLEMAS[1].train = TR_CIRCULOS; PROBLEMAS[1].test = TE_CIRCULOS; PROBLEMAS[1].sol = SOL_CIRCULOS;
+PROBLEMAS[2].train = TR_FRANJAS;  PROBLEMAS[2].test = TE_FRANJAS;  PROBLEMAS[2].sol = SOL_FRANJAS;
+
+var iProblema = 0;
+function problema() { return PROBLEMAS[iProblema]; }
+
+/* ── El estado ─────────────────────────────────────────────────────────────
+   theta son los diecisiete parámetros; ACTOS son las cuatro activaciones, una
+   por neurona oculta. Son dos cosas distintas y el alumno las mueve por
+   caminos distintos: los parámetros con el deslizador, las activaciones con el
+   menú del nodo.
+
+   Cambiar de conjunto NO toca ninguno de los dos. Es deliberado: la misma red,
+   sin mover nada, contra otros puntos. Es la única forma de ver que lo que
+   falla no es la red sino el emparejamiento entre la forma de la neurona y la
+   forma del problema. */
+var THETA_INICIAL = (function () {
+  var rng = new Sorteador(SEMILLA_BASE), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = SORTEO_MIN + rng.next() * (SORTEO_MAX - SORTEO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  return v;
+})();
+/* La página abre con las cuatro en ReLU: es la red convencional con la que el
+   alumno llega de la página anterior, y el punto de partida contra el cual se
+   compara todo lo que haga aquí. */
+var ACTOS_INICIAL = ['relu', 'relu', 'relu', 'relu'];
+
+var theta = THETA_INICIAL.slice();
+var ACTOS = ACTOS_INICIAL.slice();
+
+/* TOCADOS son los índices DISTINTOS que el alumno ha movido. Al llegar a
+   UMBRAL_RANURA, o en cuanto cambia una activación, la barra de arriba cambia
+   la consigna por los botones. Antes de eso, el botón de la solución estaría
+   ofreciendo la respuesta a quien todavía no ha hecho la pregunta. */
+var UMBRAL_RANURA = 4;
+var TOCADOS = [];
+var ranuraAbierta = false;
+
+/* ── Evaluación ────────────────────────────────────────────────────────────
+   La activación oculta se lee de ACTOS, neurona por neurona; la de salida es
+   SIEMPRE sigmoide.
+
+   LA FRONTERA ESTÁ DONDE LA SALIDA VALE 0.5, NO DONDE VALE 0: la salida pasa
+   por una sigmoide y las etiquetas son 0 y 1, así que el punto de indecisión
+   es 0.5. Comparar contra 0 dibujaría otra curva. */
+function evaluar(th, actos, x1, x2) {
+  var suma = th[16];
+  for (var j = 0; j < NOCULTA; j++) {
+    var z = th[0 * NOCULTA + j] * x1 + th[1 * NOCULTA + j] * x2 + th[8 + j];
+    suma += th[12 + j] * aplicar(actos[j], z);
+  }
+  var c = Math.min(100, Math.max(-100, suma));
+  return 1 / (1 + Math.exp(-c));
+}
+/* Una neurona está EN USO cuando su peso de salida no vale cero: si vale cero,
+   su aportación a la suma es cero sea cual sea su activación y sean cuales
+   sean sus tres parámetros de entrada. Apagarla es dejar ese peso en cero con
+   el deslizador, y por eso el presupuesto de neuronas se mide sin control
+   nuevo. */
+function neuronasEnUso(th) {
+  var n = 0;
+  for (var j = 0; j < NOCULTA; j++) if (th[12 + j] !== 0) n++;
+  return n;
+}
+
+/* ── Retícula y frontera ───────────────────────────────────────────────────
+   La retícula recorre x2 de +1 a −1 en las filas y x1 de −1 a +1 en las
+   columnas; las dos rutinas de abajo leen esa misma matriz. */
+function reticula(th, actos) {
+  var g = new Float64Array(RES * RES);
+  for (var i = 0; i < RES; i++) {
+    var x2 = 1 - (i / (RES - 1)) * 2;
+    for (var j = 0; j < RES; j++) g[i * RES + j] = evaluar(th, actos, -1 + (j / (RES - 1)) * 2, x2);
+  }
+  return g;
+}
+function aDatos(i, j) {
+  return { x1: -1 + (j / (RES - 1)) * 2, x2: 1 - (i / (RES - 1)) * 2 };
+}
+/* Cambio de signo respecto de 0.5 entre celdas vecinas, con interpolación
+   lineal sobre la arista que cruza. */
+function frontera(g) {
+  var P = [];
+  for (var i = 0; i < RES; i++) for (var j = 0; j < RES; j++) {
+    var v = g[i * RES + j];
+    if (j + 1 < RES) {
+      var vr = g[i * RES + j + 1];
+      if ((v - 0.5) * (vr - 0.5) < 0) {
+        var t = (0.5 - v) / (vr - v), a = aDatos(i, j), b = aDatos(i, j + 1);
+        P.push({ x1: a.x1 + t * (b.x1 - a.x1), x2: a.x2 + t * (b.x2 - a.x2) });
+      }
+    }
+    if (i + 1 < RES) {
+      var vd = g[(i + 1) * RES + j];
+      if ((v - 0.5) * (vd - 0.5) < 0) {
+        var u = (0.5 - v) / (vd - v), c = aDatos(i, j), d = aDatos(i + 1, j);
+        P.push({ x1: c.x1 + u * (d.x1 - c.x1), x2: c.x2 + u * (d.x2 - c.x2) });
+      }
+    }
+  }
+  return P;
+}
+/* IMPORTANTE, y es un cambio respecto de explorador-parametros.html: allá la
+   frontera se ordenaba por ángulo alrededor del centroide y se cerraba como
+   polígono, porque con una sola activación acotada el lazo era estrellado. Aquí
+   NO se puede: con seno la frontera son varias franjas paralelas, con
+   gaussiana son dos rectas, y el orden angular las uniría en un garabato. Se
+   dibujan los puntos sueltos, sin unirlos. Es menos bonito y es lo único
+   honesto para seis activaciones distintas. */
+
+function malClasificados(th, actos, puntos) {
+  var n = 0;
+  for (var k = 0; k < puntos.length; k++) {
+    var p = puntos[k];
+    if ((evaluar(th, actos, p[0], p[1]) >= 0.5 ? 1 : 0) !== p[2]) n++;
+  }
+  return n;
+}
+
+/* ── Geometría del diagrama ────────────────────────────────────────────────
+   Misma que la de explorador-parametros.html, para que las dos páginas se
+   vean iguales: las posiciones verticales siguen la regla (i+1)/(n+1) y el
+   nodo de sesgo va entre capas, al 28 % del tramo. DIAG_W iguala el ancho útil
+   del panel del mapa, para que las dos cajas salgan del mismo ancho. */
+var Y_H1 = 32, PASO_V = 120;
+var DIAG_W = 520, DIAG_H = 470;
+var GEO = (function () {
+  var izq = 78, der = 92;
+  var RH = PASO_V * (NOCULTA + 1), arr = Y_H1 - PASO_V;
+  var RW = DIAG_W - izq - der;
+  var RADIO = 17, TB = 13;
+  var capas = [NENT, NOCULTA, 1];
+  var xs = [izq, izq + RW * 0.5, izq + RW];
+  var ys = capas.map(function (n) {
+    var v = [];
+    for (var i = 0; i < n; i++) v.push(arr + RH * (i + 1) / (n + 1));
+    return v;
+  });
+  var xBias = [], yBias = [];
+  for (var c = 0; c < capas.length - 1; c++) {
+    xBias.push(xs[c] + (xs[c + 1] - xs[c]) * 0.28);
+    yBias.push(Math.max.apply(null, ys[c].concat(ys[c + 1])) + RADIO * 2.4);
+  }
+  return { xs: xs, ys: ys, xBias: xBias, yBias: yBias, RADIO: RADIO, TB: TB, arr: arr, capas: capas };
+})();
+
+/* ── EL ANCLA, PRIMERA MITAD: las líneas ───────────────────────────────────
+   El diagrama NO se dibuja contando aristas sobre la marcha: sale de un
+   arreglo de 17 descriptores, uno por parámetro, cada uno con su índice en
+   theta y sus dos extremos en pantalla. Antes de dibujar nada se verifica que
+   son 17 y que los índices son una permutación de 0..16. */
+function construirAristas() {
+  var a = [];
+  for (var i = 0; i < NENT; i++)
+    for (var j = 0; j < NOCULTA; j++)
+      a.push({ idx: i * NOCULTA + j, tipo: 'entrada',
+               ax: GEO.xs[0], ay: GEO.ys[0][i], bx: GEO.xs[1], by: GEO.ys[1][j] });
+  for (var j2 = 0; j2 < NOCULTA; j2++)
+    a.push({ idx: 8 + j2, tipo: 'sesgo',
+             ax: GEO.xBias[0], ay: GEO.yBias[0], bx: GEO.xs[1], by: GEO.ys[1][j2] });
+  for (var j3 = 0; j3 < NOCULTA; j3++)
+    a.push({ idx: 12 + j3, tipo: 'salida',
+             ax: GEO.xs[1], ay: GEO.ys[1][j3], bx: GEO.xs[2], by: GEO.ys[2][0] });
+  a.push({ idx: 16, tipo: 'sesgo',
+           ax: GEO.xBias[1], ay: GEO.yBias[1], bx: GEO.xs[2], by: GEO.ys[2][0] });
+  return a;
+}
+function verificarAncla(aristas) {
+  if (!Array.isArray(aristas))
+    throw new Error('ancla de los 17: el descriptor no es un arreglo');
+  if (aristas.length !== NPARAM)
+    throw new Error('ancla de los 17: hay ' + aristas.length + ' descriptores y tiene que haber ' +
+                    NPARAM + '. El diagrama no puede desmentir al vector de parámetros.');
+  var visto = [];
+  for (var k = 0; k < NPARAM; k++) visto.push(0);
+  for (var n = 0; n < aristas.length; n++) {
+    var idx = aristas[n].idx;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= NPARAM)
+      throw new Error('ancla de los 17: el descriptor ' + n + ' apunta al índice ' + idx +
+                      ', fuera de 0..' + (NPARAM - 1));
+    visto[idx]++;
+  }
+  for (var m = 0; m < NPARAM; m++) {
+    if (visto[m] === 0)
+      throw new Error('ancla de los 17: ningún descriptor apunta al parámetro ' + m +
+                      ' (' + NOMBRES[m] + ').');
+    if (visto[m] > 1)
+      throw new Error('ancla de los 17: el parámetro ' + m + ' (' + NOMBRES[m] + ') aparece en ' +
+                      visto[m] + ' descriptores.');
+  }
+  return aristas;
+}
+
+/* ── EL ANCLA, SEGUNDA MITAD: los nodos ────────────────────────────────────
+   Mismo trato que las líneas, y por la misma razón: el clic llega a un
+   descriptor, no a un cálculo hecho al vuelo. Cada descriptor lleva el índice
+   de neurona oculta y su centro en pantalla, y se verifica que los cuatro
+   índices son una permutación de 0..3. Sin esto, una permutación silenciosa
+   entre nodos no daría ningún error: cambiaría la activación de h2 y se
+   movería la del mapa que produce h3. */
+function construirNodos() {
+  var n = [];
+  for (var j = 0; j < NOCULTA; j++)
+    n.push({ j: j, cx: GEO.xs[1], cy: GEO.ys[1][j], rotulo: 'h' + SUB[j] });
+  return n;
+}
+function verificarAnclaNodos(nds) {
+  if (!Array.isArray(nds) || nds.length !== NOCULTA)
+    throw new Error('ancla de los nodos: hay ' + (nds ? nds.length : 'ningún') +
+                    ' descriptor y tiene que haber ' + NOCULTA + '.');
+  var visto = [];
+  for (var k = 0; k < NOCULTA; k++) visto.push(0);
+  for (var m = 0; m < nds.length; m++) {
+    var j = nds[m].j;
+    if (!Number.isInteger(j) || j < 0 || j >= NOCULTA)
+      throw new Error('ancla de los nodos: el descriptor ' + m + ' apunta a la neurona ' + j +
+                      ', fuera de 0..' + (NOCULTA - 1));
+    visto[j]++;
+    if (nds[m].cy !== GEO.ys[1][j])
+      throw new Error('ancla de los nodos: el descriptor de h' + (j + 1) + ' está dibujado a la ' +
+                      'altura ' + nds[m].cy + ' y su neurona vive en ' + GEO.ys[1][j] +
+                      '. El nodo que se señala tiene que ser la activación que cambia.');
+  }
+  for (var q = 0; q < NOCULTA; q++)
+    if (visto[q] !== 1)
+      throw new Error('ancla de los nodos: la neurona ' + q + ' aparece en ' + visto[q] +
+                      ' descriptores. Los índices tienen que ser una permutación de 0..3.');
+  return nds;
+}
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+var COLOR_NODO = ['rgb(200,100,100)', 'rgb(80,130,200)', 'rgb(80,180,120)'];
+var BORDE_NODO = ['rgb(120,60,60)', 'rgb(48,78,120)', 'rgb(48,108,72)'];
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+
+/* ── El glifo de la activación ─────────────────────────────────────────────
+   Todo se traza dentro de una caja centrada en (cx, cy) de media anchura A y
+   media altura B = A/2. Esa relación NO es cosmética: es la que hace que la
+   diagonal de la ReLU quede exactamente a 45°, y si A cambia tiene que seguir
+   valiendo. Con A = 11 la esquina de la caja queda a 12.3 px del centro y cabe
+   holgada dentro del círculo del nodo, que es de radio 17.
+
+   La rayita tenue marca el nivel donde la salida vale cero: en tanh y seno va
+   por el centro y en gaussiana por el borde inferior, que es como se lee de un
+   vistazo que el recorrido de una es (0,1) y el de las otras (−1,1). En ReLU y
+   escalón NO se dibuja, porque en esas dos la propia curva ya corre sobre ese
+   nivel con su tramo plano y serían dos rayas encima. En la sigmoide de la
+   salida sí, por el borde inferior.
+
+   Las curvas se muestrean de verdad, no se aproximan con Bézier: cuesta lo
+   mismo y no son curvas inventadas. La sigmoide sale idéntica a la de tanh
+   —sigma(z) = (tanh(z/2)+1)/2— y lo único que las separa en pantalla es dónde
+   quedó la rayita del cero. Está bien que así sea: es la diferencia que hay. */
+function glifoActivacion(ctx, cx, cy, cual, escala) {
+  var s = escala || 1, A = 11 * s, B = A / 2;
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  var yCero = null;
+  if (cual === 'lineal' || cual === 'tanh' || cual === 'seno') yCero = cy;
+  else if (cual === 'gauss' || cual === 'sigmoide') yCero = cy + B;
+  if (yCero !== null) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = Math.max(0.6, 1 * s);
+    ctx.beginPath(); ctx.moveTo(cx - A, yCero); ctx.lineTo(cx + A, yCero); ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.6 * s;
+  ctx.beginPath();
+  if (cual === 'lineal') {
+    ctx.moveTo(cx - A, cy + B); ctx.lineTo(cx + A, cy - B);
+  } else if (cual === 'escalon') {
+    ctx.moveTo(cx - A, cy + B); ctx.lineTo(cx, cy + B);
+    ctx.lineTo(cx, cy - B); ctx.lineTo(cx + A, cy - B);
+  } else if (cual === 'relu') {
+    ctx.moveTo(cx - A, cy + B); ctx.lineTo(cx, cy + B); ctx.lineTo(cx + A, cy - B);
+  } else {
+    var t0, t1, n, k, t, x, y;
+    if (cual === 'tanh') { t0 = -2.6; t1 = 2.6; n = 15; }
+    else if (cual === 'gauss') { t0 = -2.2; t1 = 2.2; n = 15; }
+    else if (cual === 'sigmoide') { t0 = -5.2; t1 = 5.2; n = 15; }
+    else { t0 = -Math.PI; t1 = Math.PI; n = 19; }   // seno: un período exacto
+    for (k = 0; k < n; k++) {
+      t = t0 + (t1 - t0) * k / (n - 1);
+      x = cx + (t / t1) * A;
+      if (cual === 'tanh') y = cy - Math.tanh(t) * B;
+      else if (cual === 'gauss') y = (cy + B) - Math.exp(-t * t) * 2 * B;
+      else if (cual === 'sigmoide') y = (cy + B) - (1 / (1 + Math.exp(-t))) * 2 * B;
+      else y = cy - Math.sin(t) * B;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+var MAPA_L = 520, MARCO = 32;
+function aPixel(x1, x2) {
+  var p = MARCO, lado = MAPA_L - 2 * MARCO;
+  return { px: p + (x1 + 1) / 2 * lado, py: p + (1 - (x2 + 1) / 2) * lado };
+}
+
+function dibujarMapa(vista, th, actos) {
+  var ctx = vista.ctx, lado = MAPA_L - 2 * MARCO;
+  var TRAIN = problema().train, TEST = problema().test;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  var g = reticula(th, actos);
+  var cel = lado / RES;
+  for (var i = 0; i < RES; i++) for (var j = 0; j < RES; j++) {
+    var yhat = g[i * RES + j];
+    var alfa = Math.abs(yhat - 0.5) * 2 * 180 / 255;
+    ctx.fillStyle = (yhat < 0.5 ? 'rgba(75,139,190,' : 'rgba(232,130,90,') + alfa.toFixed(4) + ')';
+    // los dos bordes se redondean al mismo entero que el de la celda vecina:
+    // solapar un pelo deja juntas visibles y convierte el mapa en una rejilla
+    var cx0 = Math.round(MARCO + j * cel), cx1 = Math.round(MARCO + (j + 1) * cel);
+    var cy0 = Math.round(MARCO + i * cel), cy1 = Math.round(MARCO + (i + 1) * cel);
+    ctx.fillRect(cx0, cy0, cx1 - cx0, cy1 - cy0);
+  }
+
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+  ctx.strokeRect(MARCO + 0.5, MARCO + 0.5, lado - 1, lado - 1);
+  ctx.strokeStyle = '#aeb7bf';
+  var o = aPixel(0, 0), a0 = aPixel(-1, 0), a1 = aPixel(1, 0), b0 = aPixel(0, -1), b1 = aPixel(0, 1);
+  ctx.beginPath();
+  ctx.moveTo(a0.px, o.py); ctx.lineTo(a1.px, o.py);
+  ctx.moveTo(o.px, b0.py); ctx.lineTo(o.px, b1.py);
+  ctx.stroke();
+  ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (var v = -1; v <= 1.001; v += 0.5) {
+    var vr = Math.round(v * 10) / 10;
+    if (Math.abs(vr) < 0.01) continue;
+    var t1 = aPixel(vr, 0), t2 = aPixel(0, vr);
+    ctx.beginPath(); ctx.moveTo(t1.px, o.py - 4); ctx.lineTo(t1.px, o.py + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(o.px - 4, t2.py); ctx.lineTo(o.px + 4, t2.py); ctx.stroke();
+    ctx.fillText(vr.toFixed(1), t1.px, o.py + 6);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(vr.toFixed(1), o.px - 6, t2.py);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  }
+  ctx.fillStyle = '#3a434b'; ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('x₁', a1.px + 7, o.py);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('x₂', o.px, b1.py - 7);
+
+  // la frontera, como puntos sueltos — ver el comentario de ordenar/frontera
+  var P = frontera(g);
+  ctx.fillStyle = 'rgba(28,34,40,0.85)';
+  for (var k = 0; k < P.length; k++) {
+    var q = aPixel(P[k].x1, P[k].x2);
+    ctx.fillRect(q.px - 1.1, q.py - 1.1, 2.2, 2.2);
+  }
+
+  // los datos: entrenamiento en círculo, prueba en cruz
+  for (var d = 0; d < TRAIN.length; d++) {
+    var pt = TRAIN[d], pp = aPixel(pt[0], pt[1]);
+    ctx.fillStyle = COLOR_CLASE[pt[2]];
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pp.px, pp.py, 4.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  var BRAZO = 5;
+  ctx.lineWidth = 2.3;
+  for (var e = 0; e < TEST.length; e++) {
+    var qt = TEST[e], qq = aPixel(qt[0], qt[1]);
+    ctx.strokeStyle = COLOR_CLASE[qt[2]];
+    ctx.beginPath();
+    ctx.moveTo(qq.px - BRAZO, qq.py); ctx.lineTo(qq.px + BRAZO, qq.py);
+    ctx.moveTo(qq.px, qq.py - BRAZO); ctx.lineTo(qq.px, qq.py + BRAZO);
+    ctx.stroke();
+  }
+}
+
+/* El diagrama. El grosor sale de theta[a.idx] y de nada más: si el descriptor
+   apuntara a otro parámetro, la línea engordaría en otro sitio.
+
+   Y se mide contra el TOPE DEL DESLIZADOR, no contra el mayor |θ| de los
+   diecisiete actuales. Con el normalizador móvil —que es como estaba, heredado
+   de explorador-parametros.html— arrastrar el parámetro más grande cambiaba el
+   grosor y la opacidad de las otras dieciséis líneas solas: mientras ese
+   parámetro fuera el máximo, el normalizador viajaba con él. En esta página eso
+   rompe el ancla, que promete que la línea señalada es la que se mueve y ninguna
+   más. Con el tope fijo, el mismo valor se dibuja siempre igual y los grosores
+   son comparables entre un momento y otro y entre los tres conjuntos.
+
+   La raíz está por resolución en el extremo chico: con el cociente directo
+   contra 12, θ = 0.1 y θ = 0.5 saldrían a 1.07 y 1.37 px y serían el mismo
+   pelo; con la raíz salen a 1.8 y 2.8 px. */
+function dibujarRed(vista, th, actos, aristas, nds, resalte, selec, nodoResaltado) {
+  var ctx = vista.ctx;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  var porIdx = {};
+  for (var m = 0; m < aristas.length; m++) porIdx[aristas[m].idx] = aristas[m];
+  /* Reciben el VALOR del parámetro, no el descriptor de la arista. Ninguna de
+     las dos mira el resto del vector: ahí está todo el arreglo. */
+  function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / RANGO_MAX, 1)); }
+  function grosorDe(v) { return 1 + fuerza(v) * 9; }
+
+  ctx.lineCap = 'round';
+  /* Los halos van DEBAJO de todas las líneas: así ninguno tapa a su vecina. */
+  [{ i: selec,   color: 'rgba(140,90,200,0.55)', mas: 15 },
+   { i: resalte, color: 'rgba(90,105,120,0.32)', mas: 9  }].forEach(function (h) {
+    if (h.i === null || h.i === undefined || !porIdx[h.i]) return;
+    var a = porIdx[h.i];
+    ctx.lineWidth = grosorDe(th[a.idx]) + h.mas;
+    ctx.strokeStyle = h.color;
+    ctx.beginPath(); ctx.moveTo(a.ax, a.ay); ctx.lineTo(a.bx, a.by); ctx.stroke();
+  });
+
+  for (var n = 0; n < aristas.length; n++) {
+    var a = aristas[n], w = th[a.idx];
+    var t = fuerza(w);
+    /* El resaltado engorda y gana opacidad, pero NO cambia de color: el color
+       codifica el signo y no puede querer decir dos cosas. */
+    var realce = (a.idx === resalte) ? 2.5 : 0;
+    var opac = (a.idx === resalte || a.idx === selec) ? Math.min(1, 0.55 + t * 0.45) : 0.28 + t * 0.7;
+    ctx.lineWidth = grosorDe(w) + realce;
+    ctx.strokeStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + opac.toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(a.ax, a.ay); ctx.lineTo(a.bx, a.by); ctx.stroke();
+  }
+
+  /* Los nodos. Los ocultos llevan el glifo de SU activación, leída de actos por
+     el índice del descriptor; el de salida lleva siempre el de la sigmoide,
+     porque su activación no se elige. Las entradas no llevan glifo, y esa
+     ausencia significa algo: no tienen activación. */
+  for (var c = 0; c < GEO.capas.length; c++) {
+    var idc = c === 0 ? 0 : (c === GEO.capas.length - 1 ? 2 : 1);
+    for (var i = 0; i < GEO.capas[c]; i++) {
+      ctx.fillStyle = COLOR_NODO[idc]; ctx.strokeStyle = BORDE_NODO[idc]; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(GEO.xs[c], GEO.ys[c][i], GEO.RADIO, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      if (c === GEO.capas.length - 1) glifoActivacion(ctx, GEO.xs[c], GEO.ys[c][i], 'sigmoide', 1);
+    }
+  }
+  for (var q = 0; q < nds.length; q++) {
+    var nd = nds[q];
+    if (nd.j === nodoResaltado) {
+      ctx.strokeStyle = 'rgba(140,90,200,0.75)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(nd.cx, nd.cy, GEO.RADIO + 4, 0, Math.PI * 2); ctx.stroke();
+    }
+    glifoActivacion(ctx, nd.cx, nd.cy, actos[nd.j], 1);
+  }
+
+  // nodos de sesgo: triángulo. No tienen activación, así que no llevan glifo.
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)'; ctx.lineWidth = 2;
+  for (var s = 0; s < GEO.xBias.length; s++) {
+    var bx = GEO.xBias[s], by = GEO.yBias[s], T = GEO.TB;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - T); ctx.lineTo(bx - T, by + T); ctx.lineTo(bx + T, by + T);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6d5b00'; ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('1', bx, by + T + 4);
+    ctx.fillStyle = 'rgb(255,220,50)';
+  }
+
+  ctx.font = '14px system-ui, sans-serif'; ctx.fillStyle = '#3a434b';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (var qq = 0; qq < NENT; qq++) ctx.fillText('x' + SUB[qq], GEO.xs[0] - GEO.RADIO - 8, GEO.ys[0][qq]);
+  ctx.textAlign = 'left';
+  for (var h2 = 0; h2 < NOCULTA; h2++)
+    ctx.fillText('h' + SUB[h2], GEO.xs[1] + GEO.RADIO + 8, GEO.ys[1][h2] - GEO.RADIO - 2);
+  ctx.fillText('ŷ', GEO.xs[2] + GEO.RADIO + 8, GEO.ys[2][0]);
+}
+
+/* ── Selección con el ratón ────────────────────────────────────────────────
+   Las 17 líneas convergen en los nodos, y cerca de uno hay hasta cinco a pocos
+   píxeles unas de otras. Señalar la equivocada es el peor fallo posible aquí,
+   porque el alumno creería estar moviendo un parámetro mientras mueve otro.
+   La regla es: ANTE LA DUDA NO SE SELECCIONA NADA.
+
+   El disco del nodo se prueba PRIMERO y gana siempre. No hace falta excluir
+   además una banda vertical alrededor de la columna: las aristas terminan en el
+   centro del nodo, así que dentro de esa banda y lejos de una neurona no pasa
+   ninguna línea, y lo que la banda excluiría de más es lienzo vacío. Y el
+   interior del disco ya era inerte antes de que hubiera menú, por la regla de
+   la duda: ahí todas las líneas que llegan están a la misma distancia. */
+function distanciaPuntoSegmento(px, py, ax, ay, bx, by) {
+  var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+  var t = (L2 === 0) ? 0 : ((px - ax) * dx + (py - ay) * dy) / L2;
+  t = Math.max(0, Math.min(1, t));
+  var qx = ax + t * dx, qy = ay + t * dy;
+  return Math.hypot(px - qx, py - qy);
+}
+/* Distancias a los 17 segmentos, ordenadas. Se usan SÓLO las posiciones de los
+   nodos en pantalla, nunca el grosor dibujado: el blanco de un parámetro no
+   puede depender de su valor. */
+function distanciasA(px, py) {
+  var d = [];
+  for (var n = 0; n < ARISTAS.length; n++) {
+    var a = ARISTAS[n];
+    d.push({ idx: a.idx, d: distanciaPuntoSegmento(px, py, a.ax, a.ay, a.bx, a.by) });
+  }
+  d.sort(function (p, q) { return p.d - q.d; });
+  return d;
+}
+/* Hay candidata sólo si se cumplen las TRES: la más cercana cae dentro de la
+   tolerancia, la siguiente está al menos al doble de distancia, y la siguiente
+   está además a MARGEN_SEPARACION píxeles de la primera. */
+function candidataEn(px, py) {
+  var d = distanciasA(px, py);
+  if (d[0].d > TOL_CAPTURA) return null;
+  if (d[1].d < 2 * d[0].d) return null;
+  if (d[1].d - d[0].d < MARGEN_SEPARACION) return null;
+  return d[0].idx;
+}
+/* El nodo bajo el punto, o null. Devuelve el ÍNDICE DE NEURONA del descriptor,
+   nunca una posición en el arreglo de dibujo. */
+function nodoEn(px, py) {
+  for (var k = 0; k < NODOS.length; k++) {
+    var n = NODOS[k];
+    if (Math.hypot(px - n.cx, py - n.cy) <= GEO.RADIO) return n.j;
+  }
+  return null;
+}
+
+/* ── Montaje ───────────────────────────────────────────────────────────────*/
+var ARISTAS = null, NODOS = null, vistaMapa = null, vistaRed = null, envoltura = null;
+var cont = {}, mando = {};
+var seleccionado = null;      /* índice en theta, o null */
+var resaltado = null;         /* la candidata bajo el ratón, o null */
+var nodoResaltado = null;     /* la neurona bajo el ratón, o null */
+var menuAbierto = null;       /* el elemento del menú, o null */
+var origenPresion = null;     /* dónde empezó la última presión del ratón */
+
+function redibujar() {
+  dibujarMapa(vistaMapa, theta, ACTOS);
+  dibujarRed(vistaRed, theta, ACTOS, ARISTAS, NODOS, resaltado, seleccionado, nodoResaltado);
+  var eTr = malClasificados(theta, ACTOS, problema().train);
+  var eTe = malClasificados(theta, ACTOS, problema().test);
+  var nu = neuronasEnUso(theta);
+  cont.tren.textContent = eTr;
+  cont.tren.className = 'cifra ' + (eTr === 0 ? 'cero' : 'noCero');
+  cont.prueba.textContent = eTe;
+  cont.prueba.className = 'cifra ' + (eTe === 0 ? 'cero' : 'noCero');
+  cont.deTren.textContent = 'de ' + problema().train.length + ' de entrenamiento';
+  cont.dePrueba.textContent = 'de ' + problema().test.length + ' de prueba';
+  cont.usadas.textContent = nu;
+  cont.pie.textContent = problema().pie;
+}
+
+function aPista(v) {
+  var util = PISTA_W - POMO;
+  return POMO / 2 + (v - RANGO_MIN) / (RANGO_MAX - RANGO_MIN) * util;
+}
+function actualizarLectura() {
+  if (seleccionado === null) { mando.val.textContent = '—'; return; }
+  mando.val.textContent = (theta[seleccionado] >= 0 ? '+' : '') + theta[seleccionado].toFixed(2);
+}
+function sincronizarMando() {
+  var hay = seleccionado !== null;
+  mando.caja.className = 'mando' + (hay ? '' : ' apagado');
+  mando.rot.className = 'mando-rot' + (hay ? '' : ' vacio');
+  mando.rot.textContent = hay ? NOMBRES[seleccionado]
+    : 'Haz clic en una conexión para moverla, o en una neurona para cambiar su función';
+  mando.val.className = 'mando-val' + (hay ? '' : ' nada');
+  mando.slider.disabled = !hay;
+  if (hay) mando.slider.value = String(theta[seleccionado]);
+  actualizarLectura();
+}
+
+function registrarTocado(idx) {
+  if (TOCADOS.indexOf(idx) === -1) TOCADOS.push(idx);
+  if (!ranuraAbierta && TOCADOS.length >= UMBRAL_RANURA) abrirRanura();
+}
+function abrirRanura() {
+  if (ranuraAbierta) return;
+  ranuraAbierta = true;
+  mando.ranura.textContent = '';
+  mando.ranura.appendChild(mando.botonSol);
+  mando.ranura.appendChild(mando.botonAzar);
+  mando.ranura.appendChild(mando.botonReinicio);
+}
+
+function seleccionar(idx) {
+  cerrarMenu();
+  seleccionado = idx;
+  sincronizarMando();
+  redibujar();
+}
+function deseleccionar() {
+  seleccionado = null;
+  sincronizarMando();
+  redibujar();
+}
+
+/* ── El menú de activaciones ───────────────────────────────────────────────
+   Cada renglón dibuja su glifo con la MISMA función que dibuja el nodo, en un
+   disco del mismo color: el renglón enseña exactamente cómo va a quedar la
+   neurona. */
+function cerrarMenu() {
+  if (menuAbierto) { menuAbierto.parentNode.removeChild(menuAbierto); menuAbierto = null; }
+}
+function abrirMenu(j) {
+  cerrarMenu();
+  var caja = document.createElement('div');
+  caja.className = 'menu';
+  var cab = document.createElement('div');
+  cab.className = 'cab';
+  cab.textContent = 'función de h' + SUB[j];
+  caja.appendChild(cab);
+
+  ACTIVACIONES.forEach(function (a) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'op' + (ACTOS[j] === a.clave ? ' puesta' : '');
+    var v = lienzo(30, 30);
+    v.ctx.fillStyle = COLOR_NODO[1];
+    v.ctx.strokeStyle = BORDE_NODO[1];
+    v.ctx.lineWidth = 2;
+    v.ctx.beginPath(); v.ctx.arc(15, 15, 13, 0, Math.PI * 2); v.ctx.fill(); v.ctx.stroke();
+    glifoActivacion(v.ctx, 15, 15, a.clave, 1);
+    b.appendChild(v.el);
+    var t = document.createElement('span');
+    t.textContent = a.etiqueta;
+    b.appendChild(t);
+    b.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      ponerActivacion(j, a.clave);
+    });
+    caja.appendChild(b);
+  });
+
+  /* Se coloca al lado del nodo, y se recorta contra el alto del lienzo para que
+     no se salga por abajo con h4. */
+  var ARRIBA = 26;
+  var top = GEO.ys[1][j] - ARRIBA;
+  caja.style.left = (GEO.xs[1] + GEO.RADIO + 12) + 'px';
+  caja.style.top = top + 'px';
+  envoltura.appendChild(caja);
+  var sobra = (caja.offsetTop + caja.offsetHeight) - DIAG_H;
+  if (sobra > 0) caja.style.top = Math.max(0, top - sobra) + 'px';
+  menuAbierto = caja;
+}
+function ponerActivacion(j, clave) {
+  ACTOS[j] = clave;
+  cerrarMenu();
+  abrirRanura();   // cambiar una activación ya es haber hecho la pregunta
+  redibujar();
+}
+
+function restaurarTodo() {
+  theta = THETA_INICIAL.slice();
+  ACTOS = ACTOS_INICIAL.slice();
+  cerrarMenu();
+  sincronizarMando();
+  redibujar();
+}
+function mostrarSolucion() {
+  var s = problema().sol;
+  theta = s.theta.slice();
+  ACTOS = s.act.slice();
+  cerrarMenu();
+  sincronizarMando();
+  redibujar();
+}
+function aleatorizarTodo() {
+  nSorteo++;
+  var rng = new Sorteador(SEMILLA_BASE + nSorteo), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = SORTEO_MIN + rng.next() * (SORTEO_MAX - SORTEO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  theta = v;
+  cerrarMenu();
+  sincronizarMando();
+  redibujar();
+}
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+
+  /* La barra: los tres conjuntos, y a la derecha la ranura con la consigna o
+     con los botones. */
+  var barra = document.createElement('div');
+  barra.className = 'selector';
+  var tit = document.createElement('span');
+  tit.textContent = 'Conjunto:';
+  barra.appendChild(tit);
+  var etiquetas = [];
+  PROBLEMAS.forEach(function (p, i) {
+    var lab = document.createElement('label');
+    lab.className = (i === iProblema ? 'puesto' : '');
+    var r = document.createElement('input');
+    r.type = 'radio'; r.name = 'conjunto'; r.checked = (i === iProblema);
+    r.addEventListener('change', function () {
+      iProblema = i;
+      etiquetas.forEach(function (e, k) { e.className = (k === i ? 'puesto' : ''); });
+      cerrarMenu();
+      redibujar();
+    });
+    lab.appendChild(r);
+    lab.appendChild(document.createTextNode(p.etiqueta));
+    barra.appendChild(lab);
+    etiquetas.push(lab);
+  });
+  var div = document.createElement('div');
+  div.className = 'divisor';
+  barra.appendChild(div);
+  mando.ranura = document.createElement('div');
+  mando.ranura.className = 'ranura';
+  var cons = document.createElement('span');
+  cons.className = 'consigna';
+  cons.textContent = 'Mueve cuatro parámetros, o cambia una función, y aparecerán los botones.';
+  mando.ranura.appendChild(cons);
+  barra.appendChild(mando.ranura);
+  raiz.appendChild(barra);
+
+  mando.botonSol = document.createElement('button');
+  mando.botonSol.type = 'button';
+  mando.botonSol.textContent = 'Mostrar una solución';
+  mando.botonSol.addEventListener('click', mostrarSolucion);
+  mando.botonAzar = document.createElement('button');
+  mando.botonAzar.type = 'button';
+  mando.botonAzar.textContent = 'Valores al azar';
+  mando.botonAzar.addEventListener('click', aleatorizarTodo);
+  mando.botonReinicio = document.createElement('button');
+  mando.botonReinicio.type = 'button';
+  mando.botonReinicio.textContent = 'Reiniciar';
+  mando.botonReinicio.addEventListener('click', restaurarTodo);
+
+  var tablero = document.createElement('div');
+  tablero.className = 'tablero';
+  raiz.appendChild(tablero);
+
+  /* Caja izquierda: contador y mapa. */
+  var cajaMapa = document.createElement('div');
+  cajaMapa.className = 'caja';
+  var marcador = document.createElement('div');
+  marcador.className = 'contador';
+  function par(claseCifra, rotulo) {
+    var d = document.createElement('div');
+    d.className = 'par';
+    var c = document.createElement('span');
+    c.className = 'cifra ' + claseCifra;
+    var r = document.createElement('span');
+    r.className = 'rotulo';
+    r.textContent = rotulo;
+    d.appendChild(c); d.appendChild(r);
+    marcador.appendChild(d);
+    return { cifra: c, rotulo: r };
+  }
+  var p1 = par('noCero', '');
+  var p2 = par('noCero', '');
+  var p3 = par('neutro', 'neuronas en uso, de 4');
+  cont.tren = p1.cifra; cont.deTren = p1.rotulo;
+  cont.prueba = p2.cifra; cont.dePrueba = p2.rotulo;
+  cont.usadas = p3.cifra;
+  cajaMapa.appendChild(marcador);
+  vistaMapa = lienzo(MAPA_L, MAPA_L);
+  cajaMapa.appendChild(vistaMapa.el);
+  var leyMapa = document.createElement('div');
+  leyMapa.className = 'leyenda';
+  leyMapa.innerHTML =
+    '<span class="it"><span class="punto" style="background:#4b8bbe"></span>clase 0</span>' +
+    '<span class="it"><span class="punto" style="background:#e8825a"></span>clase 1</span>' +
+    '<span class="it">círculo: entrenamiento · cruz: prueba</span>' +
+    '<span class="it">los puntos negros son la frontera, donde la salida vale 0.5</span>';
+  cajaMapa.appendChild(leyMapa);
+  cont.pie = document.createElement('div');
+  cont.pie.className = 'leyenda';
+  cajaMapa.appendChild(cont.pie);
+  tablero.appendChild(cajaMapa);
+
+  /* Caja derecha: mando y diagrama. */
+  var cajaRed = document.createElement('div');
+  cajaRed.className = 'caja';
+  mando.caja = document.createElement('div');
+  mando.caja.className = 'mando apagado';
+  var cab = document.createElement('div');
+  cab.className = 'mando-cab';
+  mando.rot = document.createElement('span');
+  mando.rot.className = 'mando-rot vacio';
+  mando.val = document.createElement('span');
+  mando.val.className = 'mando-val nada';
+  cab.appendChild(mando.rot); cab.appendChild(mando.val);
+  mando.caja.appendChild(cab);
+
+  var pista = document.createElement('div');
+  pista.className = 'pista';
+  mando.slider = document.createElement('input');
+  mando.slider.type = 'range';
+  mando.slider.min = String(RANGO_MIN);
+  mando.slider.max = String(RANGO_MAX);
+  mando.slider.step = String(PASO);
+  mando.slider.value = '0';
+  mando.slider.disabled = true;
+  mando.slider.style.width = PISTA_W + 'px';
+  var hitoCero = document.createElement('div');
+  hitoCero.className = 'hito hito-cero';
+  hitoCero.style.left = (aPista(0) - 1) + 'px';
+  pista.appendChild(hitoCero);
+  pista.appendChild(mando.slider);
+  mando.caja.appendChild(pista);
+  var pie = document.createElement('div');
+  pie.className = 'pista-pie';
+  pie.innerHTML = '<span>' + RANGO_MIN + '</span><span class="der">+' + RANGO_MAX + '</span>';
+  mando.caja.appendChild(pie);
+  cajaRed.appendChild(mando.caja);
+
+  envoltura = document.createElement('div');
+  envoltura.className = 'envoltura';
+  vistaRed = lienzo(DIAG_W, DIAG_H);
+  envoltura.appendChild(vistaRed.el);
+  cajaRed.appendChild(envoltura);
+  var leyRed = document.createElement('div');
+  leyRed.className = 'leyenda';
+  leyRed.innerHTML =
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>positivo</span>' +
+    '<span class="it"><span class="marca" style="background:#d23c3c"></span>negativo</span>' +
+    '<span class="it">grosor: |θ| contra el tope del deslizador</span>' +
+    '<span class="it">el dibujo del nodo es su función; la salida es siempre sigmoide</span>' +
+    '<span class="it">Esc suelta lo seleccionado</span>';
+  cajaRed.appendChild(leyRed);
+  tablero.appendChild(cajaRed);
+
+  /* El deslizador. */
+  mando.slider.addEventListener('input', function () {
+    if (seleccionado === null) return;
+    theta[seleccionado] = Math.round(parseFloat(mando.slider.value) / PASO) * PASO;
+    registrarTocado(seleccionado);
+    actualizarLectura();
+    redibujar();
+  });
+
+  function posRaton(ev) {
+    var r = vistaRed.el.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (DIAG_W / r.width),
+             y: (ev.clientY - r.top) * (DIAG_H / r.height) };
+  }
+  vistaRed.el.addEventListener('mousemove', function (ev) {
+    var p = posRaton(ev);
+    var nj = nodoEn(p.x, p.y);
+    var c = (nj === null) ? candidataEn(p.x, p.y) : null;
+    if (c !== resaltado || nj !== nodoResaltado) {
+      resaltado = c; nodoResaltado = nj;
+      vistaRed.el.style.cursor = (c !== null || nj !== null) ? 'pointer' : 'default';
+      redibujar();
+    }
+  });
+  vistaRed.el.addEventListener('mouseleave', function () {
+    if (resaltado !== null || nodoResaltado !== null) {
+      resaltado = null; nodoResaltado = null;
+      vistaRed.el.style.cursor = 'default';
+      redibujar();
+    }
+  });
+  /* El disco del nodo se prueba PRIMERO y gana. Un clic que no cae ni en un
+     nodo ni en una candidata no hace nada: no deselecciona y no adivina. La
+     salida es Esc. */
+  vistaRed.el.addEventListener('click', function (ev) {
+    var p = posRaton(ev);
+    var nj = nodoEn(p.x, p.y);
+    if (nj !== null) {
+      if (menuAbierto && menuAbierto.dataset.neurona === String(nj)) { cerrarMenu(); return; }
+      abrirMenu(nj);
+      menuAbierto.dataset.neurona = String(nj);
+      return;
+    }
+    var c = candidataEn(p.x, p.y);
+    if (c !== null) seleccionar(c);
+  });
+
+  /* Esc tiene dos significados y en este orden: cierra el menú si está
+     abierto, y si no, suelta la conexión seleccionada. */
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    if (menuAbierto) { cerrarMenu(); return; }
+    if (seleccionado !== null) deseleccionar();
+  });
+  /* El menú se cierra al presionar fuera de él. Se decide por dónde EMPEZÓ la
+     presión y no por dónde terminó el clic: al soltar el pomo del deslizador
+     fuera de la pista, el evento de clic se despacha a un ancestro común y su
+     destino ya no es el deslizador. */
+  document.addEventListener('pointerdown', function (ev) { origenPresion = ev.target; }, true);
+  document.addEventListener('click', function () {
+    if (!menuAbierto) return;
+    if (origenPresion && menuAbierto.contains(origenPresion)) return;
+    if (origenPresion === vistaRed.el) return;   // el lienzo ya decidió solo
+    cerrarMenu();
+  });
+
+  sincronizarMando();
+  redibujar();
+}
+
+function fallar(err) {
+  var d = document.createElement('div');
+  d.id = 'fallo';
+  d.textContent = 'La página no se montó.\n\n' + (err && err.message ? err.message : String(err));
+  document.body.insertBefore(d, document.getElementById('raiz'));
+}
+
+try {
+  ARISTAS = verificarAncla(construirAristas());
+  NODOS = verificarAnclaNodos(construirNodos());
+  montar();
+} catch (e) {
+  fallar(e);
+}
+
+window.EXPL = {
+  RANGO: { min: RANGO_MIN, max: RANGO_MAX, paso: PASO },
+  theta: function () { return theta.slice(); },
+  actos: function () { return ACTOS.slice(); },
+  evaluar: evaluar,
+  malClasificados: malClasificados,
+  neuronasEnUso: neuronasEnUso,
+  problemas: PROBLEMAS,
+  activaciones: ACTIVACIONES,
+  deseleccionar: deseleccionar,
+  ponerActivacion: ponerActivacion,
+  mostrarSolucion: mostrarSolucion
+};
+</script>
+</body>
+</html>

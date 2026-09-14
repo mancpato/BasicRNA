@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explorador de parámetros — una neurona</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --azul: #4b8bbe;
+    --naranja: #e8825a;
+    --positivo: #3c64d2;
+    --negativo: #d23c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 48px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 23px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.2px; }
+
+  .selector {
+    display: flex; align-items: center; gap: 14px;
+    margin: 0 0 20px; padding: 12px 16px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .selector > span.rotulo { font-weight: 600; font-size: 14px; }
+  /* La ranura reserva su alto desde el principio: primero lleva la consigna y
+     después los dos botones, y al cambiar no se mueve nada de la barra. */
+  .selector .ranura { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+  .selector .consigna { font-size: 13.5px; color: var(--tinta-suave); }
+  .selector button {
+    font: inherit; font-size: 13.5px; padding: 7px 14px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .selector button:hover { background: #eef2f6; border-color: #8f9aa3; }
+  .selector button:active { background: #e2e8ee; }
+
+  .tablero { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px 14px;
+  }
+
+  .contador {
+    display: flex; gap: 28px; align-items: baseline;
+    margin: 0 0 14px; padding: 10px 14px;
+    background: #f0f4f8; border: 1px solid var(--linea); border-radius: 6px;
+  }
+  .contador .par { display: flex; align-items: baseline; gap: 9px; }
+  .contador .cifra { font-size: 34px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .contador .cero { color: #2e8b57; }
+  .contador .noCero { color: var(--negativo); }
+  .contador .rotulo { font-size: 13px; color: var(--tinta-suave); }
+  .contador .de { font-size: 13px; color: #8b959d; }
+
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 6px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* El mando va ENCIMA del diagrama, sin línea que los separe. */
+  .mando { margin-bottom: 14px; }
+  /* Lo atenuado es lo que todavía no se puede usar: la pista, su pie y el
+     hueco del valor. El rótulo NO, que ahí va la primera instrucción. */
+  .mando.apagado .pista,
+  .mando.apagado .pista-pie,
+  .mando.apagado .mando-val { opacity: 0.55; }
+  .mando-cab { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .mando-rot { font-size: 14px; font-weight: 600; }
+  /* Sin parámetro seleccionado, este rótulo es la primera instrucción de la
+     página: va en negrita y en tinta, no en gris. */
+  .mando-rot.vacio { font-weight: 700; color: var(--tinta); }
+  .mando-val {
+    margin-left: auto; font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+  }
+  .mando-val.nada { color: #b9c2ca; font-weight: 400; font-size: 16px; }
+  .pista { position: relative; height: 30px; }
+  .pista input[type=range] { position: absolute; left: 0; top: 6px; margin: 0; }
+  .hito { position: absolute; top: 0; pointer-events: none; }
+  .hito-cero { width: 2px; height: 28px; background: #4a545d; border-radius: 1px; }
+  .hito-orig { width: 3px; height: 28px; background: #0f6e62; opacity: 0.5; border-radius: 2px; }
+  .pista-pie { display: flex; font-size: 12px; color: #8b959d; margin-top: 2px; }
+  .pista-pie .der { margin-left: auto; }
+
+  /* La nota de leyendas se queda DEBAJO del lienzo, con la leyenda de la red. */
+  .mando-nota { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave);
+                display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .mando-nota .it { display: inline-flex; align-items: center; gap: 6px; }
+  .llave { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; }
+  input[type=range]:focus { outline: none; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px;
+    border-radius: 50%; background: #2f3a44; border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+  input[type=range]:disabled::-webkit-slider-thumb { background: #b9c2ca; cursor: default; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #7aa7d8; }
+  input[type=range]::-moz-range-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; background: #2f3a44;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+  input[type=range]:disabled::-moz-range-thumb { background: #b9c2ca; cursor: default; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Una neurona: Los tres parámetros del Perceptrón </h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+(function () {
+
+/*
+Una neurona: Los tres parámetros del Perceptrón
+
+Se selecciona cada conexión de la neurona y se mueve su peso o el sesgo 
+con el deslizador. La meta es separar dos nubes de puntos con una recta.
+El alumno puede ver cómo se mueve la recta y cómo cambia la predicción 
+de la neurona en cada punto del cuadrado. Puede pedir los pesos entrenados
+pero este ejercicio no es de entrenamiento: es de exploración.
+
+En clase debe explicarse que la neurona se entrena con datos que son
+coordenadas bien separádas de puntos en dos clases, así que los datos de 
+entrenamiento son de la forma (x_i, y_i, clase). 
+
+Es la página PREVIA a explorador-parametros.html, que tiene la red 2→4→1 y
+diecisiete parámetros. Aquí hay tres, y cada uno hace algo que se puede
+decir en una frase: los dos pesos giran la recta, el sesgo la desplaza. Ese
+es el punto de tenerla. El alumno llega a cero errores a mano, sabe lo que
+se siente entender un parámetro, y sólo entonces pasa a la red grande, donde
+mover un peso cambia el mapa de un modo que nadie puede anticipar.
+
+QUÉ ES LA PÁGINA
+Una neurona con salida sigmoide sobre dos nubes que se pueden separar con
+una recta. A la izquierda, lo que la neurona predice en cada punto del
+cuadrado; a la derecha, los tres parámetros que producen ese dibujo, uno por
+línea. La página abre con pesos al azar: el alumno acomoda la recta a mano y
+pide los pesos entrenados cuando quiere.
+
+Parámetros
+  theta[0]  peso de x1 a la salida
+  theta[1]  peso de x2 a la salida
+  theta[2]  sesgo de la salida
+
+LOS DATOS Y LOS PESOS PRECALCULADOS
+200 puntos en dos nubes gaussianas de desviación 0.20 centradas en
+(-0.45,-0.38) y (0.45,0.40), dentro de [-1,1]^2, partidos en 160 de
+entrenamiento y 40 de prueba. Son separables con mucha holgura: la recta que
+quedó deja el punto más cercano a 0.126 de distancia, así que muchas rectas
+distintas resuelven y el alumno tiene margen para ganar a mano.
+
+Los pesos se obtuvieron de descenso por gradiente con eta 0.05 y
+momento 0.9 sobre los 160 de entrenamiento, parado en cuanto llegó a cero
+errores en las dos particiones y el mayor |theta| pasó de 3. Esa parada no
+es cosmética: con datos separables la regresión logística no tiene óptimo
+finito —los pesos crecen sin tope mientras la verosimilitud sigue
+subiendo—, y dejarla correr daría pesos de decenas o cientos que no caben en
+el recorrido del deslizador.
+
+¡Feliz entrenamiento! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+// Parámetros entrenados
+var THETA_ENTRENADO = [3.0041, 2.5568, 0.0366];
+
+// 160 puntos de entrenamiento (x_i, y_i, clase)
+var PUNTOS_TRAIN = [
+  [-0.4857, -0.7805, 0],
+  [0.4553, 0.3242, 1],
+  [-0.3489, -0.1593, 0],
+  [-0.4852, -0.2318, 0],
+  [-0.0592, -0.3879, 0],
+  [0.5344, 0.255, 1],
+  [0.7196, 0.3236, 1],
+  [0.6134, 0.4313, 1],
+  [-0.4402, -0.5805, 0],
+  [-0.3297, -0.427, 0],
+  [-0.97, -0.2312, 0],
+  [-0.2546, 0.0568, 0],
+  [0.4082, 0.51, 1],
+  [0.2662, 0.3009, 1],
+  [0.4463, 0.3084, 1],
+  [0.5279, 0.5574, 1],
+  [0.6211, 0.4804, 1],
+  [-0.404, -0.3069, 0],
+  [0.5545, 0.47, 1],
+  [-0.442, -0.505, 0],
+  [-0.4711, 0.0361, 0],
+  [-0.3624, -0.3075, 0],
+  [0.258, 0.7321, 1],
+  [0.5718, 0.6945, 1],
+  [-0.4075, -0.2294, 0],
+  [0.3943, 0.3142, 1],
+  [0.6038, 0.1667, 1],
+  [0.257, 0.0354, 1],
+  [-0.5857, -0.2398, 0],
+  [-0.4438, -0.654, 0],
+  [0.2656, 0.2541, 1],
+  [0.7331, 0.5374, 1],
+  [-0.1446, -0.2743, 0],
+  [0.5624, 0.331, 1],
+  [0.414, 0.5822, 1],
+  [-0.4734, -0.5911, 0],
+  [0.079, 0.4176, 1],
+  [-0.3248, -0.4046, 0],
+  [-0.5517, -0.1725, 0],
+  [-0.0439, 0.4591, 1],
+  [0.4825, -0.0443, 1],
+  [0.5022, 0.5643, 1],
+  [-0.4254, -0.327, 0],
+  [-0.5035, -0.3915, 0],
+  [-0.6929, 0.0494, 0],
+  [-0.2414, -0.114, 0],
+  [0.5982, 0.3888, 1],
+  [0.2912, 0.5899, 1],
+  [-0.1513, -0.6094, 0],
+  [-0.6244, -0.1889, 0],
+  [0.4925, 0.5622, 1],
+  [-0.6961, -0.2941, 0],
+  [0.3356, 0.5858, 1],
+  [-0.2865, -0.3998, 0],
+  [0.1631, 0.6755, 1],
+  [0.4925, 0.3713, 1],
+  [0.3286, 0.4801, 1],
+  [-0.6943, -0.4527, 0],
+  [-0.4688, -0.3475, 0],
+  [-0.5379, -0.5375, 0],
+  [-0.5041, -0.5146, 0],
+  [-0.4832, -0.1949, 0],
+  [-0.5506, -0.667, 0],
+  [-0.2498, -0.4385, 0],
+  [-0.6, 0.0452, 0],
+  [0.4299, 0.4848, 1],
+  [-0.1411, -0.4585, 0],
+  [-0.28, -0.614, 0],
+  [0.5861, 0.6104, 1],
+  [0.3996, 0.484, 1],
+  [-0.231, -0.3015, 0],
+  [0.3925, 0.5032, 1],
+  [0.469, 0.8209, 1],
+  [-0.2039, -0.5522, 0],
+  [-0.276, -0.2965, 0],
+  [0.0609, 0.5193, 1],
+  [0.6457, 0.5138, 1],
+  [0.4368, 0.4686, 1],
+  [-0.3097, -0.3145, 0],
+  [0.3172, 0.7079, 1],
+  [-0.7727, -0.7727, 0],
+  [-0.6197, -0.4365, 0],
+  [-0.1236, -0.5174, 0],
+  [-0.5318, -0.5103, 0],
+  [0.2892, 0.393, 1],
+  [0.5521, 0.6155, 1],
+  [-0.1095, -0.4504, 0],
+  [0.6275, 0.3515, 1],
+  [-0.3597, -0.5244, 0],
+  [-0.6609, -0.5631, 0],
+  [-0.5811, -0.5193, 0],
+  [0.6041, 0.97, 1],
+  [0.4593, 0.7881, 1],
+  [-0.3795, -0.4762, 0],
+  [-0.3481, 0.0127, 0],
+  [-0.7912, -0.6478, 0],
+  [0.4317, 0.2763, 1],
+  [-0.616, -0.2793, 0],
+  [-0.5641, -0.6807, 0],
+  [0.2055, 0.2804, 1],
+  [-0.0632, -0.226, 0],
+  [-0.5871, -0.6434, 0],
+  [0.66, 0.3321, 1],
+  [-0.725, -0.085, 0],
+  [0.4322, 0.796, 1],
+  [-0.5242, -0.4069, 0],
+  [0.4431, 0.1256, 1],
+  [0.4396, 0.7892, 1],
+  [0.696, 0.2941, 1],
+  [0.7733, 0.4494, 1],
+  [0.4434, 0.118, 1],
+  [0.5614, 0.4609, 1],
+  [0.3632, 0.8204, 1],
+  [0.6056, 0.4912, 1],
+  [0.2391, 0.233, 1],
+  [-0.7928, -0.6149, 0],
+  [-0.5771, -0.4934, 0],
+  [0.1817, 0.3156, 1],
+  [-0.3329, -0.1757, 0],
+  [0.2737, 0.4538, 1],
+  [0.1625, 0.1969, 1],
+  [0.3968, 0.2046, 1],
+  [0.3815, 0.2877, 1],
+  [0.6495, 0.0484, 1],
+  [0.3057, 0.06, 1],
+  [0.4116, 0.217, 1],
+  [0.8217, 0.1534, 1],
+  [0.2062, 0.513, 1],
+  [0.7535, 0.6204, 1],
+  [0.5834, 0.5287, 1],
+  [0.5445, 0.1794, 1],
+  [-0.2389, -0.3375, 0],
+  [-0.62, -0.3904, 0],
+  [0.1554, 0.4835, 1],
+  [0.5111, 0.7173, 1],
+  [0.0201, -0.5752, 0],
+  [-0.4685, -0.2374, 0],
+  [0.418, 0.5553, 1],
+  [-0.5301, -0.4575, 0],
+  [-0.5245, -0.7553, 0],
+  [-0.4375, -0.7894, 0],
+  [0.7429, 0.3732, 1],
+  [-0.412, -0.2606, 0],
+  [0.4781, 0.4438, 1],
+  [0.2586, 0.605, 1],
+  [-0.3666, -0.4363, 0],
+  [0.5656, 0.1866, 1],
+  [-0.5367, -0.5253, 0],
+  [0.324, 0.194, 1],
+  [0.6845, 0.1331, 1],
+  [0.771, 0.7051, 1],
+  [-0.5346, -0.1074, 0],
+  [-0.1619, -0.6794, 0],
+  [-0.4349, -0.5272, 0],
+  [0.3017, 0.1287, 1],
+  [0.7247, 0.3195, 1],
+  [0.3355, 0.1055, 1],
+  [0.4139, 0.528, 1],
+  [-0.5533, -0.5705, 0],
+  [0.6431, 0.0249, 1],
+];
+
+
+// 40 puntos de prueba (x_i, y_i, clase)
+var PUNTOS_TEST = [
+  [-0.43, -0.1576, 0],
+  [0.2631, 0.3701, 1],
+  [-0.2061, -0.2531, 0],
+  [0.9472, 0.5202, 1],
+  [-0.3272, -0.1405, 0],
+  [-0.6642, -0.076, 0],
+  [-0.535, -0.4203, 0],
+  [0.2412, 0.2611, 1],
+  [-0.2438, 0.0778, 0],
+  [-0.7949, -0.1824, 0],
+  [-0.6335, -0.466, 0],
+  [-0.5953, -0.4496, 0],
+  [0.7802, 0.4954, 1],
+  [-0.6683, -0.6197, 0],
+  [-0.1279, -0.6932, 0],
+  [-0.4186, -0.4396, 0],
+  [-0.3498, -0.4322, 0],
+  [-0.3368, -0.4376, 0],
+  [0.5439, 0.6942, 1],
+  [0.1327, 0.2215, 1],
+  [-0.669, -0.2287, 0],
+  [0.4081, 0.4449, 1],
+  [-0.7824, -0.5348, 0],
+  [-0.4778, -0.2705, 0],
+  [0.6818, 0.6764, 1],
+  [0.1023, 0.4148, 1],
+  [0.3814, 0.2838, 1],
+  [-0.3383, -0.2663, 0],
+  [-0.5351, -0.9049, 0],
+  [0.3276, 0.5633, 1],
+  [0.5404, 0.7676, 1],
+  [-0.6159, -0.2566, 0],
+  [0.4821, 0.5499, 1],
+  [-0.549, -0.2487, 0],
+  [-0.236, -0.1068, 0],
+  [0.7781, 0.3221, 1],
+  [-0.2122, -0.4907, 0],
+  [-0.4193, -0.4827, 0],
+  [-0.7209, -0.3623, 0],
+  [0.6544, 0.5765, 1],
+];
+
+
+var NENT = 2, NPARAM = 3, RES = 50;
+var NOMBRES = ['w x₁→y', 'w x₂→y', 'b y'];
+var SUB = ['₁', '₂'];
+
+var RANGO_MIN = -6, RANGO_MAX = 6, PASO = 0.01;
+var PISTA_W = 520, POMO = 18;
+
+/* Mezclador de bits sobre un contador, como en la página de los diecisiete:
+   un LCG simple da primeras salidas correlacionadas entre semillas vecinas.
+   Disponible en la wikipedia. */
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+var SEMILLA_BASE = 20260913, nSorteo = 0;
+
+/* ── LA PÁGINA ABRE CON PESOS AL AZAR, NO CON LA SOLUCIÓN ──────────────────
+   Sorteo con SEMILLA_BASE, sin sumarle nada, para que todo el grupo abra el
+   mismo tablero. Esa semilla está ELEGIDA: la recta de arranque cruza el
+   cuadrado —si quedara fuera, el mapa sería de un solo color y no habría nada
+   que empujar— y deja 82 mal clasificados de los 160 de entrenamiento, que es
+   azar puro y no una solución a medias por accidente. Los sorteos posteriores
+   del botón usan SEMILLA_BASE + n y pueden caer donde sea. */
+var THETA_INICIAL = (function () {
+  var rng = new Sorteador(SEMILLA_BASE), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = RANGO_MIN + rng.next() * (RANGO_MAX - RANGO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  return v;
+})();
+
+var RED = {
+  entrenado: THETA_ENTRENADO,
+  trabajo: THETA_INICIAL.slice()
+};
+
+/* Dos estados distintos, y conviene no confundirlos. TOCADOS son los índices
+   DISTINTOS que el alumno ha movido; al llegar a UMBRAL_RANURA la barra de
+   arriba cambia la consigna por los dos botones. Con tres parámetros el umbral
+   es dos, no cuatro: pedir tres sería pedirlos todos. REVELADO sólo se vuelve
+   cierto cuando aprieta el botón de los pesos entrenados, y es lo que destapa
+   la marca tenue del deslizador, el doble clic que devuelve un parámetro a su
+   valor entrenado y sus dos renglones de leyenda. Antes de eso, la marca tenue
+   iría delatando la respuesta parámetro por parámetro. */
+var UMBRAL_RANURA = 2;
+var TOCADOS = [];
+var revelado = false;
+var ranuraAbierta = false;
+
+/* ── Evaluación ────────────────────────────────────────────────────────────
+   Una sola neurona: suma pesada más sesgo, y sigmoide. No hay capa oculta, así
+   que no hay activación que elegir.
+
+   LA FRONTERA ESTÁ DONDE LA SALIDA VALE 0.5, NO DONDE VALE 0: la salida pasa
+   por una sigmoide y las etiquetas son 0 y 1, así que el punto de indecisión
+   es 0.5. Y como la sigmoide vale 0.5 justo cuando su argumento vale 0, esa
+   frontera es la recta theta[0]*x1 + theta[1]*x2 + theta[2] = 0. De ahí que
+   una neurona sola no pueda hacer otra cosa que partir el plano en dos. */
+function evaluar(theta, x1, x2) 
+{
+  var suma = theta[0] * x1 + theta[1] * x2 + theta[2];
+  var c = Math.min(100, Math.max(-100, suma));
+  return 1 / (1 + Math.exp(-c));
+}
+
+function maxAbs(theta) 
+{
+  var M = 0;
+  for (var k = 0; k < theta.length; k++) 
+    if (Math.abs(theta[k]) > M) 
+      M = Math.abs(theta[k]);
+  return M;
+}
+function malClasificados(theta, puntos) 
+{
+  var n = 0;
+  for (var k = 0; k < puntos.length; k++) {
+    var p = puntos[k];
+    if ((evaluar(theta, p[0], p[1]) >= 0.5 ? 1 : 0) !== p[2]) 
+      n++;
+  }
+  return n;
+}
+
+/* ── Retícula y frontera ───────────────────────────────────────────────────
+   Recorre x2 de +1 a −1 en las filas y x1 de −1 a +1 en las columnas, el mismo
+   orden que TalleRNA. La frontera sale por cambio de signo respecto de 0.5
+   entre celdas vecinas, con interpolación lineal sobre la arista que cruza:
+   aquí se sabe que es una recta, pero se traza igual que en la red grande para
+   que las dos páginas no difieran en nada que no sea el modelo. */
+function reticula(theta) 
+{
+  var g = new Float64Array(RES * RES);
+  for (var i = 0; i < RES; i++) {
+    var x2 = 1 - (i / (RES - 1)) * 2;
+    for (var j = 0; j < RES; j++) 
+      g[i * RES + j] = evaluar(theta, -1 + (j / (RES - 1)) * 2, x2);
+  }
+  return g;
+}
+
+function aDatos(i, j) 
+{
+  return { x1: -1 + (j / (RES - 1)) * 2, x2: 1 - (i / (RES - 1)) * 2 };
+}
+
+function frontera(g) 
+{
+  var P = [];
+  for (var i = 0; i < RES; i++) 
+    for (var j = 0; j < RES; j++) {
+      var v = g[i * RES + j];
+      if (j + 1 < RES) {
+        var vd = g[i * RES + j + 1];
+        if ((v - 0.5) * (vd - 0.5) < 0) {
+          var t = (0.5 - v) / (vd - v), a = aDatos(i, j), b = aDatos(i, j + 1);
+          P.push([a.x1 + t * (b.x1 - a.x1), a.x2]);
+        }
+      }
+      if (i + 1 < RES) {
+        var va = g[(i + 1) * RES + j];
+        if ((v - 0.5) * (va - 0.5) < 0) {
+          var t2 = (0.5 - v) / (va - v), c = aDatos(i, j), d = aDatos(i + 1, j);
+          P.push([c.x1, c.x2 + t2 * (d.x2 - c.x2)]);
+        }
+      }
+    }
+  return P;
+}
+
+/* ── Geometría del diagrama ────────────────────────────────────────────────
+   Mismo ancho que el panel del mapa. El centro del nodo de arriba queda en
+   Y_ARRIBA, los 32 px donde empieza el cuadro blanco del mapa que está al
+   lado, y el otro nodo de entrada PASO_V más abajo; la salida va a media
+   altura entre los dos y el sesgo, entre columnas, por debajo. */
+var DIAG_W = 520, DIAG_H = 450;
+var Y_ARRIBA = 32, PASO_V = 340;
+var GEO = (function () 
+{
+  var izq = 78, der = 92, RADIO = 17, TB = 13;
+  var RW = DIAG_W - izq - der;
+  var xs = [izq, izq + RW];
+  var ysEnt = [Y_ARRIBA, Y_ARRIBA + PASO_V];
+  var ySal = Y_ARRIBA + PASO_V / 2;
+  var xBias = xs[0] + (xs[1] - xs[0]) * 0.28;
+  var yBias = Math.max(ysEnt[1], ySal) + RADIO * 2.4;
+  return { xs: xs, ysEnt: ysEnt, ySal: ySal, xBias: xBias, yBias: yBias, RADIO: RADIO, TB: TB };
+})();
+
+/* ── EL ANCLA ESTRUCTURAL ──────────────────────────────────────────────────
+   El diagrama NO se dibuja contando líneas sobre la marcha: sale de un arreglo
+   de descriptores, uno por parámetro, cada uno con su índice en theta, sus dos
+   extremos en pantalla y su rótulo. Antes de dibujar nada se verifica que son
+   NPARAM y que los índices son una permutación de 0..NPARAM-1. Si falla, lanza
+   y no se crea ningún lienzo. Con tres parámetros parece exagerado; está por
+   la misma razón que en la página de los diecisiete: que la línea que se
+   señala sea el parámetro que se mueve. */
+function construirAristas() 
+{
+  var a = [];
+  /* tEtiqueta: fracción desde (ax,ay) hacia (bx,by) donde va el valor. La de
+     x2 no es 0.5 porque su punto medio queda a 53 px del de la arista del
+     sesgo y las etiquetas no caben. */
+  var T_ETIQUETA = [0.50, 0.28];
+  for (var i = 0; i < NENT; i++)
+    a.push({ idx: i, tipo: 'entrada',
+             ax: GEO.xs[0], ay: GEO.ysEnt[i], bx: GEO.xs[1], by: GEO.ySal,
+             tEtiqueta: T_ETIQUETA[i],
+             rotulo: 'x' + SUB[i] + '→y' });
+  a.push({ idx: 2, tipo: 'sesgo',
+           ax: GEO.xBias, ay: GEO.yBias, bx: GEO.xs[1], by: GEO.ySal,
+           tEtiqueta: 0.50,
+           rotulo: 'b→y' });
+  return a;
+}
+
+function verificarAncla(aristas) 
+{
+  if (!Array.isArray(aristas))
+    throw new Error('ancla: el descriptor no es un arreglo');
+  if (aristas.length !== NPARAM)
+    throw new Error('ancla: hay ' + aristas.length + ' descriptores y tiene que haber ' +
+                    NPARAM + '. El diagrama no puede desmentir al vector de parámetros.');
+  var visto = [];
+  for (var k = 0; k < NPARAM; k++) {
+    visto.push(0);
+  }
+  for (var n = 0; n < aristas.length; n++) {
+    var idx = aristas[n].idx;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= NPARAM)
+      throw new Error('ancla: el descriptor ' + n + ' apunta al índice ' + idx +
+                      ', fuera de 0..' + (NPARAM - 1));
+    visto[idx]++;
+  }
+  for (var m = 0; m < NPARAM; m++) {
+    if (visto[m] !== 1)
+      throw new Error('ancla: el parámetro ' + m + ' (' + NOMBRES[m] + ') aparece en ' +
+                      visto[m] + ' descriptores. Los índices tienen que ser una permutación.');
+  }
+  return aristas;
+}
+
+/* ── Captura del ratón ─────────────────────────────────────────────────────
+   Tolerancia en píxeles y separación mínima entre la primera y la segunda
+   línea más cercanas. Con tres líneas bien separadas no hay ambigüedad
+   posible, pero la regla se conserva igual que en la página de los
+   diecisiete: un clic que no distingue no selecciona nada. */
+var TOL_CAPTURA = 6, MARGEN_SEPARACION = 2.5;
+function distanciaPuntoSegmento(px, py, ax, ay, bx, by) {
+  var vx = bx - ax, vy = by - ay, L = vx * vx + vy * vy;
+  var t = (L === 0) ? 0 : ((px - ax) * vx + (py - ay) * vy) / L;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
+}
+function distanciasA(x, y) {
+  var d = ARISTAS.map(function (a) {
+    return { idx: a.idx, d: distanciaPuntoSegmento(x, y, a.ax, a.ay, a.bx, a.by) };
+  });
+  d.sort(function (p, q) { return p.d - q.d; });
+  return d;
+}
+function candidataEn(x, y) {
+  var d = distanciasA(x, y);
+  if (d[0].d > TOL_CAPTURA) return null;
+  if (d.length > 1 && d[1].d - d[0].d < MARGEN_SEPARACION) return null;
+  return d[0].idx;
+}
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+var MAPA_L = 520, MARCO = 32;
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+function aPixel(x1, x2) {
+  var p = MARCO, lado = MAPA_L - 2 * MARCO;
+  return { px: p + (x1 + 1) / 2 * lado, py: p + (1 - (x2 + 1) / 2) * lado };
+}
+
+function dibujarMapa(vista, theta) {
+  var ctx = vista.ctx, lado = MAPA_L - 2 * MARCO;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  var g = reticula(theta);
+  var cel = lado / RES;
+  for (var i = 0; i < RES; i++) for (var j = 0; j < RES; j++) {
+    var yhat = g[i * RES + j];
+    var confianza = Math.abs(yhat - 0.5) * 2;
+    var alfa = confianza * 180 / 255;
+    ctx.fillStyle = (yhat < 0.5 ? 'rgba(75,139,190,' : 'rgba(232,130,90,') + alfa.toFixed(4) + ')';
+    var cx0 = Math.round(MARCO + j * cel), cx1 = Math.round(MARCO + (j + 1) * cel);
+    var cy0 = Math.round(MARCO + i * cel), cy1 = Math.round(MARCO + (i + 1) * cel);
+    ctx.fillRect(cx0, cy0, cx1 - cx0, cy1 - cy0);
+  }
+
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+  ctx.strokeRect(MARCO + 0.5, MARCO + 0.5, lado - 1, lado - 1);
+  ctx.strokeStyle = '#aeb7bf';
+  var o = aPixel(0, 0), a0 = aPixel(-1, 0), a1 = aPixel(1, 0), b0 = aPixel(0, -1), b1 = aPixel(0, 1);
+  ctx.beginPath();
+  ctx.moveTo(a0.px, o.py); ctx.lineTo(a1.px, o.py);
+  ctx.moveTo(o.px, b0.py); ctx.lineTo(o.px, b1.py);
+  ctx.stroke();
+  ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (var v = -1; v <= 1.001; v += 0.5) {
+    var vr = Math.round(v * 10) / 10;
+    if (Math.abs(vr) < 0.01) continue;
+    var t1 = aPixel(vr, 0), t2 = aPixel(0, vr);
+    ctx.beginPath(); ctx.moveTo(t1.px, o.py - 4); ctx.lineTo(t1.px, o.py + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(o.px - 4, t2.py); ctx.lineTo(o.px + 4, t2.py); ctx.stroke();
+    ctx.fillText(vr.toFixed(1), t1.px, o.py + 6);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(vr.toFixed(1), o.px - 6, t2.py);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  }
+  ctx.fillStyle = '#3a434b'; ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('x₁', a1.px + 7, o.py);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('x₂', o.px, b1.py - 7);
+
+  // la frontera, en puntos gordos como en TalleRNA
+  var F = frontera(g);
+  ctx.fillStyle = '#1c2228';
+  for (var f = 0; f < F.length; f++) {
+    var q = aPixel(F[f][0], F[f][1]);
+    ctx.fillRect(q.px - 1.5, q.py - 1.5, 3, 3);
+  }
+
+  // los puntos: entrenamiento en círculo, prueba en cruz
+  for (var k = 0; k < PUNTOS_TRAIN.length; k++) {
+    var p = PUNTOS_TRAIN[k], w = aPixel(p[0], p[1]);
+    ctx.fillStyle = COLOR_CLASE[p[2]];
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(w.px, w.py, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  for (var k2 = 0; k2 < PUNTOS_TEST.length; k2++) {
+    var p2 = PUNTOS_TEST[k2], w2 = aPixel(p2[0], p2[1]);
+    ctx.strokeStyle = COLOR_CLASE[p2[2]];
+    ctx.beginPath();
+    ctx.moveTo(w2.px - 4, w2.py); ctx.lineTo(w2.px + 4, w2.py);
+    ctx.moveTo(w2.px, w2.py - 4); ctx.lineTo(w2.px, w2.py + 4);
+    ctx.stroke();
+  }
+}
+
+/* El grosor de cada línea depende sólo de SU parámetro, medido contra el tope
+   fijo del deslizador: mover uno no cambia el grosor de los otros dos, y dos
+   posiciones del pomo dan siempre el mismo trazo. El color da el signo. */
+function dibujarRed(vista, theta, aristas, resalte, selec) {
+  var ctx = vista.ctx;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  /* La fuerza se mide contra el TOPE DEL DESLIZADOR, no contra el mayor |θ| de
+     los tres actuales. Con el normalizador móvil, arrastrar el parámetro más
+     grande cambiaba el grosor de los otros dos solos, y con tres líneas eso se
+     ve todavía más que con diecisiete. La raíz está por resolución en el
+     extremo chico. */
+  function grosorDe(v) {
+    return 1 + Math.sqrt(Math.min(Math.abs(v) / RANGO_MAX, 1)) * 9;
+  }
+
+  ctx.lineCap = 'round';
+  // los halos van DEBAJO de todas las líneas: así ninguno tapa a su vecina
+  for (var h = 0; h < aristas.length; h++) {
+    var ah = aristas[h];
+    if (ah.idx !== selec && ah.idx !== resalte) continue;
+    ctx.strokeStyle = (ah.idx === selec) ? 'rgba(140,90,200,0.55)' : 'rgba(90,105,120,0.32)';
+    ctx.lineWidth = grosorDe(theta[ah.idx]) + 12;
+    ctx.beginPath(); ctx.moveTo(ah.ax, ah.ay); ctx.lineTo(ah.bx, ah.by); ctx.stroke();
+  }
+  for (var n = 0; n < aristas.length; n++) {
+    var a = aristas[n];
+    ctx.strokeStyle = theta[a.idx] >= 0 ? '#3c64d2' : '#d23c3c';
+    ctx.lineWidth = grosorDe(theta[a.idx]);
+    ctx.beginPath(); ctx.moveTo(a.ax, a.ay); ctx.lineTo(a.bx, a.by); ctx.stroke();
+  }
+
+  // los nodos
+  ctx.lineWidth = 2;
+  for (var i = 0; i < NENT; i++) {
+    ctx.fillStyle = 'rgb(200,100,100)'; ctx.strokeStyle = 'rgb(120,60,60)';
+    ctx.beginPath(); ctx.arc(GEO.xs[0], GEO.ysEnt[i], GEO.RADIO, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgb(80,180,120)'; ctx.strokeStyle = 'rgb(48,108,72)';
+  ctx.beginPath(); ctx.arc(GEO.xs[1], GEO.ySal, GEO.RADIO, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  // el nodo de sesgo: triángulo, como panel4.js
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)';
+  var bx = GEO.xBias, by = GEO.yBias, T = GEO.TB;
+  ctx.beginPath();
+  ctx.moveTo(bx, by - T); ctx.lineTo(bx - T, by + T); ctx.lineTo(bx + T, by + T);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#6d5b00'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('1', bx, by + T + 4);
+
+  ctx.font = '14px system-ui, sans-serif'; ctx.fillStyle = '#3a434b';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (var q = 0; q < NENT; q++) ctx.fillText('x' + SUB[q], GEO.xs[0] - GEO.RADIO - 8, GEO.ysEnt[q]);
+  ctx.textAlign = 'left';
+  ctx.fillText('ŷ', GEO.xs[1] + GEO.RADIO + 8, GEO.ySal);
+
+  // el valor de cada parámetro sobre su arista: la ÚLTIMA pasada, para que el
+  // halo de la seleccionada no lo tape
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (var e = 0; e < aristas.length; e++) {
+    var ae = aristas[e], v = theta[ae.idx];
+    var ex = ae.ax + (ae.bx - ae.ax) * ae.tEtiqueta;
+    var ey = ae.ay + (ae.by - ae.ay) * ae.tEtiqueta;
+    var txt = (v >= 0 ? '+' : '') + v.toFixed(3);
+    ctx.font = (ae.idx === selec ? 'bold ' : '') + '13px system-ui, sans-serif';
+    var ancho = ctx.measureText(txt).width + 8;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillRect(ex - ancho / 2, ey - 9, ancho, 18);
+    ctx.fillStyle = '#23282e';
+    ctx.fillText(txt, ex, ey);
+  }
+}
+
+/* ── Estado de la interfaz ─────────────────────────────────────────────────*/
+var ARISTAS = null, vistaMapa = null, vistaRed = null;
+var seleccionado = null, resaltado = null;
+var nodos = {}, mando = {};
+var origenPresion = null;   // destino del último pointerdown
+
+function redibujar() {
+  dibujarMapa(vistaMapa, RED.trabajo);
+  dibujarRed(vistaRed, RED.trabajo, ARISTAS, resaltado, seleccionado);
+  actualizarLectura();
+  var eTrain = malClasificados(RED.trabajo, PUNTOS_TRAIN);
+  var eTest = malClasificados(RED.trabajo, PUNTOS_TEST);
+  nodos.cifraTrain.textContent = eTrain;
+  nodos.cifraTest.textContent = eTest;
+  nodos.cifraTrain.className = 'cifra ' + (eTrain === 0 ? 'cero' : 'noCero');
+  nodos.cifraTest.className = 'cifra ' + (eTest === 0 ? 'cero' : 'noCero');
+}
+
+/* Posición en píxeles del centro del pomo para un valor dado. El pomo recorre
+   desde POMO/2 hasta PISTA_W − POMO/2, no de 0 a PISTA_W: sin descontarlo la
+   marca quedaría corrida respecto del pomo en los extremos. */
+function aPista(v) {
+  var t = (v - RANGO_MIN) / (RANGO_MAX - RANGO_MIN);
+  return POMO / 2 + t * (PISTA_W - POMO);
+}
+function actualizarLectura() {
+  if (seleccionado === null) return;
+  mando.val.textContent = RED.trabajo[seleccionado].toFixed(3);
+}
+function sincronizarMando() {
+  if (seleccionado === null) {
+    mando.caja.className = 'mando apagado';
+    mando.slider.disabled = true;
+    mando.slider.value = 0;
+    mando.rot.className = 'mando-rot vacio';
+    mando.rot.textContent = 'Clic en una conexión para seleccionar - ESC para deseleccionar';
+//    mando.rot.textContent = 'Ningún parámetro seleccionado — haz clic en una línea del diagrama';
+    mando.val.className = 'mando-val nada';
+    mando.val.textContent = '—';
+    mando.orig.style.visibility = 'hidden';
+    return;
+  }
+  mando.caja.className = 'mando';
+  mando.slider.disabled = false;
+  mando.slider.value = RED.trabajo[seleccionado];
+  mando.rot.className = 'mando-rot';
+  mando.rot.textContent = NOMBRES[seleccionado] + '   (θ[' + seleccionado + '])';
+  mando.val.className = 'mando-val';
+  mando.orig.style.visibility = revelado ? 'visible' : 'hidden';
+  if (revelado) mando.orig.style.left = (aPista(RED.entrenado[seleccionado]) - 1.5) + 'px';
+  actualizarLectura();
+}
+
+function deseleccionar() {
+  seleccionado = null;
+  sincronizarMando();
+  redibujar();
+}
+
+function seleccionar(idx) {
+  seleccionado = idx;
+  sincronizarMando();
+  redibujar();
+}
+
+/* Pone los tres pesos entrenados y, la primera vez, destapa lo que enseña la
+   solución. No se vuelve atrás: una vez vista, vista. */
+function mostrarEntrenados() {
+  RED.trabajo = RED.entrenado.slice();
+  if (!revelado) {
+    revelado = true;
+    ['nota-dblclic', 'nota-orig'].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.style.display = '';
+    });
+  }
+  sincronizarMando();
+  redibujar();
+}
+
+/* Sortea los tres, cada uno uniforme en el recorrido del deslizador. El sorteo
+   n usa la semilla SEMILLA_BASE + n, de modo que cualquiera se reproduce
+   recargando y apretando n veces. */
+function aleatorizarTodo() {
+  nSorteo++;
+  var rng = new Sorteador(SEMILLA_BASE + nSorteo), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = RANGO_MIN + rng.next() * (RANGO_MAX - RANGO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  RED.trabajo = v;
+  sincronizarMando();
+  redibujar();
+}
+
+/* Devuelve UN parámetro a su valor entrenado exacto. Existe porque el paso del
+   deslizador es de una centésima: volver a mano deja 3.00 donde iba 3.0041. */
+function restaurarUno(idx) {
+  RED.trabajo[idx] = RED.entrenado[idx];
+  seleccionar(idx);
+}
+
+/* Cuenta el parámetro movido y, al llegar al umbral, cambia la consigna de la
+   barra por los dos botones. Cuenta ÍNDICES DISTINTOS, no movimientos: un solo
+   arrastre del deslizador dispara decenas de eventos. */
+function registrarTocado(idx) {
+  if (TOCADOS.indexOf(idx) < 0) TOCADOS.push(idx);
+  if (ranuraAbierta || TOCADOS.length < UMBRAL_RANURA) return;
+  ranuraAbierta = true;
+  document.getElementById('ranura-consigna').style.display = 'none';
+  document.getElementById('btn-entrenados').style.display = '';
+  document.getElementById('btn-aleatorios').style.display = '';
+}
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+
+  var sel = document.createElement('div');
+  sel.className = 'selector';
+  var rot = document.createElement('span');
+  rot.className = 'rotulo';
+  rot.textContent = 'Una neurona, tres parámetros:';
+  sel.appendChild(rot);
+  var ranura = document.createElement('span');
+  ranura.className = 'ranura';
+  var consigna = document.createElement('span');
+  consigna.className = 'consigna'; consigna.id = 'ranura-consigna';
+  consigna.textContent = 'acomoda los pesos a mano y baja los mal clasificados';
+  ranura.appendChild(consigna);
+  var bEnt = document.createElement('button');
+  bEnt.type = 'button'; bEnt.id = 'btn-entrenados';
+  bEnt.textContent = 'Mostrar los pesos entrenados';
+  bEnt.style.display = 'none';
+  ranura.appendChild(bEnt);
+  var bAzar = document.createElement('button');
+  bAzar.type = 'button'; bAzar.id = 'btn-aleatorios'; bAzar.textContent = 'Valores al azar';
+  bAzar.style.display = 'none';
+  ranura.appendChild(bAzar);
+  sel.appendChild(ranura);
+  raiz.appendChild(sel);
+
+  var tablero = document.createElement('div');
+  tablero.className = 'tablero';
+
+  // ── columna del mapa, con el contador encima ──
+  var cajaMapa = document.createElement('div');
+  cajaMapa.className = 'caja';
+  cajaMapa.style.width = (MAPA_L + 38) + 'px';
+  var cont = document.createElement('div');
+  cont.className = 'contador';
+  cont.innerHTML =
+    '<div class="par"><span class="cifra cero" id="err-train">–</span>' +
+    '<span class="rotulo">mal clasificados<br><span class="de">de 160 de entrenamiento</span></span></div>' +
+    '<div class="par"><span class="cifra cero" id="err-test">–</span>' +
+    '<span class="rotulo">mal clasificados<br><span class="de">de 40 de prueba</span></span></div>';
+  cajaMapa.appendChild(cont);
+  vistaMapa = lienzo(MAPA_L, MAPA_L);
+  cajaMapa.appendChild(vistaMapa.el);
+  var legM = document.createElement('div');
+  legM.className = 'leyenda';
+  legM.innerHTML =
+    '<span class="it"><span class="punto" style="background:#4b8bbe"></span>clase 0</span>' +
+    '<span class="it"><span class="punto" style="background:#e8825a"></span>clase 1</span>' +
+    '<span class="it">● entrenamiento · ✚ prueba</span>' +
+    '<span class="it"><span class="marca" style="background:#1c2228"></span>frontera, donde la salida vale 0.5</span>' +
+    '<span class="it">intensidad = confianza</span>';
+  cajaMapa.appendChild(legM);
+  tablero.appendChild(cajaMapa);
+
+  // ── columna del diagrama, con el mando encima ──
+  var cajaRed = document.createElement('div');
+  cajaRed.className = 'caja';
+  cajaRed.style.width = (DIAG_W + 38) + 'px';
+  var cajaMando = document.createElement('div');
+  cajaMando.className = 'mando apagado';
+  cajaMando.innerHTML =
+    '<div class="mando-cab">' +
+      '<span class="mando-rot vacio" id="mando-rot">ningún parámetro seleccionado</span>' +
+      '<span class="mando-val nada" id="mando-val">—</span>' +
+    '</div>' +
+    '<div class="pista" id="mando-pista" style="width:' + PISTA_W + 'px">' +
+      '<span class="hito hito-orig" id="mando-orig"></span>' +
+      '<span class="hito hito-cero" id="mando-cero"></span>' +
+      '<input type="range" id="mando-slider" disabled' +
+        ' min="' + RANGO_MIN + '" max="' + RANGO_MAX + '" step="' + PASO + '" value="0"' +
+        ' style="width:' + PISTA_W + 'px">' +
+    '</div>' +
+    '<div class="pista-pie" style="width:' + PISTA_W + 'px">' +
+      '<span>' + RANGO_MIN + '</span><span class="der">+' + RANGO_MAX + '</span></div>';
+  cajaRed.appendChild(cajaMando);
+
+  vistaRed = lienzo(DIAG_W, DIAG_H);
+  cajaRed.appendChild(vistaRed.el);
+
+  var notaMando = document.createElement('div');
+  notaMando.className = 'mando-nota';
+  notaMando.innerHTML =
+    '<span class="it" id="nota-dblclic" style="display:none">doble clic en una línea: devuelve ese parámetro a su valor entrenado</span>' +
+    '<span class="it"><span class="llave" style="background:#4a545d"></span>cero, el centro exacto</span>' +
+    '<span class="it" id="nota-orig" style="display:none"><span class="llave" style="background:#0f6e62;opacity:0.5"></span>valor entrenado</span>' +
+    '<span class="it"><span class="llave" style="background:rgba(140,90,200,0.55)"></span>parámetro seleccionado</span>' +
+    '<span class="it"><span class="llave" style="background:rgba(90,105,120,0.32)"></span>bajo el ratón</span>';
+  cajaRed.appendChild(notaMando);
+
+  var legR = document.createElement('div');
+  legR.className = 'leyenda';
+  legR.innerHTML =
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>positivo</span>' +
+    '<span class="it"><span class="marca" style="background:#d23c3c"></span>negativo</span>' +
+    '<span class="it">grosor = |θ| contra el tope del deslizador</span>' +
+    '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
+    '<span class="it">los dos pesos giran la recta · el sesgo la desplaza</span>';
+  cajaRed.appendChild(legR);
+  tablero.appendChild(cajaRed);
+
+  raiz.appendChild(tablero);
+
+  /* Los dos lienzos tienen que arrancar a la misma altura para que el nodo de
+     arriba caiga donde empieza el cuadro del mapa. Las cabeceras no miden lo
+     mismo: se miden ya montadas y se le da a la más corta el sobrante. */
+  var hCont = cont.offsetHeight, hMando = cajaMando.offsetHeight;
+  if (hCont > hMando) cajaMando.style.marginBottom = (14 + hCont - hMando) + 'px';
+  else if (hMando > hCont) cont.style.marginBottom = (14 + hMando - hCont) + 'px';
+
+  nodos.cifraTrain = document.getElementById('err-train');
+  nodos.cifraTest = document.getElementById('err-test');
+
+  mando.caja = cajaMando;
+  mando.rot = document.getElementById('mando-rot');
+  mando.val = document.getElementById('mando-val');
+  mando.slider = document.getElementById('mando-slider');
+  mando.orig = document.getElementById('mando-orig');
+  mando.cero = document.getElementById('mando-cero');
+  bEnt.addEventListener('click', mostrarEntrenados);
+  bAzar.addEventListener('click', aleatorizarTodo);
+  mando.cero.style.left = (aPista(0) - 1) + 'px';
+
+  mando.slider.addEventListener('input', function () {
+    if (seleccionado === null) return;
+    RED.trabajo[seleccionado] = parseFloat(mando.slider.value);
+    registrarTocado(seleccionado);
+    redibujar();
+  });
+
+  function posRaton(ev) {
+    var r = vistaRed.el.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (vistaRed.w / r.width),
+             y: (ev.clientY - r.top) * (vistaRed.h / r.height) };
+  }
+  vistaRed.el.addEventListener('mousemove', function (ev) {
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    vistaRed.el.style.cursor = (c === null) ? 'default' : 'pointer';
+    if (c !== resaltado) { resaltado = c; redibujar(); }
+  });
+  vistaRed.el.addEventListener('mouseleave', function () {
+    vistaRed.el.style.cursor = 'default';
+    if (resaltado !== null) { resaltado = null; redibujar(); }
+  });
+  /* El clic sin candidata no selecciona ni adivina. Tampoco deselecciona
+     aquí: de eso se encarga el listener de click en document, que ignora
+     las presiones que empezaron en este lienzo. */
+  vistaRed.el.addEventListener('click', function (ev) {
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    if (c === null) return;
+    seleccionar(c);
+  });
+  vistaRed.el.addEventListener('dblclick', function (ev) {
+    ev.preventDefault();
+    if (!revelado) return;   // antes de revelar no hay valor entrenado que ofrecer
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    if (c === null) return;
+    resaltado = c;
+    restaurarUno(c);
+  });
+
+  /* Deseleccionar con un clic en otra parte. Se decide por DÓNDE EMPEZÓ la
+     presión, no por dónde terminó: al soltar el pomo fuera de la pista el
+     click va a un ancestro común, pero la presión empezó en el deslizador.
+     pointerdown en captura; click sin captura, para correr después del
+     manejador del lienzo. */
+  document.addEventListener('pointerdown', function (ev) {
+    origenPresion = ev.target;
+  }, true);
+  document.addEventListener('click', function () {
+    if (seleccionado === null) return;
+    var o = origenPresion;
+    if (o === vistaRed.el) return;                    // el lienzo decide solo
+    if (o === mando.slider) return;                   // arrastre del pomo
+    if (o && o.closest && o.closest('button')) return; // azar / entrenados
+    deseleccionar();
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && seleccionado !== null) deseleccionar();
+  });
+
+  sincronizarMando();
+  redibujar();
+}
+
+function fallar(err) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no arrancó y no se dibujó ningún lienzo.\n\n' + err.message;
+  document.getElementById('raiz').appendChild(caja);
+}
+
+try {
+  ARISTAS = verificarAncla(construirAristas());
+  montar();
+} catch (err) {
+  fallar(err);
+  throw err;
+}
+
+/* Lo que la página expone para poder verificarse desde fuera. */
+window.EXPL = {
+  aristas: ARISTAS, red: RED, nombres: NOMBRES, RES: RES, geo: GEO,
+  TOL_CAPTURA: TOL_CAPTURA, MARGEN_SEPARACION: MARGEN_SEPARACION,
+  RANGO: { min: RANGO_MIN, max: RANGO_MAX, paso: PASO },
+  seleccionado: function () { return seleccionado; },
+  resaltado: function () { return resaltado; },
+  candidataEn: candidataEn,
+  distanciasA: distanciasA,
+  distanciaPuntoSegmento: distanciaPuntoSegmento,
+  mando: function () { return mando; },
+  mostrarEntrenados: mostrarEntrenados, aleatorizarTodo: aleatorizarTodo,
+  restaurarUno: restaurarUno, deseleccionar: deseleccionar,
+  nSorteo: function () { return nSorteo; },
+  SEMILLA_BASE: SEMILLA_BASE,
+  THETA_INICIAL: THETA_INICIAL,
+  revelado: function () { return revelado; },
+  tocados: function () { return TOCADOS.slice(); },
+  UMBRAL_RANURA: UMBRAL_RANURA,
+  aPista: aPista, redibujar: redibujar,
+  lienzoMapa: function () { return vistaMapa; },
+  lienzoRed: function () { return vistaRed; },
+  maxAbs: maxAbs, evaluar: evaluar, malClasificados: malClasificados,
+  reticula: reticula, frontera: frontera,
+  puntos: { train: PUNTOS_TRAIN, test: PUNTOS_TEST }
+};
+
+})();
+</script>
+</body>
+</html>

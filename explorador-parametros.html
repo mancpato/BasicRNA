@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explorador de parámetros — red 2→4→1</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --azul: #4b8bbe;
+    --naranja: #e8825a;
+    --positivo: #3c64d2;
+    --negativo: #d23c3c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 48px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 23px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.2px; }
+
+  .selector {
+    display: flex; align-items: center; gap: 14px;
+    margin: 0 0 20px; padding: 12px 16px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .selector > span { font-weight: 600; font-size: 14px; }
+  .selector label {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border: 1px solid var(--linea); border-radius: 6px;
+    cursor: pointer; background: #fbfcfd; font-size: 14px;
+  }
+  .selector label:hover { border-color: #aab4bd; }
+  .selector label.puesto { border-color: var(--tinta); background: #eef2f6; font-weight: 600; }
+  /* Los dos botones de conjunto viven en esta misma barra, a la derecha de la
+     elección de activación y separados de ella por una línea. No están dentro
+     del mando porque no necesitan parámetro seleccionado para funcionar. */
+  .selector .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 4px; }
+  /* La ranura reserva su alto desde el principio: primero lleva la consigna y
+     después los dos botones, y al cambiar no se mueve nada de la barra. */
+  .selector .ranura { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+  .selector .consigna { font-size: 13.5px; color: var(--tinta-suave); }
+  .selector button {
+    font: inherit; font-size: 13.5px; padding: 7px 14px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .selector button:hover { background: #eef2f6; border-color: #8f9aa3; }
+  .selector button:active { background: #e2e8ee; }
+
+  .tablero { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px 14px;
+  }
+
+  .contador {
+    display: flex; gap: 28px; align-items: baseline;
+    margin: 0 0 14px; padding: 10px 14px;
+    background: #f0f4f8; border: 1px solid var(--linea); border-radius: 6px;
+  }
+  .contador .par { display: flex; align-items: baseline; gap: 9px; }
+  .contador .cifra { font-size: 34px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .contador .cero { color: #2e8b57; }
+  .contador .noCero { color: var(--negativo); }
+  .contador .rotulo { font-size: 13px; color: var(--tinta-suave); }
+  .contador .de { font-size: 13px; color: #8b959d; }
+
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 6px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* El mando va ENCIMA del diagrama, sin línea que los separe. */
+  .mando { margin-bottom: 14px; }
+  /* Lo atenuado es lo que todavía no se puede usar: la pista, su pie y el
+     hueco del valor. El rótulo NO, que ahí va la primera instrucción. */
+  .mando.apagado .pista,
+  .mando.apagado .pista-pie,
+  .mando.apagado .mando-val { opacity: 0.55; }
+  .mando-cab { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .mando-rot { font-size: 14px; font-weight: 600; }
+  /* Sin parámetro seleccionado, este rótulo es la primera instrucción de la
+     página: va en negrita y en tinta, no en gris. */
+  .mando-rot.vacio { font-weight: 700; color: var(--tinta); }
+  .mando-val {
+    margin-left: auto; font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.3px;
+  }
+  .mando-val.nada { color: #b9c2ca; font-weight: 400; font-size: 16px; }
+  .pista { position: relative; height: 30px; }
+  .pista input[type=range] { position: absolute; left: 0; top: 6px; margin: 0; }
+  .hito { position: absolute; top: 0; pointer-events: none; }
+  .hito-cero { width: 2px; height: 28px; background: #4a545d; border-radius: 1px; }
+  .hito-orig { width: 3px; height: 28px; background: #0f6e62; opacity: 0.5; border-radius: 2px; }
+  .pista-pie { display: flex; font-size: 12px; color: #8b959d; margin-top: 2px; }
+  .pista-pie .der { margin-left: auto; }
+  /* La nota de leyendas se queda DEBAJO del lienzo, con la leyenda de la red;
+     sólo suben la cabecera, la pista y su pie. */
+  .mando-nota { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave);
+                display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .mando-nota .it { display: inline-flex; align-items: center; gap: 6px; }
+  .llave { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; }
+  input[type=range]:focus { outline: none; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; margin-top: -6px;
+    border-radius: 50%; background: #2f3a44; border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+  input[type=range]:disabled::-webkit-slider-thumb { background: #b9c2ca; cursor: default; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #7aa7d8; }
+  input[type=range]::-moz-range-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; background: #2f3a44;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+  input[type=range]:disabled::-moz-range-thumb { background: #b9c2ca; cursor: default; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Explorador de parámetros — red 2→4→1</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+/*
+Explorador de parámetros — red 2→4→1
+
+Se selecciona cada conexión de la red y se mueve su peso o su sesgo con el
+deslizador. La meta es separar dos clases que NINGUNA recta separa: un disco
+alrededor del origen contra el anillo que lo rodea. El alumno puede ver cómo se
+mueve la frontera y cómo cambia la predicción de la red en cada punto del
+cuadrado. Puede pedir los pesos entrenados pero este ejercicio no es de
+entrenamiento: es de exploración.
+
+En clase debe explicarse que la red se entrena con datos que son coordenadas de
+puntos en dos clases, así que los datos de entrenamiento son de la forma
+(x_i, y_i, clase); y que el selector de arriba cambia UNA sola cosa, la
+activación de la capa oculta, de modo que se vea qué le toca a la activación y
+qué le toca a los pesos.
+
+Es la página SIGUIENTE a explorador-neurona.html, que tiene una neurona y tres
+parámetros. Allá cada parámetro hace algo que se puede decir en una frase: los
+dos pesos giran la recta, el sesgo la desplaza. Aquí son diecisiete y ya no:
+mover un peso cambia el mapa de un modo que nadie puede anticipar, y ése es el
+punto de tenerla. El alumno llega primero a cero errores a mano con tres
+parámetros, sabe lo que se siente entender un parámetro, y sólo entonces pasa a
+esta red, donde la intuición ya no alcanza y hace falta el descenso por
+gradiente.
+
+QUÉ ES LA PÁGINA
+Dos redes de la misma forma, 2→4→1 con salida sigmoide, entrenadas sobre los
+mismos puntos hasta clasificarlos sin un solo error. La única diferencia entre
+ellas es la activación de la capa oculta: una usa ReLU y la otra tanh. A la
+izquierda, lo que la red predice en cada punto del cuadrado; a la derecha, los
+diecisiete parámetros que producen ese dibujo, uno por línea. La página abre con
+pesos al azar, los mismos para las dos redes, y el alumno pide los entrenados
+cuando quiere.
+
+Parámetros
+  theta[0..3]    pesos de x1 a h1,h2,h3,h4
+  theta[4..7]    pesos de x2 a h1,h2,h3,h4
+  theta[8..11]   sesgos de h1,h2,h3,h4
+  theta[12..15]  pesos de h1,h2,h3,h4 a la salida
+  theta[16]      sesgo de la salida
+
+EL ORDEN DE theta, Y POR QUÉ IMPORTA
+theta[i*NOCULTA + j] es el peso de la entrada i a la neurona oculta j. Con ese
+orden evalúa la red y con ese orden se dibuja el diagrama, y tienen que ser el
+mismo: con el orden traspuesto, j*NENT + i, de las ocho aristas de entrada sólo
+coinciden dos, y las otras seis se dibujarían con el grosor de otro peso y el
+deslizador movería un parámetro distinto del que se señaló. Toda la página
+descansa en que la línea que se señala sea el parámetro que se mueve.
+
+LOS DATOS Y LOS PESOS PRECALCULADOS
+200 puntos en [-1,1]^2, partidos en 160 de entrenamiento y 40 de prueba. La
+clase 0 ocupa un disco alrededor del origen, de radio hasta 0.41, y la clase 1
+el anillo que va de 0.60 hacia afuera. Entre las dos hay holgura, pero no hay
+recta que las separe: por eso esta red necesita la capa oculta y la neurona sola
+de explorador-neurona.html no podría con estos datos.
+
+Los pesos de las dos redes salieron de descenso por gradiente con eta 0.05,
+momento 0.9 e inicialización Xavier, y quedaron horneados en este archivo. Las
+dos llegan a cero mal clasificados en las dos particiones. El mayor |theta| de
+las dos vale 5.22, cómodamente dentro del recorrido del deslizador.
+
+La retícula del mapa es de 50x50 y la frontera se traza por cambio de signo
+entre celdas vecinas. Aritmética nativa de JavaScript, binary64. Un solo
+archivo, sin dependencias, sin build; se abre con doble clic y dibuja con
+canvas 2D.
+
+¡Feliz entrenamiento! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+/* Pesos horneados: los que quedaron al converger. Orden i*NOCULTA + j — ver el
+   comentario de arriba. */
+var THETA_RELU_HORNEADO = [-1.108638882637024, 3.595573902130127, -3.1681935787200928, 0.2123454362154007, -0.4891328811645508, 1.8878647089004517, 2.3562164306640625, -3.959134817123413, -0.16436882317066193, -0.6149131655693054, -0.5567122101783752, -0.5103414058685303, 1.143731713294983, 4.074565410614014, 4.048000335693359, 3.990365743637085, -5.080021858215332];
+
+var THETA_TANH_HORNEADO = [0.7486200332641602, 4.314812660217285, -3.490118980407715, 0.03250102326273918, 4.197384834289551, 1.5003544092178345, 3.452336311340332, -0.1251998096704483, 1.5966793298721313, -1.7714643478393555, -1.9384727478027344, 1.657033085823059, -4.589752197265625, 4.536282062530518, 4.822205543518066, 2.9306061267852783, 5.217462539672852];
+
+/* Los 200 puntos, NORMALIZADOS a [-1,1]^2 por normalizarDatos antes de
+   entrenar, como [x1, x2, etiqueta]. Son los mismos para las dos redes. */
+var PUNTOS_TRAIN = [
+  [-0.182692616843106, 0.17605809997490796, 0],
+  [0.1930328835294155, 0.26781643997095084, 0],
+  [0.13147337541431114, 0.24975721501476045, 0],
+  [-0.06196047685927286, -0.1181444203592541, 0],
+  [0.09995479807569252, 0.09135194729822249, 0],
+  [-0.3673394020055496, 0.6511734735152528, 1],
+  [-0.03137213187805965, -0.14614425888909988, 0],
+  [0.029628152647105832, 0.2254379548667862, 0],
+  [-0.034685339278826555, -0.09594361037148291, 0],
+  [-0.10983764320821565, -0.6736497097472506, 1],
+  [-0.21445646056146184, 0.2943378384561772, 0],
+  [-0.011359808342295552, 0.2656759418413861, 0],
+  [0.912849346317314, 0.07911942620533119, 1],
+  [0.08914945707235389, 0.6451728538164212, 1],
+  [-0.5199959117929349, 0.4236000500627013, 1],
+  [0.12031983115562284, 0.0789513619129909, 0],
+  [0.33870942455547803, 0.05836520662578093, 0],
+  [-0.8246765243996828, 0.09041555024377534, 1],
+  [0.18644368969463998, 0.09148670074649767, 0],
+  [-0.5109753028064983, 0.5554800746220068, 1],
+  [-0.02986978544281027, -0.1503665959871483, 0],
+  [0.2924337932325798, -0.07383677404617961, 0],
+  [0.12837057627250759, -0.9193850116785992, 1],
+  [-0.5526644406776773, 0.43835179913077393, 1],
+  [0.3455529010631573, -0.1260527681582705, 0],
+  [0.6757072824085528, -0.6546244976306861, 1],
+  [-0.5622421252323999, -0.5994834059125416, 1],
+  [-0.07394986852562668, -0.20498491996711066, 0],
+  [0.01808713118497418, -0.09280538592524001, 0],
+  [-0.8576144244924244, 0.054833541631138516, 1],
+  [0.23957830921789647, 0.19972006441586831, 0],
+  [0.2542037832856259, -0.19763027027772528, 0],
+  [0.44837814362498873, 0.46009534006270414, 1],
+  [-0.331671927183837, 0.05715626477876801, 0],
+  [-0.20849505274480873, -0.11348588036608032, 0],
+  [0.02726252873285251, -0.21914348750792956, 0],
+  [0.08412454827751503, -0.011354188484094863, 0],
+  [-0.6219247354970745, 0.8405754430828052, 1],
+  [-0.15258400060190302, 0.15930905011917518, 0],
+  [0.27086640159329667, 0.267660355710847, 0],
+  [0.33044502611411253, 0.13136507814743004, 0],
+  [0.05074230082166098, -0.23415531984395666, 0],
+  [-0.6600273050150789, 0.10237138160419534, 1],
+  [-0.09329377852036902, -0.19374278496415653, 0],
+  [-0.02053358425181162, 0.13563889684326402, 0],
+  [0.0007678523947096672, -0.3376276724740198, 0],
+  [0.2414050475192584, -0.1255684361960533, 0],
+  [0.11217879448738932, -0.1068096001881178, 0],
+  [-0.0990116691699855, -0.05437068670811318, 0],
+  [0.2593746338136895, -0.08210289031379692, 0],
+  [0.05603927709716605, 0.14939801803541575, 0],
+  [-0.6674110148170076, 0.5862781695859018, 1],
+  [-0.5157076545158643, 0.39073117667987667, 1],
+  [0.01934806274125611, 0.8105230945891275, 1],
+  [0.4733245731864022, -0.4852672769098395, 1],
+  [-0.2648294399315322, 0.1405484785647655, 0],
+  [-0.25390083589913603, -0.804264484375002, 1],
+  [0.17960927199773424, 0.7219544015637627, 1],
+  [-0.03217946551081008, -0.13681520294743, 0],
+  [0.017852162794639748, 0.14703142361767196, 0],
+  [-0.6131531116094554, 0.5488366878319741, 1],
+  [-0.25028718430508934, -0.6644822648107717, 1],
+  [-0.3596466336735209, -0.07724149051948426, 0],
+  [-0.9489152879884127, 0.4458276629894411, 1],
+  [-0.2127434868131547, -0.13503080372277765, 0],
+  [0.13732061025465003, -0.36187586197743127, 0],
+  [-0.0873251454179168, -0.08092738681555645, 0],
+  [0.8429153546641444, -0.426222189009533, 1],
+  [-0.8090744964807434, 0.46736370596921506, 1],
+  [-0.13856784666684774, -0.8529466981295857, 1],
+  [0.08813833738099164, -0.08902477350325899, 0],
+  [-0.3718573033090312, 0.7568388296853701, 1],
+  [-0.6786736620035556, 0.013518425396540579, 1],
+  [0.07244196178048834, -0.5929187188239256, 1],
+  [0.08384353310891712, -0.8762867188072407, 1],
+  [-0.007591835027941141, -0.8881124772266566, 1],
+  [0.33508188835854, -0.03544567952199551, 0],
+  [0.2592704561908059, 0.20251934526495274, 0],
+  [0.7947742065236658, 0.1565390929239996, 1],
+  [-0.12510494753266832, 0.23121815129951528, 0],
+  [-0.49302241976061045, 0.880745792872152, 1],
+  [-0.3095546335936903, 0.162015239097258, 0],
+  [0.482578593037279, -0.6874895777188996, 1],
+  [-0.23906408613018137, -0.0459830126254549, 0],
+  [0.12426149822044041, 0.9383197954503437, 1],
+  [0.382028874011467, 0.08242272625255098, 0],
+  [0.1672114288936375, -0.13159766049006094, 0],
+  [0.9827920980412357, 0.11483627214062153, 1],
+  [0.23134846504657336, -0.8926153824423476, 1],
+  [0.8066534172296003, -0.15180674383689063, 1],
+  [0.06654432343294236, -0.09272302520840847, 0],
+  [-0.5898059705196415, -0.6550494577848978, 1],
+  [0.10087328769019765, 0.24850652157563502, 0],
+  [0.27925651444132127, -0.5725597517934791, 1],
+  [0.589467427817874, -0.6066694223588969, 1],
+  [-0.15365631345630082, -0.09779312030167187, 0],
+  [-0.33918435960371995, -0.22708625973339835, 0],
+  [0.15786217268740765, 0.3741335794107008, 0],
+  [0.33981951576530767, -0.09859787343370996, 0],
+  [-0.28387842687890574, 0.1431353299781597, 0],
+  [0.4132787845553374, -0.5741967058588138, 1],
+  [-0.4369762269454197, 0.7978656062987395, 1],
+  [0.0640428572239542, -0.05078591968051882, 0],
+  [-0.7885933335714528, -0.13796309526927286, 1],
+  [0.23416746484225381, 0.6808617126615424, 1],
+  [0.15161656844085503, 0.13692952478106268, 0],
+  [-0.24267620206327178, 0.33129903732939403, 0],
+  [0.019199800048189886, 0.11805429486341756, 0],
+  [-0.775306105935939, 0.5113398749428697, 1],
+  [0.5758947757607678, -0.4968060214726854, 1],
+  [-0.29209437284135387, -0.25816867319556924, 0],
+  [-0.1764185863880411, -0.18628175278188208, 0],
+  [-1, 0.3321137735890358, 1],
+  [0.6591978307541944, 0.022466729142968545, 1],
+  [0.09992107641749404, 0.6988766328676781, 1],
+  [0.3199396990358987, 0.03702997344713532, 0],
+  [-0.9315021650353177, 0.4924144561982877, 1],
+  [-0.3397651592581101, 0.7503948006831982, 1],
+  [0.7155291004459257, 0.29045891062617857, 1],
+  [0.0642645335952996, -0.38344996557650635, 0],
+  [-0.6525721325703544, -0.2876188448604693, 1],
+  [-0.34699206211500644, 0.023189702631397635, 0],
+  [0.2201455037555493, 1, 1],
+  [-0.44305192612190325, -0.8776473241948693, 1],
+  [0.8533838742619477, -0.4511032978182238, 1],
+  [-0.8994120600546276, 0.38412846305987824, 1],
+  [-0.7759866400439152, 0.09776564439555502, 1],
+  [0.13218881713317, -0.05106102654526734, 0],
+  [-0.2915587373654479, 0.8342951993642773, 1],
+  [0.36342634871716184, 0.647742735975408, 1],
+  [0.07152375075470885, -0.25497671126151034, 0],
+  [-0.2575364849652789, 0.03989871948753221, 0],
+  [-0.5374273366610719, 0.4913305695841408, 1],
+  [0.8777056283333367, 0.3285505534903488, 1],
+  [0.21022477322103206, 0.06202411986778067, 0],
+  [0.44434796433578105, 0.5582648322051984, 1],
+  [-0.8678561540230203, -0.18922879276680893, 1],
+  [-0.1408459224061751, -0.0015092078939605846, 0],
+  [0.10216297265826202, -0.2315041780657745, 0],
+  [0.2018935865057312, -0.10986916295743143, 0],
+  [-0.2003774610072493, 0.32786204727399304, 0],
+  [-0.2454487138932383, -0.13901858968150393, 0],
+  [0.5773486391060192, 0.3054482263135694, 1],
+  [-0.07755532597120629, 0.10490902154098558, 0],
+  [0.2371056727558738, -0.12913860049889825, 0],
+  [-0.126279648665786, 0.002632254579729265, 0],
+  [-0.7061363162317313, 0.45200564967542856, 1],
+  [0.45662080850294773, -0.8260717147733759, 1],
+  [-0.020715748829625902, -0.7611320666380419, 1],
+  [0.8891701631081947, 0.5013706102662268, 1],
+  [0.14306982376891408, -0.13862674180441892, 0],
+  [0.18977109686853488, 0.8604078727426052, 1],
+  [1, 0.1346164751741703, 1],
+  [-0.23634097577852098, -0.2900484947057175, 0],
+  [0.5192093022929178, 0.47677246800584494, 1],
+  [0.6138787957905625, -0.17396005224936972, 1],
+  [-0.19876355490552344, -0.1506796899076498, 0],
+  [-0.1449453778048897, -0.3210389841308753, 0],
+  [-0.8091700036061946, -0.4105711069606607, 1],
+  [-0.11260809151236928, -0.07172856615589429, 0]
+];
+
+var PUNTOS_TEST = [
+  [-0.8674646434810717, -0.04988156331084104, 1],
+  [0.24550761474696858, -0.9043144654976655, 1],
+  [0.9508207963633157, -0.16423633870557597, 1],
+  [0.4887637908768365, 0.5129023975370162, 1],
+  [0.8097122034455508, -0.03868637612018633, 1],
+  [0.13985250077148526, -0.3391609541606776, 0],
+  [-0.08569796898820603, -0.24432605002657126, 0],
+  [0.13009500994533862, -0.1713282220280521, 0],
+  [-0.14229705680681437, -0.032314756933888966, 0],
+  [0.16437268034868913, -0.08224669977365517, 0],
+  [0.06559579593944931, -1, 1],
+  [0.22542193044098124, 0.252349063967938, 0],
+  [-0.7472743780224687, -0.26101158733146657, 1],
+  [-0.06934356752758375, 0.37354114809369343, 0],
+  [0.3048051572815249, 0.9810887967400184, 1],
+  [0.6814928775206914, 0.2794938639688709, 1],
+  [-0.14694133428382394, -0.008024823091093203, 0],
+  [-0.31635555773508306, -0.890688116429263, 1],
+  [0.04096162417887195, 0.10560831682082794, 0],
+  [0.720524204260131, -0.40959562225406076, 1],
+  [-0.9615487928121039, 0.05935357764821925, 1],
+  [-0.14072550534928363, -0.6139017012776626, 1],
+  [0.157185557946804, 0.28170189550025726, 0],
+  [-0.5283528694363815, 0.8186791490531058, 1],
+  [-0.6747893432011709, -0.02667855446124412, 1],
+  [0.688394886723753, 0.24699333152338143, 1],
+  [0.20562848891585994, -0.0528739794746107, 0],
+  [0.19411060735809893, -0.19189980023307096, 0],
+  [-0.19521806556635368, -0.8870331671580668, 1],
+  [0.36510158010468996, 0.6234879771050312, 1],
+  [-0.13590221987985207, 0.8073074233130781, 1],
+  [0.35447526873722723, -0.005653991426860183, 0],
+  [0.5511211830033309, 0.6367227080770717, 1],
+  [-0.06709689164236776, -0.07720872419067737, 0],
+  [-0.7043559632479014, 0.5102965489266338, 1],
+  [-0.16331543365993229, -0.30659658918829513, 0],
+  [-0.8158410637218778, 0.4089764877504771, 1],
+  [0.6791380709835813, 0.7474721724996192, 1],
+  [-0.21408461838303672, 0.8842959784499935, 1],
+  [-0.09077026120193388, 0.13540551150631597, 0]
+];
+
+
+(function () {
+
+var NENT = 2, NOCULTA = 4, NPARAM = 17, RES = 50;
+
+/* Recorrido del deslizador. FIJO: el mismo para los 17 parámetros y el mismo
+   en las dos redes. No se calcula de los pesos y no cambia con el selector de
+   red, porque un recorrido que se mueve hace incomparables dos posiciones del
+   pomo. El mayor |θ| de las dos redes vale 5.22, así que ningún valor original
+   queda pegado a un extremo. El cero cae en el centro exacto. */
+var RANGO_MIN = -6, RANGO_MAX = 6, PASO = 0.01;
+var PISTA_W = 520, POMO = 18;   // el ancho util de la caja del diagrama: no puede pasarse
+
+/* Sorteo CON SEMILLA, no Math.random: la razón es poder reproducir en clase un
+   caso que salga raro, así que la semilla se muestra en pantalla y avanza un
+   paso en cada apretón.
+   No se usa el generador congruencial típico: multiplicar 1103515245 por un
+   estado de 31 bits da un producto que se sale de los 53 bits exactos de un
+   double. Por eso aquí va splitmix32: aritmética entera de 32 bits con
+   Math.imul, exacta, así que reproducir un sorteo desde su semilla no depende
+   de ningún redondeo.
+   Y lleva el mezclador de salida por una razón MEDIDA, no por gusto: con un
+   xorshift crudo, semillas consecutivas —que es justo lo que produce un botón
+   que avanza de uno en uno— dan primeras salidas correlacionadas, y los 170
+   valores de diez apretones caían 82 / 39 / 49 en los tres tercios del
+   recorrido en vez de repartirse. Con el mezclador caen 64 / 50 / 56, que es
+   lo que se espera de 170 sorteos uniformes. */
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+var SEMILLA_BASE = 20260911, nSorteo = 0;
+
+/* Tolerancia de captura del ratón, en píxeles. Vive AQUÍ y en ningún otro
+   sitio, para poder ajustarla sin buscarla. */
+var TOL_CAPTURA = 6;
+
+/* Separación mínima ABSOLUTA entre la primera y la segunda, en píxeles.
+   MEDIDA, no supuesta: la regla de «la segunda al menos al doble» es sin
+   escala, y no distingue «5 veces más cerca a 0.1 px contra 0.6 px» —que no
+   quiere decir nada— de «5 veces más cerca a 1 px contra 5 px» —que sí—. Los
+   segmentos x₂→h₄ y b→h3 se cruzan a 0.12 px del punto medio de b→h3, y ahí
+   un clic sobre b→h3 seleccionaba x₂→h₄: exactamente el fallo que la regla
+   existe para evitar. Con esta cota, en las posiciones donde la segunda está a
+   menos de MARGEN_SEPARACION no hay candidata, por mucho que la razón sea
+   grande. Vive aquí al lado de la tolerancia, por la misma razón. */
+var MARGEN_SEPARACION = 2.5;
+
+var NOMBRES = [
+  'w x₁→h₁', 'w x₁→h₂', 'w x₁→h₃', 'w x₁→h₄',
+  'w x₂→h₁', 'w x₂→h₂', 'w x₂→h₃', 'w x₂→h₄',
+  'b h₁', 'b h₂', 'b h₃', 'b h₄',
+  'v h₁→y', 'v h₂→y', 'v h₃→y', 'v h₄→y',
+  'b y'
+];
+var SUB = ['₁', '₂', '₃', '₄'];
+
+/* Las dos redes. Cada una lleva sus pesos ORIGINALES y una copia de TRABAJO,
+   que es la que se dibuja. Hoy nadie modifica la copia de trabajo; el selector
+   cambia activación, trabajo y original, los tres a la vez. */
+/* ── LA PÁGINA ABRE CON PESOS AL AZAR, NO CON LA SOLUCIÓN ──────────────────
+   El alumno ve primero una red que no clasifica nada, acomoda pesos a mano y
+   sólo cuando quiere pide los entrenados. El sorteo va con SEMILLA_BASE, sin
+   sumarle nada, para que todo el grupo abra el mismo tablero y se pueda hablar
+   del mismo dibujo. Es EL MISMO vector para las dos redes: así, antes de tocar
+   nada, pasar de ReLU a Tanh compara la activación y nada más.
+
+   Uniforme en todo el recorrido del deslizador, no en pesos pequeños. Medido
+   sobre cuarenta sorteos: desde aquí, quien en cada jugada probara los 17
+   parámetros en todo el recorrido y se quedara con el mejor baja de unos 100
+   mal clasificados de 200 a una mediana de 13 con ReLU y 27 con Tanh en seis u
+   ocho movimientos, y a veces llega a cero. Con pesos pequeños, ±1, Tanh queda
+   casi lineal y se atora en 46: progreso invisible y sin explicación a la
+   vista. */
+var THETA_INICIAL = (function () {
+  var rng = new Sorteador(SEMILLA_BASE), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = RANGO_MIN + rng.next() * (RANGO_MAX - RANGO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  return v;
+})();
+
+var REDES = {
+  relu: { clave: 'relu', etiqueta: 'ReLU', activacion: 'relu',
+          original: THETA_RELU_HORNEADO, trabajo: THETA_INICIAL.slice(),
+          pie: 'frontera de lados rectos: cada neurona aporta un vértice' },
+  tanh: { clave: 'tanh', etiqueta: 'Tanh', activacion: 'tanh',
+          original: THETA_TANH_HORNEADO, trabajo: THETA_INICIAL.slice(),
+          pie: 'frontera curva: no hay vértices, la curvatura se reparte' }
+};
+
+/* Dos estados distintos, y conviene no confundirlos. TOCADOS son los índices
+   DISTINTOS que el alumno ha movido; al llegar a UMBRAL_RANURA la barra de
+   arriba cambia la consigna por los dos botones. REVELADO sólo se vuelve
+   cierto cuando aprieta el de los pesos entrenados, y es lo que destapa todo
+   lo que enseña la solución: la marca tenue del deslizador, el doble clic que
+   devuelve un parámetro a su valor entrenado, sus dos renglones de leyenda y
+   el pie que describe la forma de la frontera. Antes de eso, la marca tenue
+   iría delatando la respuesta parámetro por parámetro. */
+var UMBRAL_RANURA = 4;
+var TOCADOS = [];
+var revelado = false;
+var ranuraAbierta = false;
+var redActiva = 'relu';
+function red() { return REDES[redActiva]; }
+
+/* ── Evaluación ────────────────────────────────────────────────────────────
+   Propagación hacia adelante para una muestra.
+   La activación oculta es un parámetro; la de salida es SIEMPRE sigmoide.
+
+   LA FRONTERA ESTÁ DONDE LA SALIDA VALE 0.5, NO DONDE VALE 0: la salida pasa
+   por una sigmoide y las etiquetas son 0 y 1, así que el punto de indecisión
+   es 0.5. Comparar contra 0 dibujaría otra curva y clasificaría todo igual. */
+function evaluar(theta, act, x1, x2) {
+  var suma = theta[16];
+  for (var j = 0; j < NOCULTA; j++) {
+    var z = theta[0 * NOCULTA + j] * x1 + theta[1 * NOCULTA + j] * x2 + theta[8 + j];
+    suma += theta[12 + j] * (act === 'relu' ? Math.max(0, z) : Math.tanh(z));
+  }
+  var c = Math.min(100, Math.max(-100, suma));   // el recorte de aplicarActivacion
+  return 1 / (1 + Math.exp(-c));
+}
+function preActivacion(theta, j, x1, x2) {
+  return theta[0 * NOCULTA + j] * x1 + theta[1 * NOCULTA + j] * x2 + theta[8 + j];
+}
+function maxAbs(theta) {
+  var M = 0;
+  for (var k = 0; k < theta.length; k++) if (Math.abs(theta[k]) > M) M = Math.abs(theta[k]);
+  return M;
+}
+
+/* ── Retícula y frontera ───────────────────────────────────────────────────
+   La retícula recorre x2 de +1 a −1 en las filas y x1 de −1 a +1 en las
+   columnas; las dos rutinas de abajo leen la matriz en ese orden, y la
+   frontera se traza por cambio de signo entre celdas vecinas. */
+function reticula(theta, act) {
+  var g = new Float64Array(RES * RES);
+  for (var i = 0; i < RES; i++) {
+    var x2 = 1 - (i / (RES - 1)) * 2;
+    for (var j = 0; j < RES; j++) g[i * RES + j] = evaluar(theta, act, -1 + (j / (RES - 1)) * 2, x2);
+  }
+  return g;
+}
+function aDatos(i, j) {
+  return { x1: -1 + (j / (RES - 1)) * 2, x2: 1 - (i / (RES - 1)) * 2 };
+}
+/* calcularFrontera: cambio de signo respecto de 0.5 entre celdas vecinas,
+   con interpolación lineal sobre la arista que cruza. */
+function frontera(g) {
+  var P = [];
+  for (var i = 0; i < RES; i++) for (var j = 0; j < RES; j++) {
+    var v = g[i * RES + j];
+    if (j + 1 < RES) {
+      var vr = g[i * RES + j + 1];
+      if ((v - 0.5) * (vr - 0.5) < 0) {
+        var t = (0.5 - v) / (vr - v), a = aDatos(i, j), b = aDatos(i, j + 1);
+        P.push({ x1: a.x1 + t * (b.x1 - a.x1), x2: a.x2 + t * (b.x2 - a.x2) });
+      }
+    }
+    if (i + 1 < RES) {
+      var vd = g[(i + 1) * RES + j];
+      if ((v - 0.5) * (vd - 0.5) < 0) {
+        var u = (0.5 - v) / (vd - v), c = aDatos(i, j), d = aDatos(i + 1, j);
+        P.push({ x1: c.x1 + u * (d.x1 - c.x1), x2: c.x2 + u * (d.x2 - c.x2) });
+      }
+    }
+  }
+  return P;
+}
+/* Orden angular alrededor del centroide. Vale
+   porque el lazo es estrellado respecto de su centroide en las dos redes —
+   medido: cero retrocesos de ángulo, salto máximo entre vecinos 0.053 frente
+   a un paso de retícula de 0.041. */
+function ordenar(P) {
+  if (P.length === 0) return P;
+  var cx = 0, cy = 0;
+  for (var k = 0; k < P.length; k++) { cx += P[k].x1; cy += P[k].x2; }
+  cx /= P.length; cy /= P.length;
+  return P.slice().sort(function (a, b) {
+    return Math.atan2(a.x2 - cy, a.x1 - cx) - Math.atan2(b.x2 - cy, b.x1 - cx);
+  });
+}
+
+/* ── El contador de error ──────────────────────────────────────────────────
+   Se recalcula en cada redibujado. Con los pesos originales vale 0 y 0 en las
+   dos redes; si marcara otra cosa, algo se horneó mal. */
+function malClasificados(theta, act, puntos) {
+  var n = 0;
+  for (var k = 0; k < puntos.length; k++) {
+    var p = puntos[k];
+    if ((evaluar(theta, act, p[0], p[1]) >= 0.5 ? 1 : 0) !== p[2]) n++;
+  }
+  return n;
+}
+
+/* ── Geometría del diagrama ────────────────────────────────────────────────
+   El diagrama es la mitad del objeto de la página. Las posiciones verticales siguen su regla
+   (i+1)/(n+1) y el nodo de sesgo va entre capas, al 28 % del tramo. */
+/* DIAG_W iguala el ancho util del panel del mapa (MAPA_L), para que las dos
+   cajas del tablero salgan del mismo ancho.
+
+   El reparto VERTICAL ya no sale de dos margenes sino de dos medidas con
+   sentido en pantalla: Y_H1 es la altura del centro de h1, y vale MARCO — los
+   32 px donde empieza el cuadro blanco del mapa, que es el lienzo de al lado —
+   y PASO_V es la separacion entre ocultas consecutivas. De ahi se despejan RH
+   y el margen superior arr que la regla (i+1)/(n+1) necesita para poner h1
+   justo en Y_H1; arr sale NEGATIVO porque esa regla baja la primera de cuatro
+   un quinto de la region, y no pasa nada: es un margen virtual, sólo lo usa la
+   propia regla.
+
+   PASO_V es la perilla del alto: con 120 el fondo dibujado cae en 462 y el
+   panel de la red termina casi a la misma altura que el del mapa; con 79 la
+   red conserva el reparto que tenia antes y el panel queda unos 120 px mas
+   corto que el del mapa. DIAG_H tiene que ir a la par: fondo dibujado + 8. */
+var Y_H1 = 32, PASO_V = 120;
+var DIAG_W = 520, DIAG_H = 470;
+var GEO = (function () {
+  var izq = 78, der = 92;
+  var RH = PASO_V * (NOCULTA + 1), arr = Y_H1 - PASO_V;
+  var RW = DIAG_W - izq - der;
+  var RADIO = 17, TB = 13;
+  var capas = [NENT, NOCULTA, 1];
+  var xs = [izq, izq + RW * 0.5, izq + RW];
+  var ys = capas.map(function (n) {
+    var v = [];
+    for (var i = 0; i < n; i++) v.push(arr + RH * (i + 1) / (n + 1));
+    return v;
+  });
+  var xBias = [], yBias = [];
+  for (var c = 0; c < capas.length - 1; c++) {
+    xBias.push(xs[c] + (xs[c + 1] - xs[c]) * 0.28);
+    yBias.push(Math.max.apply(null, ys[c].concat(ys[c + 1])) + RADIO * 2.4);
+  }
+  return { xs: xs, ys: ys, xBias: xBias, yBias: yBias, RADIO: RADIO, TB: TB, arr: arr, capas: capas };
+})();
+
+/* ── EL ANCLA ESTRUCTURAL ──────────────────────────────────────────────────
+   El diagrama NO se dibuja contando aristas sobre la marcha: sale de un
+   arreglo de 17 descriptores, uno por parámetro, cada uno con su índice en
+   theta, sus dos extremos en pantalla y su rótulo. Antes de dibujar nada se
+   verifica que son 17 y que los índices son una permutación de 0..16. Si
+   falla, lanza y no se crea ningún lienzo. */
+function construirAristas() {
+  var a = [];
+  for (var i = 0; i < NENT; i++)
+    for (var j = 0; j < NOCULTA; j++)
+      a.push({ idx: i * NOCULTA + j, tipo: 'entrada',
+               ax: GEO.xs[0], ay: GEO.ys[0][i], bx: GEO.xs[1], by: GEO.ys[1][j],
+               rotulo: 'x' + SUB[i] + '→h' + SUB[j] });
+  for (var j2 = 0; j2 < NOCULTA; j2++)
+    a.push({ idx: 8 + j2, tipo: 'sesgo',
+             ax: GEO.xBias[0], ay: GEO.yBias[0], bx: GEO.xs[1], by: GEO.ys[1][j2],
+             rotulo: 'b→h' + SUB[j2] });
+  for (var j3 = 0; j3 < NOCULTA; j3++)
+    a.push({ idx: 12 + j3, tipo: 'salida',
+             ax: GEO.xs[1], ay: GEO.ys[1][j3], bx: GEO.xs[2], by: GEO.ys[2][0],
+             rotulo: 'h' + SUB[j3] + '→y' });
+  a.push({ idx: 16, tipo: 'sesgo',
+           ax: GEO.xBias[1], ay: GEO.yBias[1], bx: GEO.xs[2], by: GEO.ys[2][0],
+           rotulo: 'b→y' });
+  return a;
+}
+function verificarAncla(aristas) {
+  if (!Array.isArray(aristas))
+    throw new Error('ancla de los 17: el descriptor no es un arreglo');
+  if (aristas.length !== NPARAM)
+    throw new Error('ancla de los 17: hay ' + aristas.length + ' descriptores y tiene que haber ' +
+                    NPARAM + '. El diagrama no puede desmentir al vector de parámetros.');
+  var visto = [];
+  for (var k = 0; k < NPARAM; k++) visto.push(0);
+  for (var n = 0; n < aristas.length; n++) {
+    var idx = aristas[n].idx;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= NPARAM)
+      throw new Error('ancla de los 17: el descriptor ' + n + ' apunta al índice ' + idx +
+                      ', fuera de 0..' + (NPARAM - 1));
+    visto[idx]++;
+  }
+  for (var m = 0; m < NPARAM; m++) {
+    if (visto[m] === 0)
+      throw new Error('ancla de los 17: ningún descriptor apunta al parámetro ' + m +
+                      ' (' + NOMBRES[m] + '). Los índices tienen que ser una permutación de 0..16.');
+    if (visto[m] > 1)
+      throw new Error('ancla de los 17: el parámetro ' + m + ' (' + NOMBRES[m] + ') aparece en ' +
+                      visto[m] + ' descriptores. Los índices tienen que ser una permutación de 0..16.');
+  }
+  return aristas;
+}
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+
+var MAPA_L = 520, MARCO = 32;
+function aPixel(x1, x2) {
+  var p = MARCO, lado = MAPA_L - 2 * MARCO;
+  return { px: p + (x1 + 1) / 2 * lado, py: p + (1 - (x2 + 1) / 2) * lado };
+}
+
+function dibujarMapa(vista, theta, act) {
+  var ctx = vista.ctx, lado = MAPA_L - 2 * MARCO;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  var g = reticula(theta, act);
+  var cel = lado / RES;
+  for (var i = 0; i < RES; i++) for (var j = 0; j < RES; j++) {
+    var yhat = g[i * RES + j];
+    var confianza = Math.abs(yhat - 0.5) * 2;
+    var alfa = confianza * 180 / 255;
+    ctx.fillStyle = (yhat < 0.5 ? 'rgba(75,139,190,' : 'rgba(232,130,90,') + alfa.toFixed(4) + ')';
+    // los dos bordes se redondean al mismo entero que el de la celda vecina:
+    // solapar un pelo deja juntas visibles y convierte el mapa en una rejilla
+    var cx0 = Math.round(MARCO + j * cel), cx1 = Math.round(MARCO + (j + 1) * cel);
+    var cy0 = Math.round(MARCO + i * cel), cy1 = Math.round(MARCO + (i + 1) * cel);
+    ctx.fillRect(cx0, cy0, cx1 - cx0, cy1 - cy0);
+  }
+
+  // ejes y marco
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+  ctx.strokeRect(MARCO + 0.5, MARCO + 0.5, lado - 1, lado - 1);
+  ctx.strokeStyle = '#aeb7bf';
+  var o = aPixel(0, 0), a0 = aPixel(-1, 0), a1 = aPixel(1, 0), b0 = aPixel(0, -1), b1 = aPixel(0, 1);
+  ctx.beginPath();
+  ctx.moveTo(a0.px, o.py); ctx.lineTo(a1.px, o.py);
+  ctx.moveTo(o.px, b0.py); ctx.lineTo(o.px, b1.py);
+  ctx.stroke();
+  ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (var v = -1; v <= 1.001; v += 0.5) {
+    var vr = Math.round(v * 10) / 10;
+    if (Math.abs(vr) < 0.01) continue;
+    var t1 = aPixel(vr, 0), t2 = aPixel(0, vr);
+    ctx.beginPath(); ctx.moveTo(t1.px, o.py - 4); ctx.lineTo(t1.px, o.py + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(o.px - 4, t2.py); ctx.lineTo(o.px + 4, t2.py); ctx.stroke();
+    ctx.fillText(vr.toFixed(1), t1.px, o.py + 6);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(vr.toFixed(1), o.px - 6, t2.py);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  }
+  ctx.fillStyle = '#3a434b'; ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText('x₁', a1.px + 7, o.py);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('x₂', o.px, b1.py - 7);
+
+  // la frontera, como polígono cerrado
+  var P = ordenar(frontera(g));
+  if (P.length > 1) {
+    ctx.strokeStyle = 'rgba(28,34,40,0.85)'; ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (var k = 0; k < P.length; k++) {
+      var q = aPixel(P[k].x1, P[k].x2);
+      if (k === 0) ctx.moveTo(q.px, q.py); else ctx.lineTo(q.px, q.py);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
+
+  // los datos: entrenamiento en círculo, prueba en cruz
+  for (var d = 0; d < PUNTOS_TRAIN.length; d++) {
+    var pt = PUNTOS_TRAIN[d], pp = aPixel(pt[0], pt[1]);
+    ctx.fillStyle = COLOR_CLASE[pt[2]];
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pp.px, pp.py, 4.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  var BRAZO = 5;
+  ctx.lineWidth = 2.3;
+  for (var e = 0; e < PUNTOS_TEST.length; e++) {
+    var qt = PUNTOS_TEST[e], qq = aPixel(qt[0], qt[1]);
+    ctx.strokeStyle = COLOR_CLASE[qt[2]];
+    ctx.beginPath();
+    ctx.moveTo(qq.px - BRAZO, qq.py); ctx.lineTo(qq.px + BRAZO, qq.py);
+    ctx.moveTo(qq.px, qq.py - BRAZO); ctx.lineTo(qq.px, qq.py + BRAZO);
+    ctx.stroke();
+  }
+  return P.length;
+}
+
+/* La forma de la activación de un nodo, en blanco dentro de su círculo. Caja
+   de media anchura A y media altura B = A/2: con esa relación la diagonal de
+   la ReLU queda a 45°, y tiene que seguir valiendo si cambia A. La esquina de
+   la caja queda a 12.3 px del centro, holgada dentro del radio 17. */
+function glifoActivacion(ctx, cx, cy, cual) {
+  var A = 11, B = A / 2, k, t;
+  ctx.save();
+  // la rayita del cero; en relu el tramo plano de la curva ya está ahí
+  if (cual !== 'relu') {
+    var y0 = (cual === 'tanh') ? cy : cy + B;
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx - A, y0); ctx.lineTo(cx + A, y0); ctx.stroke();
+  }
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (cual === 'relu') {
+    ctx.moveTo(cx - A, cy + B); ctx.lineTo(cx, cy + B); ctx.lineTo(cx + A, cy - B);
+  } else if (cual === 'tanh') {
+    for (k = 0; k < 13; k++) {
+      t = -2.6 + k * (5.2 / 12);
+      var xt = cx + (t / 2.6) * A, yt = cy - Math.tanh(t) * B;
+      if (k === 0) ctx.moveTo(xt, yt); else ctx.lineTo(xt, yt);
+    }
+  } else {
+    // sale idéntica a la de tanh porque sigma(z) = (tanh(z/2)+1)/2
+    for (k = 0; k < 13; k++) {
+      t = -5.2 + k * (10.4 / 12);
+      var xs = cx + (t / 5.2) * A, ys = (cy + B) - (1 / (1 + Math.exp(-t))) * 2 * B;
+      if (k === 0) ctx.moveTo(xs, ys); else ctx.lineTo(xs, ys);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* El diagrama. El grosor sale de theta[a.idx] y de nada más: si el descriptor
+   apuntara a otro parámetro, la línea engordaría en otro sitio. Contra qué se
+   mide, y por qué, va en el comentario de adentro. */
+function dibujarRed(vista, theta, aristas, resalte, selec, act) {
+  var ctx = vista.ctx;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, vista.w, vista.h);
+
+  /* El grosor y la opacidad se miden contra el TOPE DEL DESLIZADOR, no contra
+     el mayor |θ| de los diecisiete actuales. Con el normalizador móvil, que es
+     como estaba, arrastrar el parámetro más grande cambiaba el grosor de las
+     otras dieciséis líneas solas: mientras ese parámetro fuera el máximo, el
+     normalizador viajaba con él, y el alumno veía moverse dieciséis líneas que
+     no había tocado. Con el tope fijo, el mismo valor se dibuja siempre igual y
+     dos posiciones del pomo son comparables, igual que el propio recorrido.
+
+     La raíz está por resolución en el extremo chico: con el cociente directo
+     contra 6, θ = 0.1 y θ = 0.5 saldrían a 1.15 y 1.75 px y serían casi el
+     mismo pelo; con la raíz salen a 2.2 y 3.6 px.
+
+     Las dos funciones reciben el VALOR del parámetro, no el descriptor de la
+     arista, y ninguna mira el resto del vector: ahí está todo el arreglo. */
+  var porIdx = {};
+  for (var m = 0; m < aristas.length; m++) porIdx[aristas[m].idx] = aristas[m];
+  function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / RANGO_MAX, 1)); }
+  function grosorDe(v) { return 1 + fuerza(v) * 9; }
+
+  ctx.lineCap = 'round';
+  /* Los halos van DEBAJO de todas las líneas: así ninguno tapa a su vecina.
+     El seleccionado y el resaltado se marcan distinto, para que se distingan
+     cuando el ratón está encima de otra línea. */
+  [{ i: selec,   color: 'rgba(140,90,200,0.55)', mas: 15 },
+   { i: resalte, color: 'rgba(90,105,120,0.32)', mas: 9  }].forEach(function (h) {
+    if (h.i === null || h.i === undefined || !porIdx[h.i]) return;
+    var a = porIdx[h.i];
+    ctx.lineWidth = grosorDe(theta[a.idx]) + h.mas;
+    ctx.strokeStyle = h.color;
+    ctx.beginPath(); ctx.moveTo(a.ax, a.ay); ctx.lineTo(a.bx, a.by); ctx.stroke();
+  });
+
+  for (var n = 0; n < aristas.length; n++) {
+    var a = aristas[n], w = theta[a.idx];
+    var t = fuerza(w);
+    /* El resaltado engorda y gana opacidad, pero NO cambia de color: el color
+       codifica el signo y no puede querer decir dos cosas. */
+    var realce = (a.idx === resalte) ? 2.5 : 0;
+    var opac = (a.idx === resalte || a.idx === selec) ? Math.min(1, 0.55 + t * 0.45) : 0.28 + t * 0.7;
+    ctx.lineWidth = grosorDe(w) + realce;
+    ctx.strokeStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + opac.toFixed(3) + ')';
+    ctx.beginPath(); ctx.moveTo(a.ax, a.ay); ctx.lineTo(a.bx, a.by); ctx.stroke();
+  }
+
+  var COLOR_NODO = ['rgb(200,100,100)', 'rgb(80,130,200)', 'rgb(80,180,120)'];
+  var BORDE_NODO = ['rgb(120,60,60)', 'rgb(48,78,120)', 'rgb(48,108,72)'];
+  for (var c = 0; c < GEO.capas.length; c++) {
+    var idc = c === 0 ? 0 : (c === GEO.capas.length - 1 ? 2 : 1);
+    for (var i = 0; i < GEO.capas[c]; i++) {
+      ctx.fillStyle = COLOR_NODO[idc]; ctx.strokeStyle = BORDE_NODO[idc]; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(GEO.xs[c], GEO.ys[c][i], GEO.RADIO, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      if (idc === 1) glifoActivacion(ctx, GEO.xs[c], GEO.ys[c][i], act);
+      else if (idc === 2) glifoActivacion(ctx, GEO.xs[c], GEO.ys[c][i], 'sigmoide');
+    }
+  }
+  // nodos de sesgo: triángulo
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)'; ctx.lineWidth = 2;
+  for (var s = 0; s < GEO.xBias.length; s++) {
+    var bx = GEO.xBias[s], by = GEO.yBias[s], T = GEO.TB;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - T); ctx.lineTo(bx - T, by + T); ctx.lineTo(bx + T, by + T);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6d5b00'; ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('1', bx, by + T + 4);
+    ctx.fillStyle = 'rgb(255,220,50)';
+  }
+
+  /* Los rotulos de capa (Entrada, Oculta, Salida) se dibujaban aqui, sobre el
+     margen superior. Se quitaron: la forma de la red los dice sola y ocupaban
+     34 px de alto. */
+  ctx.font = '14px system-ui, sans-serif'; ctx.fillStyle = '#3a434b';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (var q = 0; q < NENT; q++) ctx.fillText('x' + SUB[q], GEO.xs[0] - GEO.RADIO - 8, GEO.ys[0][q]);
+  ctx.textAlign = 'left';
+  for (var h = 0; h < NOCULTA; h++)
+    ctx.fillText('h' + SUB[h], GEO.xs[1] + GEO.RADIO + 8, GEO.ys[1][h] - GEO.RADIO - 2);
+  ctx.fillText('ŷ', GEO.xs[2] + GEO.RADIO + 8, GEO.ys[2][0]);
+
+  /* Las barritas de estado, SÓLO con tanh. Cada una es el recorrido completo de
+     la activación, de −1 a 1 con el cero marcado, y dentro, coloreado, el tramo
+     que esa neurona barre sobre los 200 puntos. Se recalcula en cada redibujado
+     — que es el punto: se mueve un parámetro, el mapa no se inmuta, y la
+     barrita dice que la neurona está pegada a un extremo.
+     Sin números ni rótulos: la explicación va en la hoja de apoyo. */
+  if (act === 'tanh') {
+    var BW = 84, BH = 9, BY = GEO.RADIO + 8;
+    for (var n2 = 0; n2 < NOCULTA; n2++) {
+      var x0 = GEO.xs[1] - BW / 2, y0 = GEO.ys[1][n2] + BY;
+      ctx.fillStyle = '#f1f4f7'; ctx.strokeStyle = '#b9c2ca'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.rect(x0 + 0.5, y0 + 0.5, BW - 1, BH - 1);
+      ctx.fill(); ctx.stroke();
+      var tr = tramoNeurona(theta, act, n2);
+      var aX = x0 + (tr.min + 1) / 2 * BW, bX = x0 + (tr.max + 1) / 2 * BW;
+      if (bX - aX < 2) { var c2 = (aX + bX) / 2; aX = c2 - 1; bX = c2 + 1; }
+      ctx.fillStyle = 'rgba(80,130,200,0.88)';
+      ctx.fillRect(aX, y0 + 1.5, bX - aX, BH - 3);
+      /* el cero se marca ENCIMA del tramo: si quedara debajo, una neurona que
+         cruza el cero lo escondería justo cuando más se quiere ver. */
+      ctx.strokeStyle = 'rgba(40,48,56,0.75)'; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(x0 + BW / 2, y0 - 1.5); ctx.lineTo(x0 + BW / 2, y0 + BH + 1.5);
+      ctx.stroke();
+    }
+  }
+}
+
+/* ── El tramo que barre cada neurona oculta sobre los 200 puntos ───────────
+   Sólo tiene sentido con una activación ACOTADA: la tanh recorre (−1, 1) y hay
+   un recorrido fijo contra el cual medir. La ReLU no tiene techo, así que no
+   existe ese recorrido y las barritas no se dibujan en esa red — un indicador
+   con la misma forma y sin la misma escala confundiría más de lo que aclara. */
+function tramoNeurona(theta, act, j) {
+  var mn = Infinity, mx = -Infinity;
+  function ver(p) {
+    var z = preActivacion(theta, j, p[0], p[1]);
+    var h = (act === 'relu') ? Math.max(0, z) : Math.tanh(z);
+    if (h < mn) mn = h;
+    if (h > mx) mx = h;
+  }
+  for (var a = 0; a < PUNTOS_TRAIN.length; a++) ver(PUNTOS_TRAIN[a]);
+  for (var b = 0; b < PUNTOS_TEST.length; b++) ver(PUNTOS_TEST[b]);
+  return { min: mn, max: mx };
+}
+
+/* ── Selección con el ratón ────────────────────────────────────────────────
+   Las 17 líneas convergen en los nodos, y cerca de uno hay hasta cinco a pocos
+   píxeles unas de otras. Señalar la equivocada es el peor fallo posible aquí,
+   porque el alumno creería estar moviendo un parámetro mientras mueve otro.
+   La regla es: ANTE LA DUDA NO SE SELECCIONA NADA. */
+function distanciaPuntoSegmento(px, py, ax, ay, bx, by) {
+  var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+  var t = (L2 === 0) ? 0 : ((px - ax) * dx + (py - ay) * dy) / L2;
+  t = Math.max(0, Math.min(1, t));
+  var qx = ax + t * dx, qy = ay + t * dy;
+  return Math.hypot(px - qx, py - qy);
+}
+/* Distancias a los 17 segmentos, ordenadas. Se usan SÓLO las posiciones de los
+   nodos en pantalla, nunca el grosor dibujado: un parámetro chico se dibuja
+   como un pelo y sería imposible de atinar, y uno grande acapararía a sus
+   vecinas — el blanco de un parámetro no puede depender de su valor. */
+function distanciasA(px, py) {
+  var d = [];
+  for (var n = 0; n < ARISTAS.length; n++) {
+    var a = ARISTAS[n];
+    d.push({ idx: a.idx, d: distanciaPuntoSegmento(px, py, a.ax, a.ay, a.bx, a.by) });
+  }
+  d.sort(function (p, q) { return p.d - q.d; });
+  return d;
+}
+/* Hay candidata sólo si se cumplen las TRES: la más cercana cae dentro de la
+   tolerancia, la siguiente está al menos al doble de distancia, y la siguiente
+   está además a MARGEN_SEPARACION píxeles de la primera. Si falta cualquiera,
+   las dos compiten en esa posición y NO hay candidata, por minúscula que sea
+   la primera. */
+function candidataEn(px, py) {
+  var d = distanciasA(px, py);
+  if (d[0].d > TOL_CAPTURA) return null;
+  if (d[1].d < 2 * d[0].d) return null;
+  if (d[1].d - d[0].d < MARGEN_SEPARACION) return null;
+  return d[0].idx;
+}
+
+/* ── Montaje ───────────────────────────────────────────────────────────────*/
+var ARISTAS = null, vistaMapa = null, vistaRed = null, nodos = {}, mando = {};
+var seleccionado = null;   /* índice en theta, o null */
+var resaltado = null;      /* la candidata bajo el ratón, o null */
+
+function redibujar() {
+  var r = red();
+  dibujarMapa(vistaMapa, r.trabajo, r.activacion);
+  dibujarRed(vistaRed, r.trabajo, ARISTAS, resaltado, seleccionado, r.activacion);
+  actualizarLectura();
+
+  var eTrain = malClasificados(r.trabajo, r.activacion, PUNTOS_TRAIN);
+  var eTest  = malClasificados(r.trabajo, r.activacion, PUNTOS_TEST);
+  nodos.cifraTrain.textContent = eTrain;
+  nodos.cifraTest.textContent = eTest;
+  nodos.cifraTrain.className = 'cifra ' + (eTrain === 0 ? 'cero' : 'noCero');
+  nodos.cifraTest.className = 'cifra ' + (eTest === 0 ? 'cero' : 'noCero');
+  /* Describe la frontera de la red ENTRENADA; sobre un mapa al azar seria
+     falso, asi que no se dice hasta que se revela. */
+  nodos.pieRed.textContent = revelado ? r.pie : '';
+  Array.prototype.forEach.call(nodos.etiquetas, function (lab) {
+    lab.className = (lab.dataset.red === redActiva) ? 'puesto' : '';
+  });
+}
+
+/* Posición en píxeles del centro del pomo para un valor dado. El pomo recorre
+   desde POMO/2 hasta PISTA_W − POMO/2, no de 0 a PISTA_W: sin descontarlo las
+   dos marcas quedarían corridas respecto del pomo en los extremos. */
+function aPista(v) {
+  var t = (v - RANGO_MIN) / (RANGO_MAX - RANGO_MIN);
+  return POMO / 2 + t * (PISTA_W - POMO);
+}
+function actualizarLectura() {
+  if (seleccionado === null) return;
+  mando.val.textContent = red().trabajo[seleccionado].toFixed(3);
+}
+/* Se llama cuando cambia la SELECCIÓN o la RED, no en cada movimiento: escribir
+   slider.value mientras el alumno arrastra pelearía con el arrastre. */
+function sincronizarMando() {
+  var r = red();
+  if (seleccionado === null) {
+    mando.caja.className = 'mando apagado';
+    mando.slider.disabled = true;
+    mando.slider.value = 0;
+    mando.rot.className = 'mando-rot vacio';
+    mando.rot.textContent = 'ningún parámetro seleccionado — haz clic en una línea del diagrama';
+    mando.val.className = 'mando-val nada';
+    mando.val.textContent = '—';
+    mando.orig.style.visibility = 'hidden';
+    return;
+  }
+  mando.caja.className = 'mando';
+  mando.slider.disabled = false;
+  mando.slider.value = r.trabajo[seleccionado];
+  mando.rot.className = 'mando-rot';
+  mando.rot.textContent = NOMBRES[seleccionado] + '   (θ[' + seleccionado + '])';
+  mando.val.className = 'mando-val';
+  /* La marca tenue va en el valor ORIGINAL de ese parámetro EN LA RED QUE ESTÁ
+     SELECCIONADA. Los cambios se acumulan al saltar de un parámetro a otro, así
+     que sin ella no hay forma de saber cuánto se alejó uno. */
+  mando.orig.style.visibility = revelado ? 'visible' : 'hidden';
+  if (revelado) mando.orig.style.left = (aPista(r.original[seleccionado]) - 1.5) + 'px';
+  actualizarLectura();
+}
+/* Devuelve los 17 de la red seleccionada a sus valores ORIGINALES EXACTOS —los
+   horneados—, no a los redondeados a la centésima del paso del deslizador. La
+   otra red no se toca: cada una conserva sus propios valores de trabajo. */
+function restaurarTodo() {
+  var r = red();
+  r.trabajo = r.original.slice();
+  /* La primera vez que se aprieta, además de poner los pesos, destapa lo que
+     enseña la solución. No se vuelve atrás: una vez vista, vista. */
+  if (!revelado) { revelado = true; abrirLoDeRevelado(); }
+  sincronizarMando();   // el que estuviera seleccionado sigue estándolo
+  redibujar();
+}
+
+/* Los dos renglones de leyenda que hablan del valor entrenado. Se arman
+   ocultos en montar y se encienden aquí. */
+function abrirLoDeRevelado() {
+  ['nota-dblclic', 'nota-orig'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (e) e.style.display = '';
+  });
+}
+
+/* Cuenta el parámetro movido y, al llegar al umbral, cambia la consigna de la
+   barra por los dos botones. Cuenta ÍNDICES DISTINTOS, no movimientos: un solo
+   arrastre del deslizador dispara decenas de eventos. */
+function registrarTocado(idx) {
+  if (TOCADOS.indexOf(idx) < 0) TOCADOS.push(idx);
+  if (ranuraAbierta || TOCADOS.length < UMBRAL_RANURA) return;
+  ranuraAbierta = true;
+  document.getElementById('ranura-consigna').style.display = 'none';
+  document.getElementById('btn-originales').style.display = '';
+  document.getElementById('btn-aleatorios').style.display = '';
+}
+/* Sortea los 17 de la red seleccionada, cada uno uniforme en el recorrido del
+   deslizador: apretarlo equivale a poner los diecisiete deslizadores al azar,
+   así que los valores caen en la rejilla del paso, como caerían a mano. */
+function aleatorizarTodo() {
+  var r = red();
+  nSorteo++;
+  var semilla = SEMILLA_BASE + nSorteo;
+  var rng = new Sorteador(semilla), v = [];
+  for (var k = 0; k < NPARAM; k++) {
+    var u = RANGO_MIN + rng.next() * (RANGO_MAX - RANGO_MIN);
+    v.push(Math.round(u / PASO) * PASO);
+  }
+  r.trabajo = v;
+  /* Aqui se escribia en pantalla 'sorteo n · semilla s'. Ya no se muestra, pero
+     la regla sigue siendo esa: el sorteo n usa la semilla SEMILLA_BASE + n, de
+     modo que cualquier sorteo se reproduce recargando y apretando n veces. */
+  sincronizarMando();
+  redibujar();
+}
+/* Devuelve UN parámetro a su valor original exacto. Existe porque el paso del
+   deslizador es de una centésima: volver a mano deja −1.11 donde iba
+   −1.108638…, y hoy no hay otra forma de deshacer uno solo sin perder los
+   demás. */
+function restaurarUno(idx) {
+  var r = red();
+  r.trabajo[idx] = r.original[idx];
+  seleccionar(idx);
+}
+
+/* Al seleccionar otro parámetro el deslizador salta al valor que ese parámetro
+   tenga AHORA, y la marca tenue a su original. El que se deja atrás se queda
+   donde el deslizador lo dejó. */
+function seleccionar(idx) {
+  seleccionado = idx;
+  sincronizarMando();
+  redibujar();
+}
+
+function deseleccionar() {
+  seleccionado = null;
+  sincronizarMando();
+  redibujar();
+}
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+
+  var sel = document.createElement('div');
+  sel.className = 'selector';
+  sel.innerHTML = '<span>Activación de la capa oculta:</span>';
+  ['relu', 'tanh'].forEach(function (clave) {
+    var lab = document.createElement('label');
+    lab.dataset.red = clave;
+    var inp = document.createElement('input');
+    inp.type = 'radio'; inp.name = 'red'; inp.value = clave;
+    inp.checked = (clave === redActiva);
+    inp.addEventListener('change', function () {
+      /* activación, trabajo y original cambian a la vez. Cada red conserva sus
+         PROPIOS valores de trabajo: si el alumno mueve tres parámetros en ReLU,
+         pasa a Tanh y vuelve, los tres siguen movidos. */
+      redActiva = clave;
+      sincronizarMando();    // el pomo salta al valor en ESTA red, y la marca
+      redibujar();           // tenue al original de ESTA red
+    });
+    lab.appendChild(inp);
+    lab.appendChild(document.createTextNode(REDES[clave].etiqueta));
+    sel.appendChild(lab);
+  });
+  /* Aqui iba un span.nota que decia 'pesos originales, tal como quedaron al
+     converger' o 'pesos modificados respecto de los originales'. Se quito: el
+     estado por parametro ya lo dice la marca tenue del deslizador. */
+  var div = document.createElement('span');
+  div.className = 'divisor';
+  sel.appendChild(div);
+  var ranura = document.createElement('span');
+  ranura.className = 'ranura';
+  var consigna = document.createElement('span');
+  consigna.className = 'consigna'; consigna.id = 'ranura-consigna';
+  consigna.textContent = 'acomoda los pesos a mano y baja los mal clasificados';
+  ranura.appendChild(consigna);
+  var bOrig = document.createElement('button');
+  bOrig.type = 'button'; bOrig.id = 'btn-originales';
+  bOrig.textContent = 'Mostrar los pesos entrenados';
+  bOrig.style.display = 'none';
+  ranura.appendChild(bOrig);
+  var bAzar = document.createElement('button');
+  bAzar.type = 'button'; bAzar.id = 'btn-aleatorios'; bAzar.textContent = 'Valores al azar';
+  bAzar.style.display = 'none';
+  ranura.appendChild(bAzar);
+  sel.appendChild(ranura);
+  raiz.appendChild(sel);
+
+  var tablero = document.createElement('div');
+  tablero.className = 'tablero';
+
+  // ── columna del mapa, con el contador encima ──
+  var cajaMapa = document.createElement('div');
+  cajaMapa.className = 'caja';
+  cajaMapa.style.width = (MAPA_L + 38) + 'px';   // si no, la leyenda ensancha la caja
+                                                 // y el par deja de ir lado a lado
+  var cont = document.createElement('div');
+  cont.className = 'contador';
+  cont.innerHTML =
+    '<div class="par"><span class="cifra cero" id="err-train">–</span>' +
+    '<span class="rotulo">mal clasificados<br><span class="de">de 160 de entrenamiento</span></span></div>' +
+    '<div class="par"><span class="cifra cero" id="err-test">–</span>' +
+    '<span class="rotulo">mal clasificados<br><span class="de">de 40 de prueba</span></span></div>';
+  cajaMapa.appendChild(cont);
+  vistaMapa = lienzo(MAPA_L, MAPA_L);
+  cajaMapa.appendChild(vistaMapa.el);
+  var legM = document.createElement('div');
+  legM.className = 'leyenda';
+  legM.innerHTML =
+    '<span class="it"><span class="punto" style="background:#4b8bbe"></span>clase 0</span>' +
+    '<span class="it"><span class="punto" style="background:#e8825a"></span>clase 1</span>' +
+    '<span class="it">● entrenamiento · ✚ prueba</span>' +
+    '<span class="it"><span class="marca" style="background:#1c2228"></span>frontera, donde la salida vale 0.5</span>' +
+    '<span class="it">intensidad = confianza</span>';
+  cajaMapa.appendChild(legM);
+  tablero.appendChild(cajaMapa);
+
+  // ── columna del diagrama ──
+  var cajaRed = document.createElement('div');
+  cajaRed.className = 'caja';
+  cajaRed.style.width = (DIAG_W + 38) + 'px';
+  /* El mando va PEGADO al diagrama, que es donde se elige el parámetro, y con
+     el mapa al lado para ver el efecto sin desplazar. Va ENCIMA del lienzo:
+     suben la cabecera con el nombre y el valor, la pista y su pie con los dos
+     extremos del rango. La nota de leyendas se queda debajo del lienzo. */
+  var cajaMando = document.createElement('div');
+  cajaMando.className = 'mando apagado';
+  cajaMando.innerHTML =
+    '<div class="mando-cab">' +
+      '<span class="mando-rot vacio" id="mando-rot">ningún parámetro seleccionado</span>' +
+      '<span class="mando-val nada" id="mando-val">—</span>' +
+    '</div>' +
+    '<div class="pista" id="mando-pista" style="width:' + PISTA_W + 'px">' +
+      '<span class="hito hito-orig" id="mando-orig"></span>' +
+      '<span class="hito hito-cero" id="mando-cero"></span>' +
+      '<input type="range" id="mando-slider" disabled' +
+        ' min="' + RANGO_MIN + '" max="' + RANGO_MAX + '" step="' + PASO + '" value="0"' +
+        ' style="width:' + PISTA_W + 'px">' +
+    '</div>' +
+    '<div class="pista-pie" style="width:' + PISTA_W + 'px">' +
+      '<span>' + RANGO_MIN + '</span><span class="der">+' + RANGO_MAX + '</span></div>';
+  cajaRed.appendChild(cajaMando);
+
+  vistaRed = lienzo(DIAG_W, DIAG_H);
+  cajaRed.appendChild(vistaRed.el);
+
+  var notaMando = document.createElement('div');
+  notaMando.className = 'mando-nota';
+  notaMando.innerHTML =
+    '<span class="it" id="nota-dblclic" style="display:none">doble clic en una línea: devuelve ese parámetro a su valor entrenado</span>' +
+    '<span class="it"><span class="llave" style="background:#4a545d"></span>cero, el centro exacto</span>' +
+    '<span class="it" id="nota-orig" style="display:none"><span class="llave" style="background:#0f6e62;opacity:0.5"></span>valor entrenado</span>' +
+    '<span class="it"><span class="llave" style="background:rgba(140,90,200,0.55)"></span>parámetro seleccionado</span>' +
+    '<span class="it"><span class="llave" style="background:rgba(90,105,120,0.32)"></span>bajo el ratón</span>';
+  cajaRed.appendChild(notaMando);
+
+  var legR = document.createElement('div');
+  legR.className = 'leyenda';
+  legR.innerHTML =
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>positivo</span>' +
+    '<span class="it"><span class="marca" style="background:#d23c3c"></span>negativo</span>' +
+    '<span class="it">grosor = |θ| contra el tope del deslizador</span>' +
+    '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
+    '<span class="it" id="pie-red"></span>';
+  cajaRed.appendChild(legR);
+  tablero.appendChild(cajaRed);
+
+  raiz.appendChild(tablero);
+  /* El bloque 'Cómo se hizo' que iba aquí está ahora en el comentario de
+     cabecera del archivo. */
+
+  /* Para que h1 caiga a la altura donde empieza el cuadro del mapa, los dos
+     lienzos tienen que arrancar a la misma altura, y las dos cabeceras no
+     miden lo mismo: el contador a la izquierda, el mando a la derecha. Se
+     miden ya montadas y se le da a la mas corta el sobrante como margen. Se
+     mide, no se calcula: el alto de cada una depende de la fuente y del ancho
+     que tenga el navegador. */
+  var hCont = cont.offsetHeight, hMando = cajaMando.offsetHeight;
+  if (hCont > hMando) cajaMando.style.marginBottom = (14 + hCont - hMando) + 'px';
+  else if (hMando > hCont) cont.style.marginBottom = (14 + hMando - hCont) + 'px';
+
+  nodos.cifraTrain = document.getElementById('err-train');
+  nodos.cifraTest = document.getElementById('err-test');
+  nodos.pieRed = document.getElementById('pie-red');
+  nodos.etiquetas = sel.querySelectorAll('label');
+
+  mando.caja = cajaMando;
+  mando.rot = document.getElementById('mando-rot');
+  mando.val = document.getElementById('mando-val');
+  mando.slider = document.getElementById('mando-slider');
+  mando.orig = document.getElementById('mando-orig');
+  mando.cero = document.getElementById('mando-cero');
+  document.getElementById('btn-originales').addEventListener('click', restaurarTodo);
+  document.getElementById('btn-aleatorios').addEventListener('click', aleatorizarTodo);
+  mando.cero.style.left = (aPista(0) - 1) + 'px';
+
+  /* Cada movimiento del deslizador recalcula el mapa, el grosor de las líneas y
+     el contador de error — en 'input', no en 'change': son 200 evaluaciones de
+     la red y no hay problema de tiempo. */
+  mando.slider.addEventListener('input', function () {
+    if (seleccionado === null) return;
+    red().trabajo[seleccionado] = parseFloat(mando.slider.value);
+    registrarTocado(seleccionado);
+    redibujar();
+  });
+
+  /* El ratón sobre el diagrama. Si no hay candidata no se resalta nada y el
+     cursor es el normal; el clic sin candidata NO HACE NADA — no deselecciona,
+     no selecciona la más cercana, no adivina. La selección se suelta con ESC. */
+  function posRaton(ev) {
+    var r = vistaRed.el.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (vistaRed.w / r.width),
+             y: (ev.clientY - r.top) * (vistaRed.h / r.height) };
+  }
+  vistaRed.el.addEventListener('mousemove', function (ev) {
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    vistaRed.el.style.cursor = (c === null) ? 'default' : 'pointer';
+    if (c !== resaltado) { resaltado = c; redibujar(); }
+  });
+  vistaRed.el.addEventListener('mouseleave', function () {
+    vistaRed.el.style.cursor = 'default';
+    if (resaltado !== null) { resaltado = null; redibujar(); }
+  });
+  vistaRed.el.addEventListener('click', function (ev) {
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    if (c === null) return;          // ante la duda, no se selecciona nada
+    resaltado = c;
+    seleccionar(c);
+  });
+  /* Doble clic: devuelve ESA línea a su original exacto. Vale la misma regla de
+     los cruces — sin candidata no hace nada. La candidata se vuelve a calcular
+     en la posición del doble clic, así que la línea que se restaura es la que
+     está bajo el puntero, que es la que estaba resaltada; y como los dos clics
+     previos seleccionan esa misma línea, el doble clic no dispara de paso la
+     selección de otra cosa. */
+  vistaRed.el.addEventListener('dblclick', function (ev) {
+    ev.preventDefault();
+    if (!revelado) return;   // antes de revelar no hay valor entrenado que ofrecer
+    var q = posRaton(ev), c = candidataEn(q.x, q.y);
+    if (c === null) return;
+    resaltado = c;
+    restaurarUno(c);
+  });
+
+  /* ESC suelta la selección. En document, para que llegue por burbujeo también
+     con el foco en el deslizador. */
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && seleccionado !== null) deseleccionar();
+  });
+
+  sincronizarMando();
+  redibujar();
+}
+
+function fallar(err) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no arrancó y no se dibujó ningún lienzo.\n\n' + err.message;
+  document.getElementById('raiz').appendChild(caja);
+}
+
+/* El ancla corre ANTES de crear ningún lienzo. Si lanza, no hay canvas en el
+   documento: no se dibuja y se cuenta después, se cuenta y sólo entonces se
+   dibuja. */
+try {
+  ARISTAS = verificarAncla(construirAristas());
+  montar();
+} catch (err) {
+  fallar(err);
+  throw err;
+}
+
+/* Lo que la página expone para poder verificarse desde fuera. No añade
+   comportamiento: son las mismas estructuras que ya usa para dibujar. */
+window.EXPL = {
+  aristas: ARISTAS, redes: REDES, nombres: NOMBRES, RES: RES,
+  geo: GEO,   /* sólo posiciones en pantalla: no sabe nada de índices */
+  redActiva: function () { return redActiva; },
+  fijarRed: function (c) { redActiva = c; sincronizarMando(); redibujar(); },
+  TOL_CAPTURA: TOL_CAPTURA, MARGEN_SEPARACION: MARGEN_SEPARACION,
+  RANGO: { min: RANGO_MIN, max: RANGO_MAX, paso: PASO },
+  seleccionado: function () { return seleccionado; },
+  deseleccionar: deseleccionar,
+  resaltado: function () { return resaltado; },
+  candidataEn: candidataEn,
+  distanciasA: distanciasA,
+  distanciaPuntoSegmento: distanciaPuntoSegmento,
+  mando: function () { return mando; },
+  restaurarTodo: restaurarTodo, aleatorizarTodo: aleatorizarTodo,
+  restaurarUno: restaurarUno, tramoNeurona: tramoNeurona,
+  nSorteo: function () { return nSorteo; },
+  THETA_INICIAL: THETA_INICIAL,
+  revelado: function () { return revelado; },
+  tocados: function () { return TOCADOS.slice(); },
+  UMBRAL_RANURA: UMBRAL_RANURA,
+  SEMILLA_BASE: SEMILLA_BASE,
+  aPista: aPista,
+  redibujar: redibujar,
+  lienzoMapa: function () { return vistaMapa; },
+  lienzoRed: function () { return vistaRed; },
+  maxAbs: maxAbs, evaluar: evaluar, preActivacion: preActivacion,
+  reticula: reticula, frontera: frontera, ordenar: ordenar,
+  puntos: { train: PUNTOS_TRAIN, test: PUNTOS_TEST }
+};
+
+})();
+</script>
+</body>
+</html>
