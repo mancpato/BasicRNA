@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BasicRNA — cuatro páginas para las primeras clases sobre redes neuronales</title>
+<meta name="description" content="Cuatro herramientas interactivas en el navegador para las primeras clases sobre redes neuronales: el perceptrón, una red 2→4→1, una función de activación por neurona y retropropagación paso a paso.">
+<style>
+  /* La paleta y la tipografía son las de las cuatro páginas, para que el portal
+     se sienta parte del conjunto y no una carátula pegada encima. */
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 28px 40px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.55 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.3px; }
+  .entrada { max-width: 68ch; color: var(--tinta-suave); margin: 0 0 8px; }
+  .entrada strong { color: var(--tinta); font-weight: 600; }
+
+  .rejilla {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+    margin: 26px 0 0;
+  }
+  @media (max-width: 760px) { .rejilla { grid-template-columns: 1fr; } }
+
+  /* La tarjeta entera es el enlace: no hay que atinarle a un «abrir» chiquito
+     proyectado al fondo del salón. */
+  a.tarjeta {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    overflow: hidden;
+    transition: border-color .12s, transform .12s, box-shadow .12s;
+  }
+  a.tarjeta:hover, a.tarjeta:focus-visible {
+    border-color: #8f9aa3; transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(35,40,46,.10);
+  }
+  a.tarjeta:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+  .tarjeta img {
+    display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover;
+    object-position: center top; background: var(--fondo);
+    border-bottom: 1px solid var(--linea);
+  }
+  .cuerpo { padding: 14px 18px 16px; }
+  .cuerpo h2 { font-size: 16.5px; font-weight: 600; margin: 0 0 5px; }
+  .cuerpo p { margin: 0; font-size: 14px; color: var(--tinta-suave); }
+  .archivo {
+    display: block; margin-top: 9px; font-size: 12.5px; color: #8b959d;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  footer {
+    margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--linea);
+    font-size: 13px; color: var(--tinta-suave);
+  }
+  footer a { color: var(--tinta); }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>BasicRNA</h1>
+  <p class="entrada">
+    Cuatro páginas sueltas para las primeras clases sobre redes neuronales. Cada
+    una es un archivo HTML único, sin dependencias y sin instalación: se abre y
+    dibuja. <strong>Aquí no se configura nada</strong> —los hiperparámetros
+    llegan después, con TalleRNA—: en las tres primeras el alumno mueve los
+    parámetros a mano y ve qué le pasa a la frontera, y la cuarta entrena
+    exponiendo uno solo, la tasa de aprendizaje.
+  </p>
+  <p class="entrada">
+    Conviene recorrerlas en orden: cada una deja una pregunta que contesta la
+    siguiente.
+  </p>
+
+  <div class="rejilla">
+
+    <a class="tarjeta" href="1-Perceptron.html">
+      <img src="img/1-Perceptron.png"
+           alt="Una recta separa dos nubes de puntos en el mapa; al lado, el diagrama de una neurona con sus tres conexiones y un deslizador.">
+      <div class="cuerpo">
+        <h2>Una neurona: los tres parámetros del perceptrón</h2>
+        <p>
+          Cada parámetro hace algo que se puede decir en una frase: los dos
+          pesos giran la recta, el sesgo la desplaza. Se llega a cero errores a
+          mano.
+        </p>
+        <span class="archivo">1-Perceptron.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="2-EditParam.html">
+      <img src="img/2-EditParam.png"
+           alt="Una frontera poligonal encierra un disco de puntos azules rodeado de puntos naranjas; al lado, el diagrama de una red de dos entradas, cuatro neuronas ocultas y una salida.">
+      <div class="cuerpo">
+        <h2>Explorador de parámetros — red 2→4→1</h2>
+        <p>
+          Los mismos deslizadores, ahora diecisiete, sobre datos que ninguna
+          recta separa. La intuición de la página anterior ya no alcanza, y ése
+          es el punto.
+        </p>
+        <span class="archivo">2-EditParam.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="3-EditActivFun.html">
+      <img src="img/3-EditActivFun.png"
+           alt="Franjas verticales de colores alternados en el mapa; en el diagrama, un menú de seis funciones de activación abierto sobre una neurona.">
+      <div class="cuerpo">
+        <h2>Explorador de activaciones — una función por neurona</h2>
+        <p>
+          Seis funciones, elegidas neurona por neurona. Cada una es una casilla
+          distinta y la casilla se ve en el mapa: con franjas, una sola neurona
+          seno lo resuelve y cuatro ReLU no llegan nunca.
+        </p>
+        <span class="archivo">3-EditActivFun.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="4-Backprop.html">
+      <img src="img/4-Backprop.png"
+           alt="Un punto de entrenamiento resaltado en el mapa y, en el diagrama, varias neuronas rodeadas por anillos que representan la señal de error.">
+      <div class="cuerpo">
+        <h2>Retropropagación paso a paso</h2>
+        <p>
+          La red y los datos de la segunda página, pero aquí no se mueve nada a
+          mano: se ve cómo los mueve el algoritmo, un punto a la vez, con el
+          error regresando por la red.
+        </p>
+        <span class="archivo">4-Backprop.html</span>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>
+    <!-- Sustituir por la dirección del repositorio. -->
+    Código, documentación y licencia MIT en
+    <a href="https://github.com/USUARIO/BasicRNA">el repositorio</a>.
+    Departamento Académico de Sistemas Computacionales, UABCS.
+  </footer>
+
+</main>
+</body>
+</html>
