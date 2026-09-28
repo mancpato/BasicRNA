@@ -4,7 +4,7 @@ Cuatro páginas sueltas para las primeras clases sobre redes neuronales. Cada un
 es un archivo HTML único, sin dependencias y sin build: se abre con doble clic y
 dibuja con canvas 2D.
 
-![Las cuatro páginas: una neurona con su recta separadora, la red 2→4→1 con diecisiete deslizadores, la misma red con una activación distinta por neurona, y la animación de un paso de retropropagación](portada.png)
+![Las cuatro páginas: una neurona con su recta separadora, la red 2→4→1 con diecisiete deslizadores, la misma red con una activación distinta por neurona, y la animación de un paso de retropropagación](img/portada.png)
 
 Son deliberadamente pobres en perillas. La frontera de este directorio no es que
 aquí no se entrene, sino que aquí no se configura: las tres primeras páginas no
@@ -73,6 +73,12 @@ pérdida, la página no arranca.
 
 Toda la aritmética es la nativa de JavaScript, binary64. Las arquitecturas, las
 fórmulas, los datos, las escalas y las cifras medidas están en `Explica.md`.
+
+## Lo que sigue: una CNN mínima
+
+Hay dos páginas más en diseño sobre la red convolucional más chica que
+todavía enseña algo: una quinta que se mueve a mano y una sexta que entrena.
+Las decisiones y las cifras medidas están en `TODO.md`.
 
 ## Licencia
 

@@ -128,6 +128,94 @@ entera en una ventana de 940 px y no usar el scroll en clase. Las tres primeras
 no lo hacen, y ahora la diferencia se nota al pasar de una a otra. Es una tarde
 de trabajo aplicar el mismo criterio a las tres, y probablemente valga la pena.
 
+## 4. Páginas 5 y 6: una CNN mínima
+
+Decidida en lo esencial; lo abierto está al final. Las cifras salen de un
+arnés en Python con 100 semillas y SGD de a una imagen; hay que volver a
+medirlas en JavaScript antes de escribirlas en Explica.md.
+
+**Qué red.** Entrada 6×6, un filtro 3×3 sin relleno (mapa 4×4), activación,
+máximo global y salida sigmoide σ(v·m + c): doce parámetros. Datos: 200
+imágenes (160/40), un segmento de longitud 3 vertical u horizontal, con
+intensidad en [0.75, 1] sobre fondo con ruido en [0, 0.25], que no toca el
+borde lateral. Sin ese margen, un segmento en la columna 0 sólo pasa bajo una
+columna del filtro y ningún filtro único resuelve el problema.
+
+**Por qué pertenece aquí.** El ancla deja de ser una arista por parámetro:
+una celda del filtro es el mismo número en las dieciséis posiciones, y al
+seleccionarla se encienden dieciséis aristas. Pasar el ratón por una celda
+del mapa enciende sus nueve píxeles. Parámetros compartidos y localidad, un
+gesto cada uno. Y el perceptrón de la primera página no puede con estos
+datos: las tres columnas de un cuadrado 3×3 suman lo mismo que sus tres
+filas, así que ninguna función lineal de los píxeles separa las clases
+(confirmado por programación lineal sobre todos los segmentos).
+
+**Página 5, a mano.** Clic en una celda del filtro y el deslizador la mueve.
+En lugar del mapa de frontera, que ya no existe porque la entrada tiene 36
+dimensiones, una galería de miniaturas con el contador, y un lienzo 6×6 donde
+el alumno pinta su propio trazo. Dos interruptores: activación (lineal o
+ReLU) y agregación (máximo o promedio). Con promedio y lineal la red entera
+es lineal en los píxeles y ningún filtro llega a cero errores, por el
+argumento del cuadrado: es una cota demostrada, no resultado de búsqueda,
+como la de las franjas en la tercera página. La lección es que la no
+linealidad tiene que estar en algún lado. Con máximo, cualquier activación
+creciente conmuta con él, φ(máx z) = máx φ(z), así que la activación no
+cambia lo que la red puede decidir. Ante empate del máximo, frecuente con
+trazos pintados en 0/1, se marcan todas las celdas empatadas: ante la duda
+no se elige una.
+
+**Página 6, entrena.** El mismo mecanismo de la cuarta página: un paso
+animado y tandas de 10 y 100. Agregación fija en máximo. Con máximo global el
+ajuste del filtro es −η·δ·P*, con P* el parche 3×3 que ganó y
+δ = (ŷ − t)·v·φ′(z*): el parche se desprende de la imagen y se suma o se
+resta sobre el filtro. Se exponen η y la activación, nada más.
+
+**La activación es la perilla que enseña.** Con ReLU, 40 de 100 semillas
+llegan a cero errores; con lineal, 97 (tanh, 51). En las 60 que se atoran
+con ReLU, el 98 % de las imágenes mal clasificadas tienen máx z ≤ 0: la ReLU
+apaga justo los ejemplos que podrían corregir el filtro, que casi siempre
+quedó como franja descentrada que no alcanza los segmentos junto al borde.
+Con lineal, en las mismas semillas, el filtro a veces inventa soluciones que
+nadie diseñaría, como dos franjas laterales con hueco al centro, que cubren
+los dos bordes. Enlaza con las neuronas muertas de la cuarta página. Hay que
+decir en la página que la ReLU sobra aquí porque el máximo ya es la no
+linealidad, y que en la segunda página era indispensable, para que el alumno
+no se lleve «la ReLU es mala».
+
+**La tasa.** Entre 0.01 y 0.10 el éxito no se mueve (40 de 100 con ReLU) y
+sólo cambia la rapidez: mediana de 800 a 200 iteraciones. En 0.3 baja a 31 y
+en 1.0 a 10. Cambia cuánto tarda, no adónde llega, mientras no sea grande.
+
+**Lo que no entra.** Momento: con el paso efectivo igualado, η(1−β), no
+cambia el éxito (40 y 42 de 100); sin igualarlo, con β = 0.9 baja a 25. No
+rescata ninguna semilla atorada, y rompe la identidad visual del ajuste: el
+cambio del filtro deja de ser el parche de este paso. Además la cuarta página
+ya lo dejó en TalleRNA. Relleno: con ReLU sube el éxito a 94 de 100, pero
+arregla lo mismo que el interruptor de activación, dos perillas para una
+lección; se cuenta en Explica.md. Número de filtros, stride y tamaños quedan
+fijos por construcción.
+
+**Abierto.** La semilla: con ReLU se atora el 60 %, así que la semilla por
+omisión decide lo que el alumno ve primero, y un botón de «otra semilla» es
+exponer la inicialización, que la cuarta página dejó en TalleRNA. Con
+activación lineal, b y c son redundantes (dirección exactamente plana:
+b+ε, c−vε): ¿se quita b en ese modo o se deja para mostrar que moverlo no
+cambia nada? La partición de prueba repite el problema del punto 3. Los
+nombres de archivo.
+
+**Lo que obliga a cambiar en el README.** La sección «Lo que sigue» es
+provisional y se funde en el cuerpo cuando existan las páginas. Tres pasajes
+se vuelven falsos. La frontera dice que la cuarta página expone «un solo
+hiperparámetro»; la sexta expone también la activación. El criterio
+sobrevive —se expone sólo lo que la animación vuelve visible, y con ReLU se
+ve que a veces no regresa ningún parche—, pero la redacción no. «Lo que
+comparten» dice que todas usan el mismo diagrama y los mismos doscientos
+puntos: las páginas CNN tienen otro diagrama y doscientas imágenes, aunque la
+partición 160/40, el contador y la semilla sí se comparten. Y el ancla deja
+de ser una arista por parámetro para ser una familia de dieciséis, que se
+verifica como traslaciones unas de otras. La portada y el index.html
+necesitan dos miniaturas más.
+
 ## Lo que no está pendiente
 
 Que la tercera página se preste a un estudio más profundo —activaciones
