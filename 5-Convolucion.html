@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convolución — un filtro 3×3 que recorre la imagen</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --azul: #4b8bbe;
+    --naranja: #e8825a;
+    --positivo: #3c64d2;
+    --negativo: #d23c3c;
+    --verde: #22a050;   /* lo señalado: una celda, su nodo, su línea, su ventana */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 28px 22px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.2px; }
+
+  .barra {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+    margin: 0 0 14px; padding: 9px 14px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .barra .consigna { font-size: 13.5px; color: var(--tinta-suave); }
+  .barra .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 2px; }
+  .barra button {
+    font: inherit; font-size: 13.5px; padding: 6px 13px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .barra button:hover:enabled { background: #eef2f6; border-color: #8f9aa3; }
+  .barra button:active:enabled { background: #e2e8ee; }
+  .barra button:disabled { color: #a8b1b9; cursor: default; }
+  .barra button.principal { border-color: #6f7b85; font-weight: 600; }
+
+  .tablero { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px 14px;
+  }
+
+  .cifras { display: flex; gap: 22px; margin: 0 0 12px; }
+  .cifras .par { display: flex; align-items: baseline; gap: 9px; }
+  .cifras .cifra { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cifras .cero { color: #2e8b57; }
+  .cifras .noCero { color: var(--negativo); }
+  .cifras .rotulo { font-size: 12.5px; line-height: 1.3; color: var(--tinta-suave); }
+  .cifras .de { font-size: 12px; color: #8b959d; }
+
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 12px; font-size: 12.5px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 6px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .llave { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  .nota { margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--tinta);
+          border-left: 3px solid var(--linea); padding: 2px 0 2px 10px; }
+  .nota p { margin: 0 0 4px; }
+  .nota p:last-child { margin: 0; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Convolución — un filtro 3×3 que recorre la imagen</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+/*
+Convolución — un filtro 3×3 que recorre la imagen
+
+Es la QUINTA página de BasicRNA y la primera de las dos sobre una red
+convolucional. La red ya viene entrenada y aquí no se mueve ningún peso a
+mano: el alumno cambia la ENTRADA, pintando su propia imagen o eligiendo una de
+la galería, y ve qué hace con ella cada parte de la red. Sobre la red hay un
+solo gesto, girar el filtro, que se explica más abajo. La sexta página,
+6-BackpropCNN.html, entrena esta misma red.
+
+Con 27 parámetros ya no tiene sentido moverlos a mano, que era el gesto de las
+tres primeras páginas. Lo que esta página enseña son las dos ideas que hacen
+distinta a una capa convolucional, cada una con su gesto:
+
+  el mismo filtro en todas partes: «Recorrer la imagen» pasea la ventana por las
+  dieciséis posiciones con el mismo cuadrito de nueve pesos;
+  cada celda mira una zona: señalar una celda del mapa, o su nodo, pone la
+  ventana sobre los nueve píxeles de los que sale.
+
+LA RED
+Imagen 6×6 → un filtro 3×3 con sesgo b, sin relleno → mapa 4×4 de dieciséis
+valores z_p → ReLU → dieciséis nodos a_p → salida ŷ = σ(Σ u_p·a_p + c).
+  THETA[0..8]    los nueve pesos del filtro, por renglones
+  THETA[9]       b, el sesgo del filtro, el mismo en las dieciséis posiciones
+  THETA[10..25]  u_p, el peso del nodo p a la salida
+  THETA[26]      c, el sesgo de la salida
+La celda p del mapa está en la fila p>>2 y la columna p&3, y su ventana empieza
+en ese mismo renglón y esa misma columna de la imagen.
+
+LOS PESOS
+Vienen del arnés de medición, fuera del repositorio
+(../BasicRNA-trabajo/entrena-cnn/elegir-pesos.js): arranque 50128, ReLU,
+η = 0.1, datos estratificados, el vector de la época 58 (llegó a cero errores
+en la 8 y siguió 50 más). Se eligió el de mayor confianza mínima —la menor
+probabilidad que la red da a la clase correcta entre las 200 imágenes, 0.989—
+entre los que tienen TODOS sus parámetros con |θ| ≤ 6. El tope importa por el
+dibujo: el grosor de una línea se mide contra 6, como en la página 4, y un peso
+mayor se dibujaría al grosor máximo sin distinguirse de los otros.
+
+LOS DATOS
+Los genera la página con el mismo generador del arnés, copiado con el mismo
+orden de sorteo por imagen, para que la sexta página genere exactamente estas
+200 imágenes: semilla 20260928, estratificadas, 80 verticales y 80 horizontales
+en las 160 de entrenamiento, 20 y 20 en las 40 de prueba. Antes de montar se
+comprueba que los pesos del archivo dan cero errores en las dos particiones;
+si no, la página no arranca. El generador guarda además la fila y la columna
+donde empieza cada trazo, sin tocar el orden del sorteo: las usa la
+verificación del filtro girado.
+
+LO QUE EL ALUMNO HACE
+La imagen del diagrama es también el lienzo. Un clic en un píxel lo enciende a
+1 o lo apaga a 0 —lo enciende si estaba por debajo de 0.5—, sin intensidades
+intermedias: con cero y uno el alumno sabe exactamente qué le dio a la red. Un
+clic en una miniatura de la galería la carga; en cuanto se pinta encima, la
+miniatura deja de estar seleccionada, porque la imagen ya no es ésa. La página
+abre con la primera vertical de la galería cargada, para que el diagrama
+arranque con algo que mirar.
+
+LA SALIDA PREGUNTA, NO CLASIFICA
+El texto junto a la neurona de salida es «¿Hay un trazo vertical? Sí» o «No»,
+con ŷ a dos decimales; con el filtro girado la pregunta es por un trazo
+horizontal. Con el filtro sin girar nunca dice «horizontal», aunque la red se
+entrenó con verticales contra horizontales: el lienzo vacío no es horizontal, y
+la red le contesta que no hay vertical. Medido con estos pesos sobre trazos de 3
+píxeles pintados en 1 sobre fondo 0: los 24 horizontales dicen «No», los 16 verticales
+de las columnas 1 a 4 dicen «Sí», los 8 verticales pegados a la columna 0 o a
+la 5 dicen «No», y el lienzo vacío dice «No». Los de la orilla son invisibles
+para esta red: ninguna ventana los tiene bajo su columna central, que es la de
+pesos positivos, y la ReLU apaga todas las celdas que los ven. Por eso los datos
+nunca ponen un trazo en esas columnas.
+
+GIRAR EL FILTRO
+Un clic en el cuadrito del filtro lo gira, y otro lo regresa. En la página se
+dice «girar»; en el código es TRASPONER: el peso de la fila i, columna j pasa a
+la fila j, columna i. Es la operación que corresponde a trasponer la imagen: el
+filtro traspuesto sobre la imagen traspuesta da el mapa traspuesto. Sólo
+cambian esos nueve números; b, los dieciséis u_p y c se quedan iguales. Los u_p
+no se trasponen, así que la red girada no es exactamente la original vista de
+lado; funciona porque los dieciséis u_p son positivos, y cualquier celda
+encendida empuja hacia «Sí» esté donde esté. Eso se midió, no se supuso.
+
+La razón del gesto: el filtro es lo que la red busca. Se cambia el filtro y la
+misma red busca otra cosa, sin reentrenar. La pregunta de la salida cambia con
+él, y con ella la respuesta correcta de cada imagen: los marcos de la galería y
+el contador se calculan contra la pregunta vigente.
+
+Con el filtro girado el contador deja de estar en cero, y la página lo dice con
+honestidad: los datos no son simétricos. Los trazos verticales nunca tocan las
+columnas 0 y 5, pero los horizontales sí tocan las filas 0 y 5, y un trazo en
+esas filas nunca queda bajo el renglón central del filtro girado, así que la
+ReLU apaga todas las celdas que lo ven, igual que a un vertical pintado en la
+columna 0 con el filtro sin girar. Medido con el arnés: 29 errores en las 160 y
+9 en las 40, que son exactamente las 38 horizontales de las filas 0 y 5. Con
+trazos limpios pintados en 1, las 16 horizontales de las filas 1 a 4 dicen
+«Sí», y las 8 de las filas 0 y 5, las 24 verticales y el lienzo vacío dicen
+«No». Las dos líneas que lo explican en la página sólo aparecen con el filtro
+girado, al pie del diagrama, donde sobra lugar y no mueven nada más.
+
+Antes de montar se verifica que trasponer dos veces devuelve exactamente el
+filtro original, y que con el filtro girado las mal clasificadas son EXACTAMENTE
+las horizontales cuya fila es 0 o 5, ni una más ni una menos. La primera sola no
+bastaría: un espejo izquierda-derecha también se deshace aplicándolo dos veces y
+deja el detector vertical como estaba; la segunda lo detecta.
+
+El triángulo de b no tiene gesto: b es del filtro, pero no tiene fila ni columna
+que trasponer. Durante el recorrido el filtro no se gira, como no se pinta.
+
+EL DIBUJO, PLANO
+Los números los enseña la página 4; aquí casi no hay cifras. Todo valor se
+dibuja como tinta sobre papel: más oscuro es mayor, y blanco es cero. Así la
+imagen, el mapa y los nodos se leen con la misma regla. En la imagen la tinta es
+el valor del píxel, entre 0 y 1. En el mapa y los nodos es a_p contra el mayor
+a_p que cualquier imagen con píxeles entre 0 y 1 puede producir con este filtro
+—la suma de sus pesos positivos más b—, que es una escala fija; y todo a_p
+mayor que cero lleva al menos un 12 % de tinta, para que «casi cero» no se
+confunda con «cero». Un cero exacto queda vacío, en blanco: es la ReLU que lo
+apagó, y su línea a la salida queda tenue porque no aporta nada.
+
+Los dieciséis nodos van en una columna, en cuatro grupos de cuatro, y cada fila
+del mapa tiene una línea punteada a su grupo: aplanar es poner las filas una
+debajo de otra, y el nodo p tiene la misma tinta que la celda p.
+
+El filtro es un cuadrito 3×3 aparte, en azul lo positivo y en rojo lo negativo
+con la intensidad de |w| contra 6, junto a la flecha que va de la imagen al
+mapa. Las dieciséis líneas a la salida llevan grosor √(|u|/6) y el color de su
+signo, como en la página 4. Los dos sesgos se dibujan también como en la página
+4: un triángulo amarillo, la entrada constante 1, con su línea; el de b entra al
+filtro, porque es del filtro y es el mismo en todas las posiciones, y el de c
+entra a la salida.
+
+La neurona de salida lleva el color de la clase que decide: naranja si ŷ ≥ 0.5,
+que es «Sí», y azul si no.
+
+LO SEÑALADO, EN VERDE
+Señalar una celda del mapa o un nodo ilumina en verde la celda, el nodo, su
+línea a la salida y la ventana en su lugar de la imagen. Sin nada señalado se
+ilumina la celda de mayor a_p, para que la ventana siempre diga de dónde salió
+lo más fuerte. Si todas están en cero no se ilumina ninguna, y si el máximo
+está empatado tampoco: ante la duda no se elige una, que es la regla de todo el
+directorio. Con trazos pintados en 0 y 1 los empates son frecuentes.
+
+RECORRER
+Anima la ventana por las dieciséis posiciones en orden de lectura, 110 ms cada
+una, llenando la celda y el nodo de cada posición; al final aparece la salida.
+Son menos de dos segundos a propósito: lo que se enseña es que el filtro es el
+mismo en todas partes, no la aritmética de cada posición. Durante el recorrido
+la página no acepta otra entrada. Con «reducir movimiento» se muestra el
+resultado sin animar, que es lo que la página ya muestra quieta.
+
+EL ANCLA, AQUÍ
+En las páginas anteriores la línea que se señala es el parámetro que se mueve.
+Aquí no se mueve ninguno, y la promesa es otra: LO QUE SE ILUMINA JUNTO ES LA
+MISMA POSICIÓN p. Celdas, nodos, ventanas y líneas salen de cuatro arreglos de
+descriptores que se verifican antes de crear ningún lienzo: los índices de cada
+uno son una permutación de 0..15, la ventana de p está en (p>>2, p&3), la celda
+de p ocupa ese lugar en el mapa, el nodo de p va en el grupo p>>2, y la línea de
+p sale del nodo p y lee THETA[10+p]. Si una celda iluminara la ventana de otra,
+la página enseñaría lo contrario de lo que existe para enseñar.
+
+LA GALERÍA
+Cada miniatura lleva un marco del color de la respuesta correcta a la pregunta
+vigente —naranja «Sí», azul «No»—, como los puntos de las otras páginas llevan
+el de su clase, y las de prueba además una cruz, como sus puntos de prueba. Las
+páginas 1 a 4 no marcan los puntos mal clasificados uno por uno: ahí el error se
+lee contra el color del mapa, que aquí no existe. La marca sale de la página 4,
+donde el anillo de color es «la clase que dijo» y dos colores iguales son un
+acierto: una miniatura mal clasificada lleva un anillo, fuera de su marco, del
+color de lo que contestó la red. Sólo las mal clasificadas lo llevan, así que
+no choca con la cruz de prueba, que va dentro. La miniatura cargada lleva en
+ese mismo lugar el anillo oscuro de la selección, que gana; su error, si lo
+tiene, se lee en la salida del diagrama, que es la misma imagen.
+
+DÓNDE VA CADA COSA
+Entra entera en una ventana de 1196 × 940 sin desplazamiento, con el mismo
+criterio que la página 4, y ningún dato aparece dos veces: ŷ sólo junto a la
+salida, los errores sólo en el contador de la galería. El contador cuenta
+contra la pregunta vigente: cero y cero con el filtro sin girar, que es lo que
+se verificó al montar, y las horizontales de las filas 0 y 5 con el filtro
+girado.
+
+Aritmética nativa de JavaScript, binary64. Un solo archivo, sin dependencias,
+sin build; se abre con doble clic y dibuja con canvas 2D.
+
+¡Feliz recorrido! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+(function () {
+
+/* ── La red y sus pesos ────────────────────────────────────────────────────
+   Fijos. Vienen de elegir-pesos.js en el arnés, arranque 50128; el orden es
+   [w0..w8, b, u0..u15, c]. */
+var NPARAM = 27, NMAPA = 16, I_B = 9, I_U = 10, I_C = 26;
+var THETA = [
+  -0.9768787679509044, 1.8816155422040584, -0.4049162469269491,
+  -1.9389430454128427, 3.275427109185975, -1.831314196746977,
+  -2.396575093633489, 3.6766360456338116, -2.0493261029858427,
+  -1.4375699788681477, 2.1417110398020465, 1.6828330170456511,
+  1.6802547927658482, 2.3563104727442377, 1.2502395945336822,
+  1.1668358361055264, 1.744407972647044, 1.3154767748777134,
+  1.8533956959873246, 1.6265316557411678, 1.9952537649305584,
+  0.8783006208242563, 0.9502431976718317, 1.0154756265443539,
+  1.345844595995589, 1.6678567638799573, -5.862904544863303
+];
+
+/* El filtro, en sus dos posiciones: tal como se entrenó y traspuesto. Girar el
+   filtro es escoger el otro; THETA no se toca. */
+function trasponer(w) {
+  var t = new Array(9);
+  for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) t[3 * i + j] = w[3 * j + i];
+  return t;
+}
+var FILTROS = [THETA.slice(0, 9), trasponer(THETA.slice(0, 9))];
+var PREGUNTA = ['vertical', 'horizontal'];
+
+/* Tope contra el que se mide el grosor de una línea y la intensidad de una
+   celda del filtro. FIJO y el mismo 6 de las otras páginas, para que un grosor
+   quiera decir lo mismo en todas. */
+var ESCALA_GROSOR = 6;
+
+/* Duración de cada posición del recorrido. */
+var MS_POSICION = 110;
+
+/* ── Los datos ─────────────────────────────────────────────────────────────
+   El generador del arnés (entrena-cnn/datos.js, variante estratificada),
+   copiado con el mismo orden de sorteo por imagen, que es lo que decide qué
+   imagen sale de cada semilla: los 36 píxeles del fondo, la fila y la columna
+   donde empieza el trazo, y su intensidad. La clase no se sortea imagen por
+   imagen: sale de estratificar, antes. El trazo reemplaza al fondo en sus tres
+   píxeles. Una imagen ocupa 36 valores seguidos, por renglones: el píxel
+   (r, c) está en r·6 + c. Etiqueta 1 = vertical. Se guardan también la fila y
+   la columna donde empieza cada trazo; guardarlas no sortea nada. */
+var NTRAIN = 160, NTEST = 40, N = NTRAIN + NTEST;
+var SEMILLA_DATOS = 20260928;
+var FONDO_MAX = 0.25, TRAZO_MIN = 0.75, TRAZO_MAX = 1.0;
+
+/* El mismo splitmix32 de las otras páginas: aritmética entera de 32 bits con
+   Math.imul, exacta, así que la misma semilla da las mismas imágenes en
+   cualquier navegador. */
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+
+/* Fisher–Yates sobre un arreglo, en su lugar. */
+function barajar(arr, r) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor((i + 1) * r.next());
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+/* La mitad de cada partición es vertical, en orden mezclado dentro de ella. */
+function estratificar(r) {
+  var tr = [], te = [], i;
+  for (i = 0; i < NTRAIN; i++) tr.push(i < NTRAIN / 2 ? 1 : 0);
+  for (i = 0; i < NTEST; i++) te.push(i < NTEST / 2 ? 1 : 0);
+  return barajar(tr, r).concat(barajar(te, r));
+}
+
+function generarDatos(semilla) {
+  var r = new Sorteador(semilla);
+  var X = new Float64Array(N * 36), y = new Uint8Array(N);
+  var filas = new Uint8Array(N), cols = new Uint8Array(N);
+  var fijas = estratificar(r);
+  for (var i = 0; i < N; i++) {
+    var vertical = fijas[i] === 1;
+    y[i] = vertical ? 1 : 0;
+    var o = i * 36, p, fila, col;
+    for (p = 0; p < 36; p++) X[o + p] = FONDO_MAX * r.next();
+    if (vertical) {
+      fila = Math.floor(4 * r.next());
+      col = 1 + Math.floor(4 * r.next());
+    } else {
+      fila = Math.floor(6 * r.next());
+      col = 1 + Math.floor(2 * r.next());
+    }
+    filas[i] = fila; cols[i] = col;
+    var intensidad = TRAZO_MIN + (TRAZO_MAX - TRAZO_MIN) * r.next();
+    for (var t = 0; t < 3; t++) {
+      var rr = vertical ? fila + t : fila, cc = vertical ? col : col + t;
+      X[o + rr * 6 + cc] = intensidad;
+    }
+  }
+  return { X: X, y: y, fila: filas, col: cols };
+}
+var DATOS = generarDatos(SEMILLA_DATOS);
+
+/* ── Evaluación ────────────────────────────────────────────────────────────
+   Hacia adelante sobre la imagen que empieza en X[o], con el filtro w (nueve
+   números) y el resto de THETA. Suma en el mismo orden que el arnés, así que da
+   los mismos bits. La salida es SIEMPRE sigmoide y la frontera está donde vale
+   0.5. */
+function sigmoide(t) {
+  var c = Math.min(100, Math.max(-100, t));
+  return 1 / (1 + Math.exp(-c));
+}
+function adelante(X, o, w) {
+  var z = new Float64Array(NMAPA), a = new Float64Array(NMAPA), t = THETA[I_C];
+  for (var p = 0; p < NMAPA; p++) {
+    var pi = p >> 2, pj = p & 3, s = THETA[I_B];
+    for (var r = 0; r < 3; r++) {
+      var f = o + (pi + r) * 6 + pj;
+      s += w[r * 3] * X[f] + w[r * 3 + 1] * X[f + 1] + w[r * 3 + 2] * X[f + 2];
+    }
+    z[p] = s;
+    a[p] = s > 0 ? s : 0;
+    t += THETA[I_U + p] * a[p];
+  }
+  return { z: z, a: a, t: t, yhat: sigmoide(t) };
+}
+/* La respuesta correcta de la imagen i a la pregunta del filtro g: 1 es «Sí».
+   Con el filtro girado la pregunta es por un trazo horizontal. */
+function correcta(i, g) { return g ? 1 - DATOS.y[i] : DATOS.y[i]; }
+function malClasificados(g) {
+  var tr = 0, te = 0, lista = [];
+  for (var i = 0; i < N; i++)
+    if ((adelante(DATOS.X, i * 36, FILTROS[g]).yhat >= 0.5 ? 1 : 0) !== correcta(i, g)) {
+      lista.push(i);
+      if (i < NTRAIN) tr++; else te++;
+    }
+  return { train: tr, test: te, lista: lista };
+}
+
+/* El mayor a_p que puede dar una imagen con píxeles entre 0 y 1: todos los
+   pesos positivos del filtro sobre píxeles en 1 y los negativos sobre píxeles
+   en 0. Es la escala fija de la tinta del mapa y de los nodos, y es la misma
+   con el filtro girado, porque trasponer no cambia los nueve números. */
+var ESCALA_A = (function () {
+  var s = THETA[I_B];
+  for (var k = 0; k < 9; k++) if (THETA[k] > 0) s += THETA[k];
+  return s;
+})();
+
+/* ── Geometría del diagrama ────────────────────────────────────────────────
+   De izquierda a derecha: la imagen, la flecha con el filtro debajo, el mapa,
+   las llaves de los grupos, los nodos y la salida con su texto. Todo centrado
+   en CENTRO_Y, que es también la altura de la salida. */
+var DIAG_W = 708, DIAG_H = 446, CENTRO_Y = 223;
+var IMG_X = 12, IMG_CEL = 36, IMG_L = 6 * IMG_CEL, IMG_Y = CENTRO_Y - IMG_L / 2;
+var MAPA_X = 324, MAPA_CEL = 30, MAPA_L = 4 * MAPA_CEL, MAPA_Y = CENTRO_Y - MAPA_L / 2;
+var FIL_CEL = 20, FIL_L = 3 * FIL_CEL;
+var FIL_CX = (IMG_X + IMG_L + MAPA_X) / 2, FIL_X = FIL_CX - FIL_L / 2, FIL_Y = CENTRO_Y + 14;
+var B_Y = FIL_Y + FIL_L + 28;
+var LLAVE_X = 488, NODO_X = 504, NODO_R = 8, NODO_PASO = 22, GRUPO_SEP = 16;
+var NODO_Y0 = CENTRO_Y - (3 * (4 * NODO_PASO + GRUPO_SEP) + 3 * NODO_PASO) / 2;
+var SAL_X = 586, SAL_Y = CENTRO_Y, SAL_R = 18, C_Y = SAL_Y + 78, TEXTO_X = 610;
+var TB = 10;   // medio lado del triángulo del sesgo
+
+function yNodo(p) { return NODO_Y0 + (p >> 2) * (4 * NODO_PASO + GRUPO_SEP) + (p & 3) * NODO_PASO; }
+
+/* ── EL ANCLA ──────────────────────────────────────────────────────────────
+   Cuatro arreglos de descriptores, uno por cosa que se ilumina junta. Todo lo
+   que se dibuja y todo lo que se señala sale de ellos, y se verifican ANTES de
+   crear ningún lienzo. */
+function construirCeldas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++)
+    d.push({ p: p, fila: p >> 2, col: p & 3,
+             x: MAPA_X + (p & 3) * MAPA_CEL, y: MAPA_Y + (p >> 2) * MAPA_CEL, lado: MAPA_CEL });
+  return d;
+}
+function construirNodos() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++) d.push({ p: p, grupo: p >> 2, puesto: p & 3, cx: NODO_X, cy: yNodo(p) });
+  return d;
+}
+function construirVentanas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++) d.push({ p: p, fila: p >> 2, col: p & 3 });
+  return d;
+}
+function construirLineas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++)
+    d.push({ p: p, idx: I_U + p, ax: NODO_X, ay: yNodo(p), bx: SAL_X, by: SAL_Y });
+  return d;
+}
+
+function verificarPermutacion(nombre, arr) {
+  if (!Array.isArray(arr))
+    throw new Error('ancla: los descriptores de ' + nombre + ' no son un arreglo');
+  if (arr.length !== NMAPA)
+    throw new Error('ancla: hay ' + arr.length + ' descriptores de ' + nombre + ' y tiene que haber ' + NMAPA);
+  var visto = [], k;
+  for (k = 0; k < NMAPA; k++) visto.push(0);
+  for (k = 0; k < arr.length; k++) {
+    var p = arr[k].p;
+    if (!Number.isInteger(p) || p < 0 || p >= NMAPA)
+      throw new Error('ancla: el descriptor ' + k + ' de ' + nombre + ' apunta a la posición ' + p + ', fuera de 0..15');
+    visto[p]++;
+  }
+  for (k = 0; k < NMAPA; k++)
+    if (visto[k] !== 1)
+      throw new Error('ancla: la posición ' + k + ' aparece en ' + visto[k] + ' descriptores de ' + nombre +
+                      '. Tienen que ser una permutación de 0..15.');
+  var porP = [];
+  for (k = 0; k < arr.length; k++) porP[arr[k].p] = arr[k];
+  return porP;
+}
+
+function verificarAncla(celdas, nodos, ventanas, lineas) {
+  if (!Array.isArray(THETA) || THETA.length !== NPARAM)
+    throw new Error('los pesos: THETA tiene ' + (THETA && THETA.length) + ' entradas y tiene que tener ' + NPARAM);
+  for (var k = 0; k < NPARAM; k++)
+    if (!Number.isFinite(THETA[k])) throw new Error('los pesos: THETA[' + k + '] no es un número finito');
+  var C = verificarPermutacion('celdas', celdas), Nd = verificarPermutacion('nodos', nodos);
+  var V = verificarPermutacion('ventanas', ventanas), L = verificarPermutacion('líneas', lineas);
+  for (var p = 0; p < NMAPA; p++) {
+    var fila = p >> 2, col = p & 3;
+    if (V[p].fila !== fila || V[p].col !== col)
+      throw new Error('ancla: la ventana de la posición ' + p + ' está en (' + V[p].fila + ', ' + V[p].col +
+                      ') y tiene que estar en (' + fila + ', ' + col + ')');
+    if (C[p].fila !== fila || C[p].col !== col ||
+        C[p].x !== MAPA_X + col * MAPA_CEL || C[p].y !== MAPA_Y + fila * MAPA_CEL)
+      throw new Error('ancla: la celda ' + p + ' no ocupa el lugar (' + fila + ', ' + col + ') del mapa');
+    if (Nd[p].grupo !== fila || Nd[p].puesto !== col)
+      throw new Error('ancla: el nodo ' + p + ' está en el grupo ' + Nd[p].grupo + ', puesto ' + Nd[p].puesto +
+                      ', y tiene que estar en el grupo ' + fila + ', puesto ' + col);
+    if (L[p].idx !== I_U + p)
+      throw new Error('ancla: la línea de la posición ' + p + ' lee THETA[' + L[p].idx + '] y tiene que leer THETA[' +
+                      (I_U + p) + ']');
+    if (L[p].ax !== Nd[p].cx || L[p].ay !== Nd[p].cy)
+      throw new Error('ancla: la línea de la posición ' + p + ' no sale de su nodo');
+  }
+  return { celdas: C, nodos: Nd, ventanas: V, lineas: L };
+}
+
+/* Con los pesos del archivo, cero errores en las dos particiones de los datos
+   que genera la página. Si el generador copiado no fuera el del arnés, o los
+   pesos no fueran los elegidos, esto no se cumpliría. */
+function verificarPesos() {
+  var e = malClasificados(0);
+  if (e.train !== 0 || e.test !== 0)
+    throw new Error('los pesos del archivo no dan cero errores con los datos que genera la página: ' +
+                    e.train + ' en entrenamiento y ' + e.test + ' en prueba');
+  if (!(ESCALA_A > 0)) throw new Error('el filtro no puede dar ningún a_p positivo');
+  return e;
+}
+
+/* El giro. Trasponer dos veces tiene que devolver exactamente el filtro
+   original, y con el filtro girado las mal clasificadas tienen que ser
+   EXACTAMENTE las horizontales que empiezan en la fila 0 o en la 5. La segunda
+   es la que distingue: un espejo izquierda-derecha también pasa la primera. */
+function verificarGiro() {
+  var dos = trasponer(trasponer(FILTROS[0]));
+  for (var k = 0; k < 9; k++)
+    if (dos[k] !== FILTROS[0][k])
+      throw new Error('el giro: trasponer dos veces no devuelve el filtro original en la entrada ' + k);
+  var e = malClasificados(1), esperadas = [];
+  for (var i = 0; i < N; i++)
+    if (DATOS.y[i] === 0 && (DATOS.fila[i] === 0 || DATOS.fila[i] === 5)) esperadas.push(i);
+  var iguales = e.lista.length === esperadas.length;
+  for (var m = 0; iguales && m < esperadas.length; m++) iguales = e.lista[m] === esperadas[m];
+  if (!iguales)
+    throw new Error('el giro: con el filtro girado hay ' + e.lista.length + ' mal clasificadas y tendrían que ' +
+                    'ser exactamente las ' + esperadas.length + ' horizontales de las filas 0 y 5');
+  return e;
+}
+
+/* ── Estado ────────────────────────────────────────────────────────────────*/
+var ANCLA = null, ERRORES = null, MAL = null;
+var imagen = new Float64Array(36);
+var girado = 0;         /* 0: el filtro como se entrenó; 1: traspuesto */
+var galSel = null;      /* la miniatura cargada, o null si se pintó encima */
+var senal = null;       /* la posición bajo el ratón, o null */
+var anim = null;        /* { t0, k } mientras corre el recorrido */
+
+/* La posición que se ilumina: la del recorrido, la señalada, o la de mayor a_p
+   si es única y positiva. */
+function posicionIluminada(f) {
+  if (anim) return anim.k;
+  if (senal !== null) return senal;
+  var m = 0, cual = null, empates = 0;
+  for (var p = 0; p < NMAPA; p++) {
+    if (f.a[p] > m) { m = f.a[p]; cual = p; empates = 1; }
+    else if (f.a[p] === m && m > 0) empates++;
+  }
+  return empates === 1 ? cual : null;
+}
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+var BORDE_CLASE = ['#2f6590', '#b35a36'];
+var VERDE = '34,160,80';
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+
+function tinta(v) {
+  var g = Math.round(255 * (1 - Math.max(0, Math.min(1, v))));
+  return 'rgb(' + g + ',' + g + ',' + g + ')';
+}
+function tintaA(a) { return tinta(0.12 + 0.88 * Math.min(1, a / ESCALA_A)); }
+function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / ESCALA_GROSOR, 1)); }
+function grosorDe(v) { return 1 + fuerza(v) * 9; }
+function colorPeso(v, alfa) {
+  return (v >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + alfa.toFixed(3) + ')';
+}
+
+function linea(ctx, ax, ay, bx, by, v, tenue) {
+  var op = 0.28 + fuerza(v) * 0.7;
+  if (tenue) op *= 0.3;
+  ctx.lineWidth = grosorDe(v);
+  ctx.strokeStyle = colorPeso(v, op);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+}
+function triangulo(ctx, x, y, rotuloAbajo) {
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - TB); ctx.lineTo(x - TB, y + TB); ctx.lineTo(x + TB, y + TB);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#6d5b00'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  if (rotuloAbajo) ctx.fillText('1', x, y + TB + 3);
+}
+
+function dibujarDiagrama(vista) {
+  var ctx = vista.ctx, w9 = FILTROS[girado], f = adelante(imagen, 0, w9), pv = posicionIluminada(f), p, r, c;
+  var visto = function (q) { return !anim || q <= anim.k; };
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+
+  /* La imagen, que es también el lienzo. */
+  for (r = 0; r < 6; r++) for (c = 0; c < 6; c++) {
+    ctx.fillStyle = tinta(imagen[r * 6 + c]);
+    ctx.fillRect(IMG_X + c * IMG_CEL, IMG_Y + r * IMG_CEL, IMG_CEL, IMG_CEL);
+  }
+  ctx.strokeStyle = '#d6dbe0'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (r = 1; r < 6; r++) {
+    ctx.moveTo(IMG_X, IMG_Y + r * IMG_CEL + 0.5); ctx.lineTo(IMG_X + IMG_L, IMG_Y + r * IMG_CEL + 0.5);
+    ctx.moveTo(IMG_X + r * IMG_CEL + 0.5, IMG_Y); ctx.lineTo(IMG_X + r * IMG_CEL + 0.5, IMG_Y + IMG_L);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = '#9aa4ac';
+  ctx.strokeRect(IMG_X + 0.5, IMG_Y + 0.5, IMG_L - 1, IMG_L - 1);
+
+  /* La ventana de la posición iluminada. */
+  if (pv !== null) {
+    var v = ANCLA.ventanas[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 3;
+    ctx.strokeRect(IMG_X + v.col * IMG_CEL + 1.5, IMG_Y + v.fila * IMG_CEL + 1.5, 3 * IMG_CEL - 3, 3 * IMG_CEL - 3);
+  }
+
+  ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText('imagen', IMG_X, IMG_Y - 5);
+  ctx.fillText('mapa', MAPA_X, MAPA_Y - 5);
+
+  /* La flecha de la imagen al mapa, y el filtro con su sesgo debajo. */
+  var fx0 = IMG_X + IMG_L + 8, fx1 = MAPA_X - 8;
+  ctx.strokeStyle = '#6d777f'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(fx0, CENTRO_Y); ctx.lineTo(fx1, CENTRO_Y); ctx.stroke();
+  ctx.fillStyle = '#6d777f';
+  ctx.beginPath(); ctx.moveTo(fx1 + 1, CENTRO_Y); ctx.lineTo(fx1 - 8, CENTRO_Y - 5); ctx.lineTo(fx1 - 8, CENTRO_Y + 5);
+  ctx.closePath(); ctx.fill();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('ReLU', FIL_CX, CENTRO_Y - 5);
+
+  ctx.lineCap = 'round';
+  linea(ctx, FIL_CX, B_Y - TB, FIL_CX, FIL_Y + FIL_L, THETA[I_B], false);
+  for (r = 0; r < 3; r++) for (c = 0; c < 3; c++) {
+    var w = w9[r * 3 + c];
+    ctx.fillStyle = colorPeso(w, 0.12 + 0.88 * fuerza(w));
+    ctx.fillRect(FIL_X + c * FIL_CEL, FIL_Y + r * FIL_CEL, FIL_CEL, FIL_CEL);
+  }
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (r = 1; r < 3; r++) {
+    ctx.moveTo(FIL_X, FIL_Y + r * FIL_CEL); ctx.lineTo(FIL_X + FIL_L, FIL_Y + r * FIL_CEL);
+    ctx.moveTo(FIL_X + r * FIL_CEL, FIL_Y); ctx.lineTo(FIL_X + r * FIL_CEL, FIL_Y + FIL_L);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = '#6d777f';
+  ctx.strokeRect(FIL_X + 0.5, FIL_Y + 0.5, FIL_L - 1, FIL_L - 1);
+  triangulo(ctx, FIL_CX, B_Y, true);
+
+  /* El mapa. Una celda sin recorrer todavía va punteada; una en cero, vacía. */
+  for (p = 0; p < NMAPA; p++) {
+    var cel = ANCLA.celdas[p];
+    if (!visto(p)) {
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+      ctx.strokeRect(cel.x + 0.5, cel.y + 0.5, cel.lado - 1, cel.lado - 1); ctx.restore();
+      continue;
+    }
+    ctx.fillStyle = f.a[p] > 0 ? tintaA(f.a[p]) : '#ffffff';
+    ctx.fillRect(cel.x, cel.y, cel.lado, cel.lado);
+    ctx.strokeStyle = '#aeb7bf'; ctx.lineWidth = 1;
+    ctx.strokeRect(cel.x + 0.5, cel.y + 0.5, cel.lado - 1, cel.lado - 1);
+  }
+  if (pv !== null) {
+    var cv = ANCLA.celdas[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 3;
+    ctx.strokeRect(cv.x + 1.5, cv.y + 1.5, cv.lado - 3, cv.lado - 3);
+  }
+
+  /* Aplanar: cada fila del mapa, una línea punteada a su grupo de cuatro. */
+  ctx.save();
+  ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1.3;
+  for (var g = 0; g < 4; g++) {
+    var yIni = yNodo(4 * g), yFin = yNodo(4 * g + 3), yMed = (yIni + yFin) / 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(LLAVE_X + 5, yIni - NODO_R); ctx.lineTo(LLAVE_X, yIni - NODO_R);
+    ctx.lineTo(LLAVE_X, yFin + NODO_R); ctx.lineTo(LLAVE_X + 5, yFin + NODO_R);
+    ctx.stroke();
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(MAPA_X + MAPA_L + 4, MAPA_Y + (g + 0.5) * MAPA_CEL); ctx.lineTo(LLAVE_X - 2, yMed);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* Las dieciséis líneas a la salida, y la del sesgo c. La señalada lleva un
+     halo verde DEBAJO, para no perder el color de su signo. */
+  if (pv !== null) {
+    var lv = ANCLA.lineas[pv];
+    ctx.strokeStyle = 'rgba(' + VERDE + ',0.5)'; ctx.lineWidth = grosorDe(THETA[lv.idx]) + 7;
+    ctx.beginPath(); ctx.moveTo(lv.ax, lv.ay); ctx.lineTo(lv.bx, lv.by); ctx.stroke();
+  }
+  for (p = 0; p < NMAPA; p++) {
+    var l = ANCLA.lineas[p];
+    linea(ctx, l.ax, l.ay, l.bx, l.by, THETA[l.idx], !visto(l.p) || f.a[l.p] === 0);
+  }
+  linea(ctx, SAL_X, C_Y - TB, SAL_X, SAL_Y, THETA[I_C], false);
+
+  /* Los nodos: la misma tinta que su celda. */
+  for (p = 0; p < NMAPA; p++) {
+    var n = ANCLA.nodos[p];
+    ctx.beginPath(); ctx.arc(n.cx, n.cy, NODO_R, 0, Math.PI * 2);
+    if (!visto(p)) {
+      ctx.save(); ctx.setLineDash([2, 2]); ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = '#aeb7bf'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
+      continue;
+    }
+    ctx.fillStyle = f.a[p] > 0 ? tintaA(f.a[p]) : '#ffffff'; ctx.fill();
+    ctx.strokeStyle = '#6d777f'; ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  if (pv !== null) {
+    var nv = ANCLA.nodos[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(nv.cx, nv.cy, NODO_R + 3.5, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  /* La salida. Durante el recorrido no hay decisión todavía. */
+  var hay = !anim, dice = f.yhat >= 0.5 ? 1 : 0;
+  ctx.beginPath(); ctx.arc(SAL_X, SAL_Y, SAL_R, 0, Math.PI * 2);
+  ctx.fillStyle = hay ? COLOR_CLASE[dice] : '#e3e7eb'; ctx.fill();
+  ctx.strokeStyle = hay ? BORDE_CLASE[dice] : '#9aa4ac'; ctx.lineWidth = 2; ctx.stroke();
+  triangulo(ctx, SAL_X, C_Y, true);
+
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#3a434b'; ctx.font = '12.5px system-ui, sans-serif';
+  ctx.fillText('¿Hay un trazo', TEXTO_X, SAL_Y - 30);
+  ctx.fillText(PREGUNTA[girado] + '?', TEXTO_X, SAL_Y - 14);
+  if (hay) {
+    ctx.fillStyle = BORDE_CLASE[dice]; ctx.font = '700 22px system-ui, sans-serif';
+    ctx.fillText(dice ? 'Sí' : 'No', TEXTO_X, SAL_Y + 12);
+    ctx.fillStyle = '#5c666f'; ctx.font = '12.5px system-ui, sans-serif';
+    ctx.fillText('ŷ = ' + f.yhat.toFixed(2), TEXTO_X, SAL_Y + 31);
+  } else {
+    ctx.fillStyle = '#9aa4ac'; ctx.font = '700 22px system-ui, sans-serif';
+    ctx.fillText('…', TEXTO_X, SAL_Y + 12);
+  }
+}
+
+/* ── La galería ────────────────────────────────────────────────────────────
+   Las 200 en orden, diez por fila: las 40 de prueba son las últimas. El marco
+   es la respuesta correcta a la pregunta vigente; la cruz de prueba va en la
+   esquina superior derecha, sobre el píxel (0, 5), que en estos datos siempre
+   es fondo; el anillo de mal clasificada va FUERA del marco, del color de lo
+   que contestó la red. La razón de cada marca está en la cabecera. */
+var G_MARCO = 2, G_PIX = 4, G_T = 6 * G_PIX + 2 * G_MARCO, G_PASO = G_T + 3, G_COL = 10, G_BORDE = 2;
+var GAL_W = 2 * G_BORDE + (G_COL - 1) * G_PASO + G_T;
+var GAL_H = 2 * G_BORDE + (Math.ceil(N / G_COL) - 1) * G_PASO + G_T;
+
+function dibujarGaleria(vista) {
+  var ctx = vista.ctx;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+  for (var i = 0; i < N; i++) {
+    var x0 = G_BORDE + (i % G_COL) * G_PASO, y0 = G_BORDE + Math.floor(i / G_COL) * G_PASO;
+    var ok = correcta(i, girado);
+    ctx.fillStyle = COLOR_CLASE[ok];
+    ctx.fillRect(x0, y0, G_T, G_T);
+    for (var r = 0; r < 6; r++) for (var c = 0; c < 6; c++) {
+      ctx.fillStyle = tinta(DATOS.X[i * 36 + r * 6 + c]);
+      ctx.fillRect(x0 + G_MARCO + c * G_PIX, y0 + G_MARCO + r * G_PIX, G_PIX, G_PIX);
+    }
+    if (i >= NTRAIN) {
+      var cx = x0 + G_T - G_MARCO - G_PIX / 2, cy = y0 + G_MARCO + G_PIX / 2, B = 3.5;
+      ctx.lineCap = 'butt';
+      [['#ffffff', 4], ['#23282e', 1.8]].forEach(function (e) {
+        ctx.strokeStyle = e[0]; ctx.lineWidth = e[1];
+        ctx.beginPath();
+        ctx.moveTo(cx - B, cy); ctx.lineTo(cx + B, cy);
+        ctx.moveTo(cx, cy - B); ctx.lineTo(cx, cy + B);
+        ctx.stroke();
+      });
+    }
+    if (i === galSel) {
+      ctx.strokeStyle = '#23282e'; ctx.lineWidth = 2;
+      ctx.strokeRect(x0 - 1, y0 - 1, G_T + 2, G_T + 2);
+    } else if (MAL[girado][i]) {
+      ctx.strokeStyle = COLOR_CLASE[1 - ok]; ctx.lineWidth = 2;
+      ctx.strokeRect(x0 - 1, y0 - 1, G_T + 2, G_T + 2);
+    }
+  }
+}
+/* La miniatura bajo el punto, o null. Los huecos entre miniaturas no son de
+   ninguna: ante la duda no se elige. */
+function miniaturaEn(px, py) {
+  var cx = px - G_BORDE, cy = py - G_BORDE;
+  if (cx < 0 || cy < 0) return null;
+  var col = Math.floor(cx / G_PASO), fil = Math.floor(cy / G_PASO);
+  if (col >= G_COL || cx - col * G_PASO >= G_T || cy - fil * G_PASO >= G_T) return null;
+  var i = fil * G_COL + col;
+  return i < N ? i : null;
+}
+
+/* ── Qué hay bajo el ratón en el diagrama ──────────────────────────────────*/
+function pixelEn(px, py) {
+  if (px < IMG_X || py < IMG_Y || px >= IMG_X + IMG_L || py >= IMG_Y + IMG_L) return null;
+  return Math.floor((py - IMG_Y) / IMG_CEL) * 6 + Math.floor((px - IMG_X) / IMG_CEL);
+}
+function filtroEn(px, py) {
+  return px >= FIL_X && px < FIL_X + FIL_L && py >= FIL_Y && py < FIL_Y + FIL_L;
+}
+/* La posición p de la celda o del nodo bajo el punto, leída del descriptor.
+   El disco de un nodo se toma con 2 px de más; entre dos nodos quedan 2 px que
+   no son de ninguno. */
+function posicionEn(px, py) {
+  var p;
+  for (p = 0; p < NMAPA; p++) {
+    var c = ANCLA.celdas[p];
+    if (px >= c.x && px < c.x + c.lado && py >= c.y && py < c.y + c.lado) return c.p;
+  }
+  for (p = 0; p < NMAPA; p++) {
+    var n = ANCLA.nodos[p];
+    if (Math.hypot(px - n.cx, py - n.cy) <= NODO_R + 2) return n.p;
+  }
+  return null;
+}
+
+/* ── Montaje ───────────────────────────────────────────────────────────────*/
+var vistaDiag = null, vistaGal = null, nodos = {};
+
+function redibujar() {
+  dibujarDiagrama(vistaDiag);
+  dibujarGaleria(vistaGal);
+  var e = ERRORES[girado];
+  nodos.cTrain.textContent = String(e.train);
+  nodos.cTrain.className = 'cifra ' + (e.train === 0 ? 'cero' : 'noCero');
+  nodos.cTest.textContent = String(e.test);
+  nodos.cTest.className = 'cifra ' + (e.test === 0 ? 'cero' : 'noCero');
+  nodos.nota.style.display = girado ? '' : 'none';
+}
+
+function habilitar(puede) {
+  nodos.bBorrar.disabled = !puede;
+  nodos.bRecorrer.disabled = !puede;
+}
+
+function cargar(i) {
+  if (anim) return;
+  for (var k = 0; k < 36; k++) imagen[k] = DATOS.X[i * 36 + k];
+  galSel = i;
+  redibujar();
+}
+function borrar() {
+  if (anim) return;
+  imagen.fill(0);
+  galSel = null;
+  redibujar();
+}
+function alternar(k) {
+  if (anim) return;
+  imagen[k] = imagen[k] < 0.5 ? 1 : 0;
+  galSel = null;
+  redibujar();
+}
+/* Girar el filtro: escoger el otro de FILTROS. La imagen, lo señalado y la
+   miniatura cargada no cambian; cambian el mapa, la salida, la pregunta, los
+   marcos y el contador. */
+function girar() {
+  if (anim) return;
+  girado = 1 - girado;
+  redibujar();
+}
+
+function cuadro(ahora) {
+  if (!anim) return;
+  var k = Math.floor((ahora - anim.t0) / MS_POSICION);
+  if (k >= NMAPA) {
+    anim = null;
+    habilitar(true);
+    redibujar();
+    return;
+  }
+  anim.k = Math.max(0, k);
+  redibujar();
+  requestAnimationFrame(cuadro);
+}
+function recorrer() {
+  if (anim) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    redibujar();
+    return;
+  }
+  anim = { t0: performance.now(), k: 0 };
+  senal = null;
+  habilitar(false);
+  redibujar();
+  requestAnimationFrame(cuadro);
+}
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+
+  var barra = document.createElement('div');
+  barra.className = 'barra';
+  var cons = document.createElement('span');
+  cons.className = 'consigna';
+  cons.textContent = 'Un clic en un píxel de la imagen lo enciende o lo apaga; un clic en una miniatura la carga.';
+  barra.appendChild(cons);
+  var d1 = document.createElement('span'); d1.className = 'divisor'; barra.appendChild(d1);
+  function boton(texto, clase) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = texto;
+    if (clase) b.className = clase;
+    barra.appendChild(b);
+    return b;
+  }
+  nodos.bBorrar = boton('Borrar la imagen');
+  nodos.bRecorrer = boton('Recorrer la imagen', 'principal');
+  raiz.appendChild(barra);
+
+  var tablero = document.createElement('div');
+  tablero.className = 'tablero';
+
+  // ── el diagrama ──
+  var cajaDiag = document.createElement('div');
+  cajaDiag.className = 'caja';
+  cajaDiag.style.width = (DIAG_W + 38) + 'px';
+  vistaDiag = lienzo(DIAG_W, DIAG_H);
+  cajaDiag.appendChild(vistaDiag.el);
+  var legD = document.createElement('div');
+  legD.className = 'leyenda';
+  legD.innerHTML =
+    '<span class="it">un clic en el filtro lo gira</span>' +
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>peso positivo</span>' +
+    '<span class="it"><span class="marca" style="background:#d23c3c"></span>peso negativo</span>' +
+    '<span class="it">grosor = |peso| contra un tope fijo de ' + ESCALA_GROSOR + '</span>' +
+    '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
+    '<span class="it">más oscuro = mayor · vacío = cero, la ReLU lo apagó</span>' +
+    '<span class="it">punteado: cada fila del mapa pasa a un grupo de nodos</span>' +
+    '<span class="it"><span class="llave" style="border:2px solid rgb(' + VERDE + ')"></span>' +
+    'una celda, su nodo, su línea y la ventana que mira; sin señalar nada, la celda mayor</span>';
+  cajaDiag.appendChild(legD);
+  nodos.nota = document.createElement('div');
+  nodos.nota.className = 'nota';
+  nodos.nota.innerHTML =
+    '<p>El filtro está girado: sólo cambiaron sus nueve números. El sesgo b, los dieciséis pesos a la ' +
+    'salida y c son los mismos de antes.</p>' +
+    '<p>Se pierden las horizontales de las filas 0 y 5 porque los datos no son simétricos: los trazos ' +
+    'verticales nunca tocan las columnas 0 y 5, pero los horizontales sí tocan las filas 0 y 5, y ninguna ' +
+    'ventana tiene un trazo de esas filas bajo el renglón central del filtro.</p>';
+  cajaDiag.appendChild(nodos.nota);
+  tablero.appendChild(cajaDiag);
+
+  // ── la galería, con el contador ──
+  var cajaGal = document.createElement('div');
+  cajaGal.className = 'caja';
+  cajaGal.style.width = (GAL_W + 38) + 'px';
+  var cifras = document.createElement('div');
+  cifras.className = 'cifras';
+  function par(rotulo, detalle) {
+    var caja = document.createElement('div');
+    caja.className = 'par';
+    var cifra = document.createElement('span');
+    cifra.className = 'cifra';
+    var rot = document.createElement('span');
+    rot.className = 'rotulo'; rot.textContent = rotulo;
+    rot.appendChild(document.createElement('br'));
+    var de = document.createElement('span');
+    de.className = 'de'; de.textContent = detalle;
+    rot.appendChild(de);
+    caja.appendChild(cifra); caja.appendChild(rot);
+    cifras.appendChild(caja);
+    return cifra;
+  }
+  nodos.cTrain = par('mal clasificados', 'de ' + NTRAIN + ' entren.');
+  nodos.cTest = par('mal clasificados', 'de ' + NTEST + ' prueba');
+  cajaGal.appendChild(cifras);
+  vistaGal = lienzo(GAL_W, GAL_H);
+  cajaGal.appendChild(vistaGal.el);
+  var legG = document.createElement('div');
+  legG.className = 'leyenda';
+  legG.innerHTML =
+    '<span class="it"><span class="llave" style="background:#e8825a"></span>Sí</span>' +
+    '<span class="it"><span class="llave" style="background:#4b8bbe"></span>No</span>' +
+    '<span class="it">✚ prueba</span>' +
+    '<span class="it">marco: la respuesta correcta</span>' +
+    '<span class="it"><span class="llave" style="background:#e8825a;box-shadow:0 0 0 2px #4b8bbe"></span>' +
+    'anillo: mal clasificada, del color que contestó</span>';
+  cajaGal.appendChild(legG);
+  tablero.appendChild(cajaGal);
+
+  raiz.appendChild(tablero);
+
+  nodos.bBorrar.addEventListener('click', borrar);
+  nodos.bRecorrer.addEventListener('click', recorrer);
+
+  function posRaton(vista, ev) {
+    var r = vista.el.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) * (vista.w / r.width), y: (ev.clientY - r.top) * (vista.h / r.height) };
+  }
+  vistaDiag.el.addEventListener('mousemove', function (ev) {
+    if (anim) return;
+    var q = posRaton(vistaDiag, ev), p = posicionEn(q.x, q.y);
+    vistaDiag.el.style.cursor = (p !== null || pixelEn(q.x, q.y) !== null || filtroEn(q.x, q.y)) ? 'pointer' : 'default';
+    if (p !== senal) { senal = p; redibujar(); }
+  });
+  vistaDiag.el.addEventListener('mouseleave', function () {
+    if (senal !== null) { senal = null; redibujar(); }
+  });
+  vistaDiag.el.addEventListener('click', function (ev) {
+    var q = posRaton(vistaDiag, ev), k = pixelEn(q.x, q.y);
+    if (k !== null) alternar(k);
+    else if (filtroEn(q.x, q.y)) girar();
+  });
+  vistaGal.el.addEventListener('mousemove', function (ev) {
+    var q = posRaton(vistaGal, ev);
+    vistaGal.el.style.cursor = (!anim && miniaturaEn(q.x, q.y) !== null) ? 'pointer' : 'default';
+  });
+  vistaGal.el.addEventListener('click', function (ev) {
+    var q = posRaton(vistaGal, ev), i = miniaturaEn(q.x, q.y);
+    if (i !== null) cargar(i);
+  });
+
+  var primera = 0;
+  while (primera < N && DATOS.y[primera] !== 1) primera++;
+  cargar(primera);
+}
+
+function fallar(err) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no arrancó y no se dibujó ningún lienzo.\n\n' + err.message;
+  document.getElementById('raiz').appendChild(caja);
+}
+
+/* Las tres verificaciones corren ANTES de crear ningún lienzo. Si alguna
+   lanza, no hay canvas en el documento. */
+try {
+  ANCLA = verificarAncla(construirCeldas(), construirNodos(), construirVentanas(), construirLineas());
+  ERRORES = [verificarPesos(), verificarGiro()];
+  MAL = ERRORES.map(function (e) {
+    var m = new Uint8Array(N);
+    e.lista.forEach(function (i) { m[i] = 1; });
+    return m;
+  });
+  montar();
+} catch (err) {
+  fallar(err);
+  throw err;
+}
+
+/* Lo que la página expone para poder verificarse desde fuera. No añade
+   comportamiento: son las mismas estructuras que ya usa para dibujar. */
+window.EXPL = {
+  THETA: THETA, DATOS: DATOS, ANCLA: ANCLA, ERRORES: ERRORES, FILTROS: FILTROS, trasponer: trasponer,
+  ESCALA_GROSOR: ESCALA_GROSOR, ESCALA_A: ESCALA_A, MS_POSICION: MS_POSICION,
+  SEMILLA_DATOS: SEMILLA_DATOS, generarDatos: generarDatos,
+  adelante: adelante, malClasificados: malClasificados,
+  imagen: function () { return Array.from(imagen); },
+  galSel: function () { return galSel; },
+  girado: function () { return girado; },
+  yhat: function () { return adelante(imagen, 0, FILTROS[girado]).yhat; },
+  posicionIluminada: function () { return posicionIluminada(adelante(imagen, 0, FILTROS[girado])); },
+  cargar: cargar, borrar: borrar, alternar: alternar, recorrer: recorrer, girar: girar,
+  senalar: function (p) { senal = p; redibujar(); }
+};
+
+})();
+</script>
+</body>
+</html>

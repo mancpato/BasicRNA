@@ -130,91 +130,154 @@ de trabajo aplicar el mismo criterio a las tres, y probablemente valga la pena.
 
 ## 4. Páginas 5 y 6: una CNN mínima
 
-Decidida en lo esencial; lo abierto está al final. Las cifras salen de un
-arnés en Python con 100 semillas y SGD de a una imagen; hay que volver a
-medirlas en JavaScript antes de escribirlas en Explica.md.
+Decidida en lo esencial; lo abierto está al final. Son dos páginas:
+`5-Convolucion.html` usa una red ya entrenada y `6-BackpropCNN.html` la
+entrena. En ninguna se mueven pesos a mano: en la 5 el alumno cambia la
+entrada y puede girar el filtro, y en la 6 sólo cambia los hiperparámetros.
+El primer diseño, con máximo global y pesos movidos a mano, se cambió por éste
+porque con 27 parámetros ya no se mueve a mano, y porque así la capa completa
+se entrena de forma visible.
 
-**Qué red.** Entrada 6×6, un filtro 3×3 sin relleno (mapa 4×4), activación,
-máximo global y salida sigmoide σ(v·m + c): doce parámetros. Datos: 200
-imágenes (160/40), un segmento de longitud 3 vertical u horizontal, con
-intensidad en [0.75, 1] sobre fondo con ruido en [0, 0.25], que no toca el
-borde lateral. Sin ese margen, un segmento en la columna 0 sólo pasa bajo una
-columna del filtro y ningún filtro único resuelve el problema.
+**Qué red.** Imagen 6×6 → un solo filtro 3×3 con sesgo b, aprendido, sin
+relleno → mapa 4×4 → activación → 16 nodos → salida σ(Σ u_p·a_p + c): 27
+parámetros, los nueve del filtro, b, los dieciséis u_p y c. Un solo filtro
+porque con uno se resuelve y ya enseña las dos ideas: el mismo filtro en
+todas partes, y cada celda del mapa mira una zona de la imagen. La etiqueta
+es vertical = 1 y, como en la tercera y la cuarta página, ŷ ≥ 0.5 es clase 1.
 
-**Por qué pertenece aquí.** El ancla deja de ser una arista por parámetro:
-una celda del filtro es el mismo número en las dieciséis posiciones, y al
-seleccionarla se encienden dieciséis aristas. Pasar el ratón por una celda
-del mapa enciende sus nueve píxeles. Parámetros compartidos y localidad, un
-gesto cada uno. Y el perceptrón de la primera página no puede con estos
-datos: las tres columnas de un cuadrado 3×3 suman lo mismo que sus tres
-filas, así que ninguna función lineal de los píxeles separa las clases
-(confirmado por programación lineal sobre todos los segmentos).
+**Datos.** 200 imágenes, un segmento de longitud 3 vertical u horizontal,
+con una sola intensidad por imagen en [0.75, 1], sobre fondo con ruido
+uniforme en [0, 0.25]. El trazo no toca las columnas 0 y 5: los horizontales
+empiezan en la columna 1 o 2. Sin ese margen esos trazos serían invisibles:
+medido con los pesos de la página 5, un vertical de 3 píxeles pintado en la
+columna 0 o en la 5 da la misma salida que el lienzo vacío, porque ninguna
+ventana lo tiene bajo su columna central y la ReLU apaga las celdas que lo
+ven. Estratificados: 80 verticales y 80
+horizontales en las 160 de entrenamiento, 20 y 20 en las 40 de prueba, en
+orden mezclado dentro de cada partición.
 
-**Página 5, a mano.** Clic en una celda del filtro y el deslizador la mueve.
-En lugar del mapa de frontera, que ya no existe porque la entrada tiene 36
-dimensiones, una galería de miniaturas con el contador, y un lienzo 6×6 donde
-el alumno pinta su propio trazo. Dos interruptores: activación (lineal o
-ReLU) y agregación (máximo o promedio). Con promedio y lineal la red entera
-es lineal en los píxeles y ningún filtro llega a cero errores, por el
-argumento del cuadrado: es una cota demostrada, no resultado de búsqueda,
-como la de las franjas en la tercera página. La lección es que la no
-linealidad tiene que estar en algún lado. Con máximo, cualquier activación
-creciente conmuta con él, φ(máx z) = máx φ(z), así que la activación no
-cambia lo que la red puede decidir. Ante empate del máximo, frecuente con
-trazos pintados en 0/1, se marcan todas las celdas empatadas: ante la duda
-no se elige una.
+**Por qué pertenece aquí.** Cada una de las dos ideas tiene su gesto: la
+ventana recorre la imagen con el mismo cuadrito, y señalar una celda o un
+nodo enciende la zona que mira. Y el perceptrón de la primera página no puede
+con estos datos: las tres columnas de un cuadrado 3×3 suman lo mismo que sus
+tres filas, así que ninguna función lineal de los píxeles separa las clases.
+La imposibilidad se atribuye a ese argumento aplicado a la regla que genera
+los datos (verificado numéricamente, 2.7e-15), no al contador: sobre la
+muestra, la programación lineal con los 36 píxeles empieza a fallar desde
+unas 76 imágenes, y eso mide la capacidad lineal, cuántas imágenes alcanza a
+separar una función lineal con esa cantidad de rasgos, no la estructura del
+problema.
 
-**Página 6, entrena.** El mismo mecanismo de la cuarta página: un paso
-animado y tandas de 10 y 100. Agregación fija en máximo. Con máximo global el
-ajuste del filtro es −η·δ·P*, con P* el parche 3×3 que ganó y
-δ = (ŷ − t)·v·φ′(z*): el parche se desprende de la imagen y se suma o se
-resta sobre el filtro. Se exponen η y la activación, nada más.
+**Cómo se ve.** Plana y con poco detalle numérico: los números los enseña la
+cuarta página. Una ventana verde sobre la imagen; el filtro como un cuadrito
+3×3 aparte, en azul lo positivo y en rojo lo negativo, que es el código del
+directorio; el mapa 4×4; y los 16 nodos en cuatro grupos de cuatro, con una
+línea punteada de cada fila del mapa a su grupo: aplanar es poner las filas
+una debajo de otra. Señalar un nodo o una celda ilumina la celda, el nodo y
+la ventana. Un nodo vacío está apagado, porque la ReLU lo dejó en cero, y su
+línea queda tenue. El grosor de las líneas a la salida es |u| contra el tope
+fijo 6, como en la cuarta página. El recorrido del filtro es rápido.
 
-**La activación es la perilla que enseña.** Con ReLU, 40 de 100 semillas
-llegan a cero errores; con lineal, 97 (tanh, 51). En las 60 que se atoran
-con ReLU, el 98 % de las imágenes mal clasificadas tienen máx z ≤ 0: la ReLU
-apaga justo los ejemplos que podrían corregir el filtro, que casi siempre
-quedó como franja descentrada que no alcanza los segmentos junto al borde.
-Con lineal, en las mismas semillas, el filtro a veces inventa soluciones que
-nadie diseñaría, como dos franjas laterales con hueco al centro, que cubren
-los dos bordes. Enlaza con las neuronas muertas de la cuarta página. Hay que
-decir en la página que la ReLU sobra aquí porque el máximo ya es la no
-linealidad, y que en la segunda página era indispensable, para que el alumno
-no se lleve «la ReLU es mala».
+**Página 5, la red ya entrenada.** El alumno cambia la entrada: una
+galería de imágenes y un lienzo 6×6 donde pinta su propio trazo. La imagen
+del diagrama es el lienzo, y un píxel pintado vale 1 o 0, sin intensidades
+intermedias. La salida pregunta «¿Hay un trazo vertical?» y contesta «Sí» o
+«No», nunca «horizontal»: al lienzo vacío le contesta «No». Trae dentro
+los pesos elegidos así: de los arranques con datos estratificados que
+llegaron a cero, el vector con mayor confianza mínima entre los que tienen
+todos sus parámetros con |θ| ≤ 6. La confianza mínima es la menor
+probabilidad que la red da a la clase correcta entre las 200 imágenes. Es el
+arranque 50128, con ReLU y η = 0.1, en la época 58: llegó a cero en la 8 y
+siguió 50 más. Confianza mínima 0.989, mayor |θ| 5.86, que es el de c, y
+cero errores en las 160 y en las 40. El vector completo lo da
+`elegir-pesos.js`, junto al reporte que se cita abajo.
 
-**La tasa.** Entre 0.01 y 0.10 el éxito no se mueve (40 de 100 con ReLU) y
-sólo cambia la rapidez: mediana de 800 a 200 iteraciones. En 0.3 baja a 31 y
-en 1.0 a 10. Cambia cuánto tarda, no adónde llega, mientras no sea grande.
+**Girar el filtro.** Un clic en el cuadrito del filtro lo gira y otro lo
+regresa; en el código es trasponer, que es lo que corresponde a trasponer la
+imagen. Sólo cambian los nueve números del filtro: b, los u_p y c se quedan
+iguales. La razón: el filtro es lo que la red busca, y cambiando el filtro la
+misma red busca otra cosa, sin reentrenar. La pregunta pasa a «¿Hay un trazo
+horizontal?», y los marcos de la galería y el contador se calculan contra
+ella. Medido con el arnés sobre el conjunto de la página: 29 errores en las
+160 y 9 en las 40, que son exactamente las 38 horizontales de las filas 0 y 5,
+por la misma razón que un vertical en la columna 0 o 5: los datos no son
+simétricos, porque los verticales nunca tocan esas columnas y los horizontales
+sí tocan esas filas. Con trazos limpios en 1, las 16 horizontales de las filas
+1 a 4 dicen «Sí», las 8 de las filas 0 y 5, las 24 verticales y el lienzo
+vacío dicen «No». La página verifica al montar que trasponer dos veces
+devuelve el filtro y que las mal clasificadas son exactamente esas 38.
 
-**Lo que no entra.** Momento: con el paso efectivo igualado, η(1−β), no
-cambia el éxito (40 y 42 de 100); sin igualarlo, con β = 0.9 baja a 25. No
-rescata ninguna semilla atorada, y rompe la identidad visual del ajuste: el
-cambio del filtro deja de ser el parche de este paso. Además la cuarta página
-ya lo dejó en TalleRNA. Relleno: con ReLU sube el éxito a 94 de 100, pero
-arregla lo mismo que el interruptor de activación, dos perillas para una
-lección; se cuenta en Explica.md. Número de filtros, stride y tamaños quedan
-fijos por construcción.
+**Página 6, entrena.** Un paso animado —de ida, el recorrido, el mapa, el
+aplanado, la salida y el error; de regreso, los grosores y el filtro— y
+tandas de +1 imagen, +1 época y +10 épocas. Una época es una pasada por las
+160 imágenes, cada una exactamente una vez, en orden barajado de nuevo cada
+época; es distinto del sorteo con reposición de la cuarta página, y a
+propósito. La tasa va en [0.01, 0.20] y empieza en 0.05. Un interruptor
+entre ReLU y lineal: con lineal la red entera queda lineal en los píxeles y
+nunca llega a cero, por el argumento del cuadrado. La curva de la pérdida,
+como en la cuarta página.
 
-**Abierto.** La semilla: con ReLU se atora el 60 %, así que la semilla por
-omisión decide lo que el alumno ve primero, y un botón de «otra semilla» es
-exponer la inicialización, que la cuarta página dejó en TalleRNA. Con
-activación lineal, b y c son redundantes (dirección exactamente plana:
-b+ε, c−vε): ¿se quita b en ese modo o se deja para mostrar que moverlo no
-cambia nada? La partición de prueba repite el problema del punto 3. Los
-nombres de archivo.
+**Medido en JavaScript.** La fuente es
+`../BasicRNA-trabajo/entrena-cnn/reporte.txt`, fuera del repositorio. Con
+ReLU y datos estratificados, 200 arranques por tasa, semilla de datos
+20260928 y tope de 100 épocas. Llegar es tener cero errores en las 160 y en
+las 40 al final de una época. Un arranque apagado termina con todas las
+z_p ≤ 0 en las 200 imágenes: todos los nodos en cero y la misma salida para
+todas.
+
+```
+tasa    llegan    época de llegada (mediana)    apagados
+0.01    75/200    36                             4
+0.02    83/200    21                             4
+0.05    79/200     8                             8
+0.1     68/200     5                            14
+0.2     44/200     3                            48
+```
+
+Con lineal no llega ninguno, en ninguna tasa. Los apagados crecen con la
+tasa, y ésa es la razón para exponerla; enlaza con las neuronas muertas de la
+cuarta página. Entre el 25 % y el 51 % de los que llegan a cero vuelven a
+tener errores si se sigue entrenando 50 épocas más (con los estratificados,
+del 25 % al 46 %), y por eso la curva de la pérdida es necesaria. El éxito
+varía con el conjunto de datos: con ReLU y η = 0.05, en 21 conjuntos, va de
+46 a 96 de 200 con sorteo libre, donde la semilla 20260928 da 96, la mejor de
+las 21 y no la típica (mediana 75); con los estratificados va de 60 a 92, y
+la 20260928 da 79, cerca de la mediana 76. La prueba casi nunca se separa del
+entrenamiento: con η = 0.05, 9 de 200 arranques estratificados tienen en
+alguna época cero errores en entrenamiento y alguno en prueba (8 de 200 con
+sorteo libre).
+
+**El arranque por omisión.** Abierto. Los diez candidatos del reporte, con
+ReLU, η = 0.05 y datos estratificados: su vector inicial no da la misma clase
+a las 200 imágenes, con ReLU llegan a cero entre las épocas 5 y 15, y con el
+mismo vector y lineal se quedan en su meseta. Son 50000 (llega en la época
+9), 50002 (10), 50005 (8), 50013 (10), 50014 (6), 50020 (10), 50036 (11),
+50037 (5), 50041 (5) y 50044 (6). La elección final se hace viéndolos en la
+página.
+
+**El cambio del filtro en el regreso.** Abierto: cómo se ve.
+
+**El tope 6.** Abierto. Con η ≤ 0.05 ningún peso lo rebasa al llegar a cero
+(el mayor, 5.52); con 0.1 y 0.2 lo rebasan al llegar 11 de los 763 arranques
+que llegan, 5 de ellos estratificados, hasta 13.4. Cincuenta épocas después
+la mediana del mayor |θ| está entre 3.5 y 6.6 según la tasa: entrenando de
+más, algunas líneas saturan.
+
+**La partición de prueba.** Abierto: es el problema del punto 2, y las
+páginas CNN no lo resuelven.
 
 **Lo que obliga a cambiar en el README.** La sección «Lo que sigue» es
-provisional y se funde en el cuerpo cuando existan las páginas. Tres pasajes
-se vuelven falsos. La frontera dice que la cuarta página expone «un solo
-hiperparámetro»; la sexta expone también la activación. El criterio
-sobrevive —se expone sólo lo que la animación vuelve visible, y con ReLU se
-ve que a veces no regresa ningún parche—, pero la redacción no. «Lo que
+provisional y se funde en el cuerpo cuando existan las páginas; mientras
+tanto dice que la quinta página «se mueve a mano», y ya no es así. En el
+cuerpo, tres pasajes se vuelven falsos. La frontera dice que la cuarta
+página expone «un solo hiperparámetro»; la sexta expone también la
+activación. El criterio sobrevive —se expone sólo lo que la animación vuelve
+visible, y los nodos apagados se ven—, pero la redacción no. «Lo que
 comparten» dice que todas usan el mismo diagrama y los mismos doscientos
-puntos: las páginas CNN tienen otro diagrama y doscientas imágenes, aunque la
-partición 160/40, el contador y la semilla sí se comparten. Y el ancla deja
-de ser una arista por parámetro para ser una familia de dieciséis, que se
-verifica como traslaciones unas de otras. La portada y el index.html
-necesitan dos miniaturas más.
+puntos: las páginas CNN tienen otro diagrama y doscientas imágenes, aunque
+la partición 160/40, el contador y la semilla sí se comparten. Y el ancla,
+que en estas páginas no tiene gesto de selección: señalar ilumina, pero no
+elige un peso. La portada y el index.html necesitan dos miniaturas más.
 
 ## Lo que no está pendiente
 

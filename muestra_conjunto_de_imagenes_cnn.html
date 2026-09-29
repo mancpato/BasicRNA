@@ -1,0 +1,80 @@
+<h2 class="sr-only">Muestra de imágenes de 6 por 6 píxeles con un trazo vertical u horizontal de tres píxeles sobre un fondo con ruido</h2>
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 12px;">
+  <button id="otra">Otra muestra</button>
+  <label style="font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;"><input type="checkbox" id="marca"> marcar el trazo y las columnas sin trazo</label>
+  <span id="sem" style="font-size:13px;color:var(--text-muted);"></span>
+</div>
+<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+  <div style="flex:1;min-width:300px;">
+    <p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;">Verticales</p>
+    <div id="gv" style="display:grid;grid-template-columns:repeat(8,54px);gap:6px;margin:0 0 14px;"></div>
+    <p style="font-size:13px;color:var(--text-secondary);margin:0 0 6px;">Horizontales</p>
+    <div id="gh" style="display:grid;grid-template-columns:repeat(8,54px);gap:6px;"></div>
+  </div>
+  <div style="width:264px;">
+    <canvas id="big" width="264" height="264" style="width:264px;height:264px;border:0.5px solid var(--border-strong);display:block;"></canvas>
+    <p id="info" style="font-size:13px;color:var(--text-secondary);margin:8px 0 0;"></p>
+  </div>
+</div>
+<script>
+function S(seed){this.s=(seed>>>0)||1;}
+S.prototype.next=function(){this.s=(this.s+0x9e3779b9)>>>0;var z=this.s;z=Math.imul(z^(z>>>16),0x21f0aaad)>>>0;z=Math.imul(z^(z>>>15),0x735a2d97)>>>0;z=(z^(z>>>15))>>>0;return z/4294967296;};
+function gen(seed){
+  var R=new S(seed),out=[];
+  for(var n=0;n<200;n++){
+    var vert=R.next()<0.5,img=[],k;
+    for(k=0;k<36;k++)img.push(0.25*R.next());
+    var I0=0.75+0.25*R.next(),cells=[],d;
+    if(vert){var col=1+Math.floor(4*R.next()),r0=Math.floor(4*R.next());for(d=0;d<3;d++)cells.push((r0+d)*6+col);}
+    else{var c0=1+Math.floor(2*R.next()),row=Math.floor(6*R.next());for(d=0;d<3;d++)cells.push(row*6+c0+d);}
+    for(k=0;k<3;k++)img[cells[k]]=I0;
+    out.push({img:img,vert:vert,cells:cells,I0:I0});
+  }
+  return out;
+}
+var K=0,lista=[],sel=null;
+function pinta(cv,it,celda){
+  var g=cv.getContext('2d');
+  for(var i=0;i<6;i++)for(var j=0;j<6;j++){
+    var v=it.img[i*6+j],c=Math.round(v*255);
+    g.fillStyle='rgb('+c+','+c+','+c+')';g.fillRect(j*celda,i*celda,celda,celda);
+  }
+}
+function grande(){
+  if(!sel)return;
+  var cv=document.getElementById('big'),g=cv.getContext('2d'),it=sel,c=44;
+  pinta(cv,it,c);
+  g.font='11px sans-serif';g.textAlign='center';g.textBaseline='middle';
+  for(var i=0;i<6;i++)for(var j=0;j<6;j++){
+    var v=it.img[i*6+j];
+    g.fillStyle=v>0.5?'#222':'#ddd';
+    g.fillText(v.toFixed(2),j*c+c/2,i*c+c/2);
+  }
+  if(document.getElementById('marca').checked){
+    g.lineWidth=1.5;g.setLineDash([4,3]);g.strokeStyle='#D85A30';
+    g.strokeRect(1,1,c-2,6*c-2);g.strokeRect(5*c+1,1,c-2,6*c-2);
+    g.setLineDash([]);g.lineWidth=2.5;g.strokeStyle='#1D9E75';
+    for(var q=0;q<3;q++){var cc=it.cells[q],ri=Math.floor(cc/6),ci=cc%6;g.strokeRect(ci*c+2,ri*c+2,c-4,c-4);}
+  }
+  document.getElementById('info').textContent=(it.vert?'Vertical':'Horizontal')+', intensidad del trazo '+it.I0.toFixed(2);
+}
+function monta(){
+  var D=gen(20260928+1000*K),v=[],h=[];
+  for(var n=0;n<D.length;n++){if(D[n].vert&&v.length<16)v.push(D[n]);else if(!D[n].vert&&h.length<16)h.push(D[n]);}
+  document.getElementById('sem').textContent='semilla de datos '+(20260928+1000*K);
+  ['gv','gh'].forEach(function(id,idx){
+    var cont=document.getElementById(id),arr=idx===0?v:h;cont.innerHTML='';
+    arr.forEach(function(it){
+      var cv=document.createElement('canvas');cv.width=54;cv.height=54;
+      cv.style.cssText='width:54px;height:54px;cursor:pointer;border:0.5px solid var(--border-strong);';
+      pinta(cv,it,9);
+      cv.onclick=function(){sel=it;grande();};
+      cont.appendChild(cv);
+    });
+  });
+  sel=v[0];grande();
+}
+document.getElementById('otra').onclick=function(){K++;monta();};
+document.getElementById('marca').onchange=grande;
+monta();
+</script>

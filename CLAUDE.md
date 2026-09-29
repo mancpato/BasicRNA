@@ -12,8 +12,7 @@ mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
 
 ## Pila y cómo se ejecuta
 
-- HTML y JavaScript nativo (binary64) con canvas 2D; sin bibliotecas ni CDN.
-- Entorno: ninguno; no hay build. Cualquier navegador moderno.
+- HTML y JS nativo (binary64), canvas 2D; sin bibliotecas, CDN ni build.
 - Ejecutar: doble clic en `index.html`. Pruebas: no hay suite; cada página
   se verifica sola al montar (el ancla y, en la 4, el gradiente).
 
@@ -25,6 +24,7 @@ index.html            portal con las miniaturas de img/
 2-EditParam.html      red 2→4→1, diecisiete a mano, ReLU o tanh global
 3-EditActivFun.html   2→4→1 con activación elegida por neurona (seis)
 4-Backprop.html       SGD de a un punto sobre la red de la 2; expone η
+5-Convolucion.html    CNN 6×6 ya entrenada: se pinta la entrada, el filtro gira
 img/                  miniaturas 900×600 y portada; originales/ intactos
 ```
 
@@ -55,5 +55,6 @@ Además, `TODO.md`: pendientes con su razonamiento, para quien revise.
 ## Dónde estamos (máximo 6 líneas; se reescribe entera)
 
 - Último commit: el que agrega este archivo y el plan de la CNN (TODO §4).
-- Lo siguiente: la página 5 (CNN a mano), en sesión aparte.
+- Hecho: `5-Convolucion.html`, la CNN ya entrenada que el alumno sólo usa.
+- Lo siguiente: `6-BackpropCNN.html`, que entrena la misma red (TODO §4).
 - Abierto: README en 85 líneas contra tope 40.
