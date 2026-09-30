@@ -91,6 +91,65 @@ Cada módulo es un archivo HTML autocontenido (Canvas 2D, JavaScript nativo `bin
 
 * **Curva de la pérdida:** $\mathcal{L}$ frente al número de iteraciones, trazada desde la iteración cero y diezmada a un valor por columna de píxel (valores reales, no promedios de tramo). Incluye una marca en $\ln 2 \approx 0.693$, el valor de un clasificador que asigna probabilidad $0.5$ a toda muestra. Existe porque el contador de mal clasificados es entero y, actualizando de a un punto, brinca y ocasionalmente empeora: sin una cantidad continua al lado no hay forma de ver que el descenso progresa.
 
+### 5. `5-Convolucion.html` — CNN 6×6 ya entrenada
+
+* **Arquitectura:** imagen de $6 \times 6$, un filtro de $3 \times 3$ con sesgo y sin relleno, mapa de $4 \times 4$, activación $\text{ReLU}$, 16 nodos y salida sigmoide. Etiqueta $1$ = vertical.
+
+* **Parámetros (27):**
+  * $\theta_{0 \dots 8}$: pesos del filtro $w_{rs}$, por renglones
+  * $\theta_{9}$: sesgo del filtro $b$
+  * $\theta_{10 \dots 25}$: pesos $u_p$ de cada nodo a la salida
+  * $\theta_{26}$: sesgo de salida $c$
+
+  La celda $p$ del mapa está en la fila $i_p = \lfloor p/4 \rfloor$ (`p>>2`) y la columna $j_p = p \bmod 4$ (`p&3`).
+
+* **Ecuaciones:**
+
+  $$z_p = b + \sum_{r=0}^{2}\sum_{s=0}^{2} w_{rs}\, x_{i_p+r,\; j_p+s}, \qquad a_p = \max(z_p, 0), \qquad \hat{y} = \sigma\Big(c + \sum_{p=0}^{15} u_p\, a_p\Big).$$
+
+* **Conjunto de datos:** 200 imágenes, un segmento de longitud 3 vertical u horizontal, con una sola intensidad por imagen en [0.75, 1], sobre fondo con ruido uniforme en [0, 0.25]. El trazo no toca las columnas 0 y 5: los horizontales empiezan en la columna 1 o 2. Sin ese margen esos trazos serían invisibles: medido con los pesos de la página 5, un vertical de 3 píxeles pintado en la columna 0 o en la 5 da la misma salida que el lienzo vacío, porque ninguna ventana lo tiene bajo su columna central y la ReLU apaga las celdas que lo ven. Estratificados: 80 verticales y 80 horizontales en las 160 de entrenamiento, 20 y 20 en las 40 de prueba, en orden mezclado dentro de cada partición.
+
+* **Pesos incluidos:** La página trae dentro los pesos elegidos así: de los arranques con datos estratificados que llegaron a cero, el vector con mayor confianza mínima entre los que tienen todos sus parámetros con |θ| ≤ 6. La confianza mínima es la menor probabilidad que la red da a la clase correcta entre las 200 imágenes. Es el arranque 50128, con ReLU y η = 0.1, en la época 58: llegó a cero en la 8 y siguió 50 más. Confianza mínima 0.989, mayor |θ| 5.86, que es el de c, y cero errores en las 160 y en las 40. El vector completo lo da `elegir-pesos.js`, junto al reporte que se cita abajo.
+
+* **Girar el filtro:** Un clic en el cuadrito del filtro lo gira y otro lo regresa; en el código es trasponer, que es lo que corresponde a trasponer la imagen. Sólo cambian los nueve números del filtro: b, los u_p y c se quedan iguales. La razón: el filtro es lo que la red busca, y cambiando el filtro la misma red busca otra cosa, sin reentrenar. La pregunta pasa a «¿Hay un trazo horizontal?», y los marcos de la galería y el contador se calculan contra ella. Medido con el arnés sobre el conjunto de la página: 29 errores en las 160 y 9 en las 40, que son exactamente las 38 horizontales de las filas 0 y 5, por la misma razón que un vertical en la columna 0 o 5: los datos no son simétricos, porque los verticales nunca tocan esas columnas y los horizontales sí tocan esas filas. Con trazos limpios en 1, las 16 horizontales de las filas 1 a 4 dicen «Sí», las 8 de las filas 0 y 5, las 24 verticales y el lienzo vacío dicen «No». La página verifica al montar que trasponer dos veces devuelve el filtro y que las mal clasificadas son exactamente esas 38.
+
+* **Argumento de las tres columnas y las tres filas:** El perceptrón de la primera página no puede con estos datos: las tres columnas de un cuadrado 3×3 suman lo mismo que sus tres filas, así que ninguna función lineal de los píxeles separa las clases. La imposibilidad se atribuye a ese argumento aplicado a la regla que genera los datos (verificado numéricamente, 2.7e-15), no al contador: sobre la muestra, la programación lineal con los 36 píxeles empieza a fallar desde unas 76 imágenes, y eso mide la capacidad lineal, cuántas imágenes alcanza a separar una función lineal con esa cantidad de rasgos, no la estructura del problema.
+
+### 6. `6-BackpropCNN.html` — Un filtro 3×3 que aprende
+
+* **Arquitectura y parámetros:** los del módulo 5 (la misma red, 27 parámetros en el mismo orden), con activación conmutable entre $\text{ReLU}$ y lineal.
+
+* **Paso hacia atrás:**
+
+  $$\delta = \hat{y} - y, \qquad \delta_p = \delta\, u_p\, \varphi'(z_p),$$
+  $$\frac{\partial \mathcal{L}}{\partial u_p} = \delta\, a_p, \qquad
+    \frac{\partial \mathcal{L}}{\partial c} = \delta, \qquad
+    \frac{\partial \mathcal{L}}{\partial b} = \sum_{p} \delta_p, \qquad
+    \frac{\partial \mathcal{L}}{\partial w_{rs}} = \sum_{p} \delta_p\, x_{i_p+r,\; j_p+s},$$
+
+  con actualización $\Delta\theta = -\eta\, \partial \mathcal{L} / \partial \theta$.
+
+* **Entrenamiento:** SGD de a una imagen. Una época es una pasada por las 160 imágenes de entrenamiento, cada una una vez, en orden barajado de nuevo en cada época. Tasa $\eta \in [0.01, 0.20]$, inicial 0.05. Inicialización Xavier uniforme: $w$ en $\pm\sqrt{6/10}$, $u$ en $\pm\sqrt{6/17}$, $b = c = 0$. Sorteos con `splitmix32`. Activación $\text{ReLU}$ o lineal.
+
+* **Escala del cambio:** una sola para los 27 parámetros, contra el mayor $|\Delta\theta|$ del paso, con raíz.
+
+* **Al montar:** se verifican el ancla, los datos y el gradiente contra diferencias centradas (tolerancia $10^{-5}$), con un control que debe rechazar $b$ con el signo invertido.
+
+* **Cifras medidas** (las midió Claude Code con el arnés, `reporte.txt`): La fuente es `../BasicRNA-trabajo/entrena-cnn/reporte.txt`, fuera del repositorio. Con ReLU y datos estratificados, 200 arranques por tasa, semilla de datos 20260928 y tope de 100 épocas. Llegar es tener cero errores en las 160 y en las 40 al final de una época. Un arranque apagado termina con todas las z_p ≤ 0 en las 200 imágenes: todos los nodos en cero y la misma salida para todas.
+
+  ```
+  tasa    llegan    época de llegada (mediana)    apagados
+  0.01    75/200    36                             4
+  0.02    83/200    21                             4
+  0.05    79/200     8                             8
+  0.1     68/200     5                            14
+  0.2     44/200     3                            48
+  ```
+
+  Con lineal no llega ninguno, en ninguna tasa. Los apagados crecen con la tasa, y ésa es la razón para exponerla; enlaza con las neuronas muertas de la cuarta página. Entre el 25 % y el 51 % de los que llegan a cero vuelven a tener errores si se sigue entrenando 50 épocas más (con los estratificados, del 25 % al 46 %), y por eso la curva de la pérdida es necesaria. El éxito varía con el conjunto de datos: con ReLU y η = 0.05, en 21 conjuntos, va de 46 a 96 de 200 con sorteo libre, donde la semilla 20260928 da 96, la mejor de las 21 y no la típica (mediana 75); con los estratificados va de 60 a 92, y la 20260928 da 79, cerca de la mediana 76. La prueba casi nunca se separa del entrenamiento: con η = 0.05, 9 de 200 arranques estratificados tienen en alguna época cero errores en entrenamiento y alguno en prueba (8 de 200 con sorteo libre).
+
+* **Arranque por omisión:** provisional, semilla 50013; la elección está abierta (`TODO.md` §4).
+
 ## Especificaciones técnicas
 
 * **Ancla estructural entre diagrama y vector de parámetros:**

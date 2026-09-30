@@ -14,7 +14,7 @@ mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
 
 - HTML y JS nativo (binary64), canvas 2D; sin bibliotecas, CDN ni build.
 - Ejecutar: doble clic en `index.html`. Pruebas: no hay suite; cada página
-  se verifica sola al montar (el ancla y, en la 4, el gradiente).
+  se verifica sola al montar (el ancla y, en la 4 y la 6, el gradiente).
 
 ## Archivos
 
@@ -25,6 +25,7 @@ index.html            portal con las miniaturas de img/
 3-EditActivFun.html   2→4→1 con activación elegida por neurona (seis)
 4-Backprop.html       SGD de a un punto sobre la red de la 2; expone η
 5-Convolucion.html    CNN 6×6 ya entrenada: se pinta la entrada, el filtro gira
+6-BackpropCNN.html    SGD de a una imagen sobre la CNN de la 5; expone η
 img/                  miniaturas 900×600 y portada; originales/ intactos
 ```
 
@@ -39,7 +40,7 @@ img/                  miniaturas 900×600 y portada; originales/ intactos
 - Grosor contra el tope del deslizador, con raíz; nunca contra el máximo.
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
-- La 4 compara su gradiente con diferencias centradas antes de montar.
+- La 4 y la 6 comparan su gradiente con diferencias centradas al montar.
 - Se proyecta: la 4 cabe en 1196×940 sin desplazamiento; las nuevas, igual.
 
 ## Conductas verificadas
@@ -54,7 +55,6 @@ Además, `TODO.md`: pendientes con su razonamiento, para quien revise.
 
 ## Dónde estamos (máximo 6 líneas; se reescribe entera)
 
-- Último commit: el que agrega este archivo y el plan de la CNN (TODO §4).
-- Hecho: `5-Convolucion.html`, la CNN ya entrenada que el alumno sólo usa.
-- Lo siguiente: `6-BackpropCNN.html`, que entrena la misma red (TODO §4).
-- Abierto: README en 85 líneas contra tope 40.
+- Último commit: el que agrega la 6 y pone al día README, Explica y TODO.
+- Hecho: 5 y 6, la CNN mínima. Lo siguiente: ajustes de la 6 (TODO §4).
+- Abierto: README sobre su tope de 40 líneas; faltan miniaturas 5 y 6.

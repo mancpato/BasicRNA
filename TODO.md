@@ -208,14 +208,15 @@ vacío dicen «No». La página verifica al montar que trasponer dos veces
 devuelve el filtro y que las mal clasificadas son exactamente esas 38.
 
 **Página 6, entrena.** Un paso animado —de ida, el recorrido, el mapa, el
-aplanado, la salida y el error; de regreso, los grosores y el filtro— y
-tandas de +1 imagen, +1 época y +10 épocas. Una época es una pasada por las
-160 imágenes, cada una exactamente una vez, en orden barajado de nuevo cada
-época; es distinto del sorteo con reposición de la cuarta página, y a
-propósito. La tasa va en [0.01, 0.20] y empieza en 0.05. Un interruptor
-entre ReLU y lineal: con lineal la red entera queda lineal en los píxeles y
-nunca llega a cero, por el argumento del cuadrado. La curva de la pérdida,
-como en la cuarta página.
+aplanado, la salida y el error; de regreso, los grosores y el filtro— y tandas
+de +1 época y +10 épocas (Un paso ya es una imagen). Una época es una pasada
+por las 160 imágenes, cada una exactamente una vez, en orden barajado de nuevo
+cada época; es distinto del sorteo con reposición de la cuarta página, y a
+propósito. La tasa va en [0.01, 0.20] y empieza en 0.05. Un interruptor entre
+ReLU y lineal: con lineal la red entera queda lineal en los píxeles y nunca
+llega a cero, por el argumento del cuadrado. La curva de la pérdida, como en
+la cuarta página. Sin galería y sin botones Vertical/Horizontal: cada imagen
+sale del orden barajado de la época.
 
 **Medido en JavaScript.** La fuente es
 `../BasicRNA-trabajo/entrena-cnn/reporte.txt`, fuera del repositorio. Con
@@ -250,12 +251,21 @@ sorteo libre).
 **El arranque por omisión.** Abierto. Los diez candidatos del reporte, con
 ReLU, η = 0.05 y datos estratificados: su vector inicial no da la misma clase
 a las 200 imágenes, con ReLU llegan a cero entre las épocas 5 y 15, y con el
-mismo vector y lineal se quedan en su meseta. Son 50000 (llega en la época
-9), 50002 (10), 50005 (8), 50013 (10), 50014 (6), 50020 (10), 50036 (11),
-50037 (5), 50041 (5) y 50044 (6). La elección final se hace viéndolos en la
-página.
+mismo vector y lineal se quedan en su meseta. Son 50000 (llega en la época 9),
+50002 (10), 50005 (8), 50013 (10), 50014 (6), 50020 (10), 50036 (11), 50037
+(5), 50041 (5) y 50044 (6). La elección final se hace viéndolos en la página.
+La página 6 lleva provisionalmente el 50013. Su vector inicial coincide con el
+del arnés (50 de 1000 semillas dan a las 200 imágenes la misma clase, como
+cuenta el reporte), pero el orden de las épocas no se cotejó con el arnés: con
+el barajado de la página el 50013 llega en la época 9, no en la 10 del
+reporte. Falta cotejar el orden contra entrena-cnn/ y elegir. Esto se midió en
+el chat, no con Claude Code.
 
-**El cambio del filtro en el regreso.** Abierto: cómo se ve.
+**El cambio del filtro en el regreso.** Decidido y construido en la 6: la
+ventana regresa sólo por los nodos encendidos; cada celda del filtro muestra
+su cambio con un cuadro interior violeta u ocre, y b con un punto; una sola
+escala para los 27. Las razones están en el comentario de cabecera de
+6-BackpropCNN.html.
 
 **El tope 6.** Abierto. Con η ≤ 0.05 ningún peso lo rebasa al llegar a cero
 (el mayor, 5.52); con 0.1 y 0.2 lo rebasan al llegar 11 de los 763 arranques
@@ -266,18 +276,12 @@ más, algunas líneas saturan.
 **La partición de prueba.** Abierto: es el problema del punto 2, y las
 páginas CNN no lo resuelven.
 
-**Lo que obliga a cambiar en el README.** La sección «Lo que sigue» es
-provisional y se funde en el cuerpo cuando existan las páginas; mientras
-tanto dice que la quinta página «se mueve a mano», y ya no es así. En el
-cuerpo, tres pasajes se vuelven falsos. La frontera dice que la cuarta
-página expone «un solo hiperparámetro»; la sexta expone también la
-activación. El criterio sobrevive —se expone sólo lo que la animación vuelve
-visible, y los nodos apagados se ven—, pero la redacción no. «Lo que
-comparten» dice que todas usan el mismo diagrama y los mismos doscientos
-puntos: las páginas CNN tienen otro diagrama y doscientas imágenes, aunque
-la partición 160/40, el contador y la semilla sí se comparten. Y el ancla,
-que en estas páginas no tiene gesto de selección: señalar ilumina, pero no
-elige un peso. La portada y el index.html necesitan dos miniaturas más.
+**La 6 proyectada.** Abierto: no se ha proyectado a 1196×940; la altura total
+(unos 840 px) es estimada, y el texto a la derecha de la salida deja unos 4 px
+de margen en el lienzo de 708.
+
+**Lo que obliga a cambiar en el README.** La portada y el index.html necesitan
+dos miniaturas más.
 
 ## Lo que no está pendiente
 
@@ -290,3 +294,7 @@ Tampoco lo es abrir más hiperparámetros en la cuarta página. La frontera del
 directorio es que aquí no se configura: momento, tamaño de lote, épocas e
 inicialización son de TalleRNA. Si se abren aquí, esta página ya es TalleRNA y
 el directorio pierde su límite.
+
+Tampoco lo es simular varias capas convolucionales. Lo que estas páginas
+enseñan es que un kernel detecta un rasgo básico, y una capa con un filtro
+alcanza para eso.
