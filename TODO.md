@@ -123,10 +123,10 @@ iteraciones. Dice la verdad sobre la red que hay, y se arregla sola, así que se
 dejó; sustituirlo por un seguimiento de contorno en regla es trabajo real y
 beneficia a las cuatro páginas, no sólo a ésta.
 
-**Las otras tres no caben proyectadas.** La cuarta se dimensionó para entrar
-entera en una ventana de 940 px y no usar el scroll en clase. Las tres primeras
-no lo hacen, y ahora la diferencia se nota al pasar de una a otra. Es una tarde
-de trabajo aplicar el mismo criterio a las tres, y probablemente valga la pena.
+**Las tres primeras ya caben proyectadas** en 1196 × 940, con 20 px de margen
+lateral: terminan en 908, 903 y 927 px (medido con Claude Code, en Chrome).
+Por homogeneizar: su margen de arriba y de abajo (28 y 48 px) sigue siendo
+distinto del de la 4 a la 8 (16 y 22).
 
 ## 4. Páginas 5 y 6: una CNN mínima
 
@@ -335,10 +335,3 @@ alcanza para eso.
 - `README.md` está sobre su tope de 40 líneas.
 - `README.md` dice «siete páginas» y no menciona la 8.
 - Faltan en `img/` las miniaturas de las páginas 5 a 8.
-- Con barras de desplazamiento clásicas (Chrome en Windows) y una ventana de
-  1196 × 940, las páginas 1, 2, 3, 6, 7 y 8 aparecen con barra y la columna
-  derecha baja; la 4 no. La razón: miden 1140 px de ancho, sin holgura, y con
-  la barra de 15 px hay dos acomodos estables, y Chrome se queda con el alto.
-  Medido en el chat: bajando el margen lateral del body de 28 a 20 px
-  desaparece en las seis, y las tres primeras quedan entre 903 y 927 px de
-  alto. La 5 no se midió.

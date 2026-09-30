@@ -43,7 +43,7 @@ img/                  miniaturas 900×600 y portada; originales/ intactos
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
 - La 4, la 6 y la 8 comparan su gradiente con diferencias centradas al montar.
-- Se proyecta: la 4 cabe en 1196×940 sin desplazamiento; las nuevas, igual.
+- Se proyecta: 1 a 8 caben en 1196×940 sin desplazamiento, aun con barra; index no.
 
 ## Conductas verificadas
 
