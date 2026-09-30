@@ -26,6 +26,7 @@ index.html            portal con las miniaturas de img/
 4-Backprop.html       SGD de a un punto sobre la red de la 2; expone η
 5-Convolucion.html    CNN 6×6 ya entrenada: se pinta la entrada, el filtro gira
 6-BackpropCNN.html    SGD de a una imagen sobre la CNN de la 5; expone η
+7-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
 img/                  miniaturas 900×600 y portada; originales/ intactos
 ```
 
@@ -35,7 +36,8 @@ img/                  miniaturas 900×600 y portada; originales/ intactos
 - Una página que entrena expone sólo lo que su animación vuelve visible.
 - Un HTML autocontenido por página; ninguna importa código de otra.
 - Descriptores verificados antes de crear lienzos; si fallan, no monta.
-- Ante la duda no se selecciona (6 px; segunda al doble; 2.5 px aparte).
+- Ancla con copias: no permutación; copias exactas por índice y su geometría.
+- Ante la duda no se selecciona (6 px; la de OTRO índice al doble; 2.5 px aparte).
 - θ se ordena i·N_oculta + j; el orden traspuesto rompe el ancla.
 - Grosor contra el tope del deslizador, con raíz; nunca contra el máximo.
 - Azul y rojo son el signo del peso y no se reusan para nada más.
@@ -49,12 +51,10 @@ Ninguna registrada todavía.
 
 ## Documentos
 
-Los permitidos son los de la lista cerrada del global. No hay `spec.md`.
+`ESPEC-n-*.md`: spec previa; se borra al construir, su cabecera la sustituye.
 Además, `Explica.md`: arquitecturas, fórmulas, datos y cifras medidas.
 Además, `TODO.md`: pendientes con su razonamiento, para quien revise.
 
 ## Dónde estamos (máximo 6 líneas; se reescribe entera)
 
-- Último commit: el que agrega la 6 y pone al día README, Explica y TODO.
-- Hecho: 5 y 6, la CNN mínima. Lo siguiente: ajustes de la 6 (TODO §4).
-- Abierto: README sobre su tope de 40 líneas; faltan miniaturas 5 y 6.
+- CNN (5 y 6) cerrada; 7 hecha; pendiente la 8, retropropagación en el tiempo.

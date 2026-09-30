@@ -1,6 +1,6 @@
 # BasicRNA
 
-Seis páginas sueltas para las primeras clases sobre redes neuronales. Cada una
+Siete páginas sueltas para las primeras clases sobre redes neuronales. Cada una
 es un archivo HTML único, sin dependencias y sin build: se abre con doble clic y
 dibuja con canvas 2D.
 
@@ -15,7 +15,7 @@ tamaño de lote, épocas e inicialización se quedan en TalleRNA y las demás
 herramientas de las que este directorio es hermano. Si se abrieran aquí, la
 cuarta página ya sería TalleRNA.
 
-## Las seis páginas, en orden
+## Las siete páginas, en orden
 
 El orden importa: cada una deja una pregunta que contesta la siguiente.
 
@@ -66,6 +66,9 @@ diez épocas, la tasa y un interruptor entre ReLU y lineal. Con lineal nunca
 llega a cero errores, porque ninguna función lineal de los píxeles separa
 las clases. Una sola capa y un solo filtro, a propósito: lo que se enseña es
 que un kernel detecta un rasgo básico.
+
+**`7-Recurrente.html` — la red recurrente más chica, cinco parámetros a mano.**
+La red usa el mismo parámetro en cada paso, y el estado es su memoria.
 
 ## Lo que comparten
 
