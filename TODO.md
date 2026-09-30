@@ -334,4 +334,3 @@ alcanza para eso.
 
 - `README.md` está sobre su tope de 40 líneas.
 - `README.md` dice «siete páginas» y no menciona la 8.
-- Faltan en `img/` las miniaturas de las páginas 5 a 8.

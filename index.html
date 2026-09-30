@@ -140,6 +140,63 @@
       </div>
     </a>
 
+    <a class="tarjeta" href="5-Convolucion.html">
+      <img src="img/5-Convolucion.png"
+           alt="Una imagen de 6×6 con un trazo vertical y una ventana verde encima; al lado, el filtro 3×3, el mapa 4×4 y los dieciséis nodos que llegan a la salida.">
+      <div class="cuerpo">
+        <h2>Convolución — un filtro 3×3 que recorre la imagen</h2>
+        <p>
+          La misma ventana en todas partes, y cada celda del mapa mira una zona
+          de la imagen. La red ya viene entrenada: se cambia la entrada, y un
+          clic en el filtro lo gira.
+        </p>
+        <span class="archivo">5-Convolucion.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="6-BackpropCNN.html">
+      <img src="img/6-BackpropCNN.png"
+           alt="La imagen de un trazo vertical, el filtro con cuadros violeta que marcan su cambio, el mapa y los nodos rodeados por anillos que representan la señal de error.">
+      <div class="cuerpo">
+        <h2>Retropropagación en una CNN — un filtro 3×3 que aprende</h2>
+        <p>
+          La red de la página anterior, entrenada a la vista, una imagen a la
+          vez. El error regresa por los nodos que quedaron encendidos, y el
+          filtro cambia por la suma de lo que pide cada posición.
+        </p>
+        <span class="archivo">6-BackpropCNN.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="7-Recurrente.html">
+      <img src="img/7-Recurrente.png"
+           alt="Una tira de siete píxeles sobre una fila de siete estados unidos por flechas resaltadas, que son copias de un solo parámetro; abajo, lo que diría la red en cada paso.">
+      <div class="cuerpo">
+        <h2>Recurrencia — una neurona que lee la tira píxel por píxel</h2>
+        <p>
+          La red recurrente más chica, cinco parámetros a mano. El mismo
+          parámetro se usa en cada paso, y el estado es la memoria: guarda lo
+          que la red ya leyó.
+        </p>
+        <span class="archivo">7-Recurrente.html</span>
+      </div>
+    </a>
+
+    <a class="tarjeta" href="8-BackpropTiempo.html">
+      <img src="img/8-BackpropTiempo.png"
+           alt="La fila de estados de la red recurrente, con el factor de cada flecha escrito encima y, debajo, el orden de magnitud de la señal de error, de 10⁻⁵ a 10⁻¹.">
+      <div class="cuerpo">
+        <h2>Retropropagación en el tiempo — la neurona recurrente aprende, o no</h2>
+        <p>
+          La red de la página anterior, entrenada por el algoritmo. En cada paso
+          de regreso la señal de error se multiplica por un factor, y llega casi
+          nula al primer píxel: la solución existe y el descenso por gradiente
+          no la encuentra.
+        </p>
+        <span class="archivo">8-BackpropTiempo.html</span>
+      </div>
+    </a>
+
   </div>
 
   <footer>
