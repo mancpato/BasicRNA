@@ -290,25 +290,14 @@ cinco parámetros que el alumno mueve a mano, sobre tiras de píxeles, con tres
 tareas (el último, la mayoría, el primero) y un interruptor entre lineal y
 tanh. Las razones de cada decisión suya viven en su comentario de cabecera.
 
-**Página 8, pendiente.** Entrenará esta misma red por retropropagación en el
-tiempo: el error se calcula en la salida y regresa paso por paso, del último
-estado al primero. Su idea central es que el pulso de regreso se multiplica en
-cada paso por u·φ′, donde φ′ es la derivada de la activación en ese paso. Si
-|u·φ′| se queda por debajo de 1, el pulso se encoge en cada paso y llega casi
-nulo a los primeros píxeles; si pasa de 1, crece. Es el dibujo del gradiente
-que se desvanece, que el punto 3 dice que falta en la cuarta página, y además
-el del gradiente que explota. Se midió entrenando la red de la 7 con SGD de a
-una tira (η = 0.1, pesos iniciales uniformes en ±0.5, 20 arranques, 400
-épocas); no se midió con Claude Code. Con tanh llegan a cero errores 20 de 20
-en el último, en 1 época; 0 de 20 en la mayoría, y 1 de 20 en el primero. Con
-lineal, 20 de 20 en el último; 1 de 20 en la mayoría, donde los otros 19 se
-desbordan, y 0 de 20 en el primero. Con los pesos de un arranque típico, la
-señal de error que llega al primer píxel es 5.4×10⁻⁵ de la que llega al
-último: cada paso la multiplica por u·tanh′ ≈ 0.2. La lección es que la
-solución existe —la página 7 la muestra a mano— y el descenso por gradiente no
-la encuentra. Queda por decidir si δ, la señal de error de cada paso, se dibuja
-en escala logarítmica; qué se muestra cuando la lineal se desborda, y si la
-mayoría se queda o la 8 usa sólo el último contra el primero.
+**Página 8, construida.** `8-BackpropTiempo.html` entrena la red de la 7 por
+retropropagación en el tiempo, de a una tira. Las razones de cada decisión suya
+y lo que se midió viven en su comentario de cabecera.
+
+**Por homogeneizar con la 7.** La 8 oculta los círculos de los radios para que
+la barra quepa en un renglón. Y escribe bajo cada estado el orden de magnitud
+de |δ|, excepción deliberada a la regla de la 7 de que ningún dato aparece dos
+veces.
 
 **Respuesta parcial al punto 2.** La prueba de la 7 son 40 tiras de 9
 píxeles, más largas que las 128 de 7 de entrenamiento, así que mide algo que
@@ -344,4 +333,12 @@ alcanza para eso.
 ## Pendientes de mantenimiento
 
 - `README.md` está sobre su tope de 40 líneas.
-- Faltan en `img/` las miniaturas de las páginas 5, 6 y 7.
+- `README.md` dice «siete páginas» y no menciona la 8.
+- Faltan en `img/` las miniaturas de las páginas 5 a 8.
+- Con barras de desplazamiento clásicas (Chrome en Windows) y una ventana de
+  1196 × 940, las páginas 1, 2, 3, 6, 7 y 8 aparecen con barra y la columna
+  derecha baja; la 4 no. La razón: miden 1140 px de ancho, sin holgura, y con
+  la barra de 15 px hay dos acomodos estables, y Chrome se queda con el alto.
+  Medido en el chat: bajando el margen lateral del body de 28 a 20 px
+  desaparece en las seis, y las tres primeras quedan entre 903 y 927 px de
+  alto. La 5 no se midió.

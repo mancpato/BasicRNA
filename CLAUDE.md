@@ -13,8 +13,7 @@ mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
 ## Pila y cómo se ejecuta
 
 - HTML y JS nativo (binary64), canvas 2D; sin bibliotecas, CDN ni build.
-- Ejecutar: doble clic en `index.html`. Pruebas: no hay suite; cada página
-  se verifica sola al montar (el ancla y, en la 4 y la 6, el gradiente).
+- Doble clic en `index.html`. Sin suite: cada página se verifica sola al montar.
 
 ## Archivos
 
@@ -27,6 +26,7 @@ index.html            portal con las miniaturas de img/
 5-Convolucion.html    CNN 6×6 ya entrenada: se pinta la entrada, el filtro gira
 6-BackpropCNN.html    SGD de a una imagen sobre la CNN de la 5; expone η
 7-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
+8-BackpropTiempo.html BPTT de a una tira sobre la red de la 7; expone η
 img/                  miniaturas 900×600 y portada; originales/ intactos
 ```
 
@@ -42,7 +42,7 @@ img/                  miniaturas 900×600 y portada; originales/ intactos
 - Grosor contra el tope del deslizador, con raíz; nunca contra el máximo.
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
-- La 4 y la 6 comparan su gradiente con diferencias centradas al montar.
+- La 4, la 6 y la 8 comparan su gradiente con diferencias centradas al montar.
 - Se proyecta: la 4 cabe en 1196×940 sin desplazamiento; las nuevas, igual.
 
 ## Conductas verificadas
@@ -57,4 +57,4 @@ Además, `TODO.md`: pendientes con su razonamiento, para quien revise.
 
 ## Dónde estamos (máximo 6 líneas; se reescribe entera)
 
-- CNN (5 y 6) cerrada; 7 hecha; pendiente la 8, retropropagación en el tiempo.
+- RNN (7 y 8) cerrada; sigue la 9, atención.
