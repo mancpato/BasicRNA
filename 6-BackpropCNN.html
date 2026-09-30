@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retropropagación en una CNN — el filtro aprende</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --azul: #4b8bbe;
+    --naranja: #e8825a;
+    --positivo: #3c64d2;
+    --negativo: #d23c3c;
+    --verde: #22a050;   /* la posición en turno: su ventana, su celda y su nodo */
+    --delta: #1f8a8a;   /* δ, la señal de error, en el nodo */
+    --sube: #7a4fb5;    /* el peso aumenta */
+    --baja: #b07d2b;    /* el peso disminuye */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 28px 22px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.2px; }
+
+  .barra {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+    margin: 0 0 14px; padding: 9px 14px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .barra > span.rot { font-weight: 600; font-size: 14px; }
+  .barra label {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 12px; border: 1px solid var(--linea); border-radius: 6px;
+    cursor: pointer; background: #fbfcfd; font-size: 14px;
+  }
+  .barra label:hover { border-color: #aab4bd; }
+  .barra label.puesto { border-color: var(--tinta); background: #eef2f6; font-weight: 600; }
+  .barra .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 2px; }
+  .barra button {
+    font: inherit; font-size: 13.5px; padding: 6px 13px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .barra button:hover:enabled { background: #eef2f6; border-color: #8f9aa3; }
+  .barra button:active:enabled { background: #e2e8ee; }
+  .barra button:disabled { color: #a8b1b9; cursor: default; }
+  /* El botón del paso animado es el que enseña el mecanismo: va destacado. */
+  .barra button.principal { border-color: #6f7b85; font-weight: 600; }
+  .tasa { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; }
+  .tasa input[type=range] { width: 124px; }
+  .tasa .val { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 34px; }
+
+  /* Los instrumentos van en una franja ANCHA sobre las dos columnas: las cifras
+     y la curva miden lo mismo a lo largo del tiempo y se leen juntas. */
+  .instrumentos {
+    display: flex; gap: 24px; align-items: center; max-width: 100%;
+    margin: 0 0 14px; padding: 11px 16px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; width: 470px; flex: none; }
+  .cifras .par { display: flex; align-items: baseline; gap: 9px; }
+  .cifras .cifra { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cifras .cero { color: #2e8b57; }
+  .cifras .noCero { color: var(--negativo); }
+  .cifras .neutra { color: var(--tinta); }
+  .cifras .rotulo { font-size: 12.5px; line-height: 1.3; color: var(--tinta-suave); }
+  .cifras .de { font-size: 12px; color: #8b959d; }
+
+  .tablero { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px 14px;
+  }
+
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 12px; font-size: 12.5px; line-height: 1.4; color: var(--tinta-suave);
+             display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .leyenda .it { display: flex; align-items: center; gap: 8px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; flex: none; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  .llave { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+  .anillo { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex: none;
+            border: 3px solid var(--delta); }
+
+  /* Los dos paneles de lectura. Reservan su alto desde el principio para que
+     nada se mueva al empezar un paso. */
+  .panel { margin-bottom: 12px; font-size: 13px; line-height: 1.5;
+           min-height: 118px; font-variant-numeric: tabular-nums; }
+  .panel .tit { font-weight: 700; font-size: 13.5px; margin-bottom: 1px; }
+  .panel .rotfase { color: var(--tinta-suave); min-height: 39px; }
+  .panel .fila { color: var(--tinta); }
+  .panel.apagado .fila, .panel.apagado .tit { color: #9aa4ac; font-weight: inherit; }
+  .panel .tenue { color: var(--tinta-suave); }
+  .panel .mudo { color: #9aa4ac; }
+
+  .pie { margin-top: 10px; font-size: 13px; line-height: 1.45; color: var(--tinta);
+         border-left: 3px solid var(--linea); padding: 2px 0 2px 10px; min-height: 20px; }
+  .pie:empty { display: none; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Retropropagación en una CNN — un filtro 3×3 que aprende</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+/*
+Retropropagación en una CNN — un filtro 3×3 que aprende
+
+Es la SEXTA página de BasicRNA y la segunda sobre una red convolucional. La
+quinta usa la red ya entrenada; ésta la entrena. La figura es la de la quinta
+—la misma red, el mismo dibujo— y los controles son los de la cuarta: la
+activación, la tasa η, «Un paso» animado y tandas. Sobre la figura no hay
+ningún gesto: no se pinta, no se gira el filtro, no se señala. El alumno mira
+cómo el algoritmo mueve los 27 parámetros, una imagen a la vez.
+
+LA RED
+Imagen 6×6 → un filtro 3×3 con sesgo b, sin relleno → mapa 4×4 de dieciséis
+valores z_p → activación φ → dieciséis nodos a_p → salida ŷ = σ(Σ u_p·a_p + c).
+  theta[0..8]    los nueve pesos del filtro, por renglones
+  theta[9]       b, el sesgo del filtro, el mismo en las dieciséis posiciones
+  theta[10..25]  u_p, el peso del nodo p a la salida
+  theta[26]      c, el sesgo de la salida
+La celda p del mapa está en la fila p>>2 y la columna p&3, y su ventana empieza
+en ese mismo renglón y esa misma columna de la imagen. Etiqueta 1 = vertical;
+ŷ ≥ 0.5 dice «vertical».
+
+LOS OCHO TIEMPOS DE UN PASO
+Son los siete de la cuarta con el último partido en dos, porque en una capa
+convolucional el filtro es UN solo juego de pesos que se usa en dieciséis
+posiciones, y su cambio es la SUMA de lo que pide cada posición:
+  0  se sortea una imagen de entrenamiento y aparece en su lugar;
+  1  recorrido veloz: la ventana pasa por las dieciséis posiciones y llena la
+     celda y el nodo de cada una;
+  2  los dieciséis nodos mandan su valor a la salida (bolitas grises);
+  3  se compara ŷ con la clase verdadera y;
+  4  el error de la salida, δ = ŷ − y, como anillo en el nodo de salida;
+  5  δ regresa a cada nodo: δ_p = δ·u_p·φ′(z_p), un anillo por nodo. Con ReLU
+     un nodo apagado (z_p ≤ 0) recibe exactamente cero;
+  6  cambian las líneas a la salida: Δu_p = −η·δ·a_p y Δc = −η·δ, un pulso
+     punteado sobre cada línea, igual que en la cuarta;
+  7  la ventana REGRESA, y sólo por las posiciones cuyo nodo quedó encendido
+     (φ′ distinta de cero). En cada una, los nueve píxeles bajo la ventana
+     piden un cambio a la celda del filtro que les toca, Δw = −η·δ_p·x, y el
+     filtro va sumando. Al final cada celda muestra cuánto subió o bajó.
+Los tiempos 6 y 7 son independientes: se muestran uno tras otro sólo para que
+se lean. Los pesos se aplican AL FINAL del paso; durante toda la animación el
+diagrama muestra los de antes, que son los que produjeron ese ŷ y esas δ.
+Con ReLU, al arrancar quedan encendidas en promedio unas 8.5 de 16 posiciones
+(medido con el vector inicial y las 160 imágenes de entrenamiento; puede haber
+0 y puede haber 16). Con 0 encendidas ni el filtro ni las u_p cambian, y sólo
+cambia c: el tiempo 7 lo dice en una línea.
+
+QUÉ SE ILUMINA Y CON QUÉ COLOR
+El presupuesto de color es el de la cuarta y no se gasta otra vez: azul y rojo
+son el signo del peso; verde es la posición en turno —su ventana, su celda y su
+nodo, siempre la MISMA posición p—; verde azulado es δ, y vive en el nodo;
+violeta y ocre son el signo del ajuste, violeta si el peso sube y ocre si baja;
+gris pizarra es lo que viaja hacia adelante.
+Las diecisiete líneas a la salida (u_p y c) llevan el pulso punteado como en la
+cuarta. Las celdas del filtro son azules o rojas por el signo del PESO, así que
+su cambio no puede pintarse encima con otro color: va como un cuadro interior
+violeta u ocre, y el de b como un punto junto a su triángulo. Sobre la imagen,
+mientras la ventana regresa, cada píxel bajo ella se tiñe de violeta si pide que
+su celda del filtro suba y de ocre si pide que baje.
+
+UNA SOLA ESCALA PARA LOS 27
+El tamaño del pulso, del cuadro y del punto se normaliza contra el mayor ajuste
+de ESTE paso entre los 27 parámetros, con raíz, como la cuarta hacía con sus
+diecisiete. Compara los ajustes entre sí; no dice que el peso haya cambiado
+mucho: con η ≤ 0.2 un ajuste vale centésimas o menos. Está escrito en la leyenda
+y hay que decirlo en clase. En un paso típico el mayor ajuste es el de c, y el
+mayor del filtro queda entre la mitad y dos tercios de ese tamaño (medido en
+cuatro imágenes con el vector inicial).
+
+LA TINTA
+Todo valor se dibuja como tinta sobre papel, como en la quinta: más oscuro es
+mayor, blanco es cero. La escala de la tinta del mapa y de los nodos es la mayor
+a_p que una imagen con píxeles entre 0 y 1 puede producir con el filtro de ESE
+paso; como el filtro cambia, se recalcula al empezar cada paso y se congela
+durante él, igual que η. Con la activación lineal z_p puede ser negativo, y
+«blanco = cero» no dice cuánto: se dibuja |z_p| y se le agrega un rayado fino.
+Con lineal no hay nodos apagados, y el regreso visita las dieciséis posiciones.
+
+ÉPOCAS
+Una época es una pasada por las 160 imágenes de entrenamiento, cada una
+exactamente una vez, en un orden barajado de nuevo al empezar cada época. «Un
+paso» toma la siguiente imagen de ese orden. «+1 época» avanza hasta la
+siguiente frontera de época: si la época ya va a la mitad, termina la que va, y
+«+10 épocas» cruza diez fronteras. No hay sorteo con reposición, a propósito:
+es distinto de la cuarta. Las 40 imágenes de prueba no entrenan; sólo cuentan.
+Después de una tanda se APAGA el resalte, en vez de dejarlo en la última imagen:
+sería señalar un caso particular como si resumiera las cientos.
+
+EL ARRANQUE
+Xavier uniforme: pesos del filtro en ±√(6/10), u_p en ±√(6/17), b = c = 0. Sale
+de la semilla SEMILLA_ARRANQUE con splitmix32; de esa misma semilla salen,
+después, los barajados de las épocas. Las dos activaciones arrancan del MISMO
+vector y de los mismos barajados, y cada una conserva SU entrenamiento: cambiar
+de una a otra no reinicia nada; Reiniciar devuelve exactamente el vector de
+arranque de la activación puesta. La inicialización y el orden son constantes,
+no perillas: son de TalleRNA.
+PROVISIONAL: el arranque por omisión (50013) es uno de los diez candidatos del
+reporte del arnés. El vector inicial coincide con el del arnés (con este orden
+de sorteo, 50 de 1000 semillas dan a las 200 imágenes la misma clase, que es lo
+que el reporte cuenta), PERO el orden de las épocas no se pudo contrastar con
+el arnés y las épocas de llegada no reproducen las del reporte. Con el barajado
+de esta página, el 50013 llega a cero errores con ReLU y η = 0.05 en la época
+9 y con lineal se queda en su meseta. La elección final está abierta.
+
+LOS DATOS
+El mismo generador de la quinta, con el mismo orden de sorteo por imagen, la
+misma semilla 20260928 y los mismos 80 y 80 verticales y horizontales en las 160
+de entrenamiento y 20 y 20 en las 40 de prueba: las 200 imágenes son las de la
+quinta.
+
+EL ANCLA, AQUÍ
+Como en la quinta: LO QUE SE ILUMINA JUNTO ES LA MISMA POSICIÓN p. Celdas,
+nodos, ventanas y líneas salen de cuatro arreglos de descriptores que se
+verifican antes de crear ningún lienzo.
+
+LO QUE SE VERIFICA ANTES DE MONTAR
+1. El ancla.
+2. Los datos: 80 y 80 en entrenamiento, 20 y 20 en prueba, y tres píxeles de
+   trazo en cada imagen.
+3. El gradiente analítico contra diferencias centradas de la pérdida de la misma
+   imagen, en los 27 parámetros y en las dos activaciones, con el vector inicial
+   y con vectores al azar. Y el control: con el signo de la derivada respecto de
+   b invertido, la comprobación TIENE que rechazar; si no rechazara, no
+   comprobaría nada. Una animación de retropropagación que retropropague otra
+   cosa sería peor que no tenerla.
+
+LO QUE SE MIDIÓ (reporte del arnés, semilla de datos 20260928, 200 arranques
+por fila) Con ReLU y η = 0.05 llegan a cero errores en las 160 y en las 40 unos
+79 de cada 200 arranques; con activación lineal no llegó ninguno de los 2 000
+medidos, en ninguna tasa, porque la red entera queda lineal en los píxeles y
+ninguna función lineal de ellos separa las clases (las tres columnas de un
+cuadrado 3×3 suman lo mismo que sus tres filas). Con tasas altas algunas redes
+quedan apagadas —todas las z_p ≤ 0 en las 200 imágenes—: 48 de 200 con 0.2. Y
+entre una cuarta parte y la mitad de las que llegan a cero vuelven a tener
+errores si se sigue entrenando 50 épocas más; por eso la curva de la pérdida.
+
+DÓNDE VA CADA COSA
+Entra entera en una ventana de 1196 × 940 sin desplazamiento, con el mismo
+criterio que las páginas 4 y 5. Los paneles llevan alto reservado desde el
+principio para que nada se mueva al empezar un paso.
+
+Aritmética nativa de JavaScript, binary64. Un solo archivo, sin dependencias,
+sin build; se abre con doble clic y dibuja con canvas 2D.
+
+¡Feliz entrenamiento! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+(function () {
+
+/* ── Constantes ────────────────────────────────────────────────────────────*/
+var NPARAM = 27, NMAPA = 16, I_B = 9, I_U = 10, I_C = 26;
+var NTRAIN = 160, NTEST = 40, N = NTRAIN + NTEST;
+var SEMILLA_DATOS = 20260928;
+var SEMILLA_ARRANQUE = 50013;     /* PROVISIONAL: ver «EL ARRANQUE» arriba */
+var SEMILLA_VERIF = 20260930;
+var ETA_MIN = 0.01, ETA_MAX = 0.20, ETA_PASO = 0.01, ETA_INICIAL = 0.05;
+var ESCALA_GROSOR = 6;            /* el mismo 6 de las otras páginas */
+var FONDO_MAX = 0.25, TRAZO_MIN = 0.75, TRAZO_MAX = 1.0;
+
+var SUB = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+function sub(n) { return String(n).split('').map(function (c) { return SUB[+c]; }).join(''); }
+var NOMBRES = [];
+(function () {
+  var r, c, p;
+  for (r = 0; r < 3; r++) for (c = 0; c < 3; c++) NOMBRES.push('w' + sub(r) + sub(c));
+  NOMBRES.push('b');
+  for (p = 0; p < NMAPA; p++) NOMBRES.push('u' + sub(p));
+  NOMBRES.push('c');
+})();
+
+/* ── Sorteo ────────────────────────────────────────────────────────────────
+   El mismo splitmix32 de las otras páginas: aritmética entera de 32 bits con
+   Math.imul, exacta, así que la misma semilla da lo mismo en cualquier
+   navegador. Nunca Math.random. */
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+/* Fisher–Yates sobre un arreglo, en su lugar. */
+function barajar(arr, r) {
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor((i + 1) * r.next());
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+/* ── Los datos: el generador de la quinta, con el mismo orden de sorteo ────*/
+function estratificar(r) {
+  var tr = [], te = [], i;
+  for (i = 0; i < NTRAIN; i++) tr.push(i < NTRAIN / 2 ? 1 : 0);
+  for (i = 0; i < NTEST; i++) te.push(i < NTEST / 2 ? 1 : 0);
+  return barajar(tr, r).concat(barajar(te, r));
+}
+function generarDatos(semilla) {
+  var r = new Sorteador(semilla);
+  var X = new Float64Array(N * 36), y = new Uint8Array(N);
+  var fijas = estratificar(r);
+  for (var i = 0; i < N; i++) {
+    var vertical = fijas[i] === 1;
+    y[i] = vertical ? 1 : 0;
+    var o = i * 36, p, fila, col;
+    for (p = 0; p < 36; p++) X[o + p] = FONDO_MAX * r.next();
+    if (vertical) {
+      fila = Math.floor(4 * r.next());
+      col = 1 + Math.floor(4 * r.next());
+    } else {
+      fila = Math.floor(6 * r.next());
+      col = 1 + Math.floor(2 * r.next());
+    }
+    var intensidad = TRAZO_MIN + (TRAZO_MAX - TRAZO_MIN) * r.next();
+    for (var t = 0; t < 3; t++) {
+      var rr = vertical ? fila + t : fila, cc = vertical ? col : col + t;
+      X[o + rr * 6 + cc] = intensidad;
+    }
+  }
+  return { X: X, y: y };
+}
+var DATOS = generarDatos(SEMILLA_DATOS);
+
+function verificarDatos() {
+  var v = [0, 0], i, p;
+  for (i = 0; i < N; i++) {
+    var part = i < NTRAIN ? 0 : 1;
+    if (DATOS.y[i] === 1) v[part]++;
+    var fuertes = 0;
+    for (p = 0; p < 36; p++) if (DATOS.X[i * 36 + p] >= TRAZO_MIN) fuertes++;
+    if (fuertes !== 3)
+      throw new Error('los datos: la imagen ' + i + ' tiene ' + fuertes + ' píxeles de trazo y tiene que tener 3');
+  }
+  if (v[0] !== NTRAIN / 2 || v[1] !== NTEST / 2)
+    throw new Error('los datos: hay ' + v[0] + ' verticales en las ' + NTRAIN + ' de entrenamiento y ' + v[1] +
+                    ' en las ' + NTEST + ' de prueba; tienen que ser ' + NTRAIN / 2 + ' y ' + NTEST / 2);
+  return true;
+}
+
+/* ── Activaciones ──────────────────────────────────────────────────────────
+   φ y su derivada, que es lo que hace a una neurona «muerta» en el regreso:
+   con ReLU φ′ vale 0 o 1. Con lineal vale 1 en todas partes. */
+var ACTS = {
+  relu:   { etiqueta: 'ReLU',   rot: 'ReLU',
+            f: function (z) { return z > 0 ? z : 0; },
+            d: function (z) { return z > 0 ? 1 : 0; } },
+  lineal: { etiqueta: 'Lineal', rot: 'lineal',
+            f: function (z) { return z; },
+            d: function () { return 1; } }
+};
+
+/* ── Evaluación ────────────────────────────────────────────────────────────
+   Hacia adelante sobre la imagen que empieza en DATOS.X[o]. Suma en el mismo
+   orden que la quinta y que el arnés. La salida es SIEMPRE sigmoide y la
+   frontera está donde vale 0.5. Devuelve el logit t; z y a se llenan. */
+function sigmoide(t) {
+  var c = Math.min(100, Math.max(-100, t));
+  return 1 / (1 + Math.exp(-c));
+}
+function propagar(theta, clave, o, z, a) {
+  var A = ACTS[clave], t = theta[I_C], X = DATOS.X;
+  for (var p = 0; p < NMAPA; p++) {
+    var pi = p >> 2, pj = p & 3, s = theta[I_B];
+    for (var r = 0; r < 3; r++) {
+      var f = o + (pi + r) * 6 + pj;
+      s += theta[r * 3] * X[f] + theta[r * 3 + 1] * X[f + 1] + theta[r * 3 + 2] * X[f + 2];
+    }
+    z[p] = s;
+    var ap = A.f(s);
+    a[p] = ap;
+    t += theta[I_U + p] * ap;
+  }
+  return t;
+}
+var ZS = new Float64Array(NMAPA), AS = new Float64Array(NMAPA);   /* de trabajo */
+
+/* La pérdida de UNA imagen: entropía cruzada binaria, −log de la probabilidad
+   que la red da a la clase verdadera. El recorte evita log(0). */
+function perdidaPunto(yhat, y) {
+  var e = Math.min(1 - 1e-12, Math.max(1e-12, yhat));
+  return -(y * Math.log(e) + (1 - y) * Math.log(1 - e));
+}
+function perdidaMedia(theta, clave) {
+  var s = 0;
+  for (var i = 0; i < NTRAIN; i++)
+    s += perdidaPunto(sigmoide(propagar(theta, clave, i * 36, ZS, AS)), DATOS.y[i]);
+  return s / NTRAIN;
+}
+function malClasificados(theta, clave, a0, a1) {
+  var n = 0;
+  for (var i = a0; i < a1; i++)
+    if ((sigmoide(propagar(theta, clave, i * 36, ZS, AS)) >= 0.5 ? 1 : 0) !== DATOS.y[i]) n++;
+  return n;
+}
+/* Con ReLU, la red está APAGADA si todas las z_p son ≤ 0 en las 200 imágenes:
+   todos los nodos valen cero y la salida es la misma para todas. */
+function redApagada(theta, clave) {
+  if (clave !== 'relu') return false;
+  for (var i = 0; i < N; i++) {
+    propagar(theta, clave, i * 36, ZS, AS);
+    for (var p = 0; p < NMAPA; p++) if (ZS[p] > 0) return false;
+  }
+  return true;
+}
+
+/* La mayor a_p que una imagen con píxeles entre 0 y 1 puede producir con el
+   filtro de theta: los pesos positivos sobre píxeles en 1 y los negativos sobre
+   píxeles en 0, más b. Con lineal también cuenta el extremo negativo. Es la
+   escala de la tinta del mapa y de los nodos. */
+function escalaA(theta, clave) {
+  var pos = theta[I_B], neg = theta[I_B];
+  for (var k = 0; k < 9; k++) { if (theta[k] > 0) pos += theta[k]; else neg += theta[k]; }
+  var m = clave === 'relu' ? pos : Math.max(pos, -neg);
+  return Math.max(m, 1e-3);
+}
+
+/* ── El arranque ───────────────────────────────────────────────────────────
+   Xavier uniforme, sesgos en cero, con el sorteador de la semilla de arranque:
+   primero los nueve pesos del filtro, luego los dieciséis u_p, sin sortear b ni
+   c. El mismo sorteador sigue después con los barajados de las épocas. */
+function vectorInicial(r) {
+  var th = [], k, a1 = Math.sqrt(6 / 10), a2 = Math.sqrt(6 / 17);
+  for (k = 0; k < 9; k++) th.push((r.next() * 2 - 1) * a1);
+  th.push(0);
+  for (k = 0; k < NMAPA; k++) th.push((r.next() * 2 - 1) * a2);
+  th.push(0);
+  return th;
+}
+var THETA_INICIAL = vectorInicial(new Sorteador(SEMILLA_ARRANQUE));
+
+/* ── El paso hacia atrás ───────────────────────────────────────────────────
+   Todo lo que la página dibuja de la retropropagación sale de aquí y de ningún
+   otro sitio.
+   δ = ŷ − y sale de componer la entropía cruzada con la sigmoide.
+   δ_p = δ·u_p·φ′(z_p): ahí está u_p, y ahí está φ′, por eso un nodo apagado
+   recibe exactamente cero.
+   ∂L/∂u_p = δ·a_p, ∂L/∂c = δ, ∂L/∂b = Σ_p δ_p, y
+   ∂L/∂w_rc = Σ_p δ_p · x(fila_p + r, col_p + c): el filtro es UNO, así que su
+   gradiente es la SUMA sobre las posiciones de lo que cada una pide. */
+function analizar(theta, clave, i) {
+  var A = ACTS[clave], o = i * 36, X = DATOS.X;
+  var z = new Float64Array(NMAPA), a = new Float64Array(NMAPA);
+  var t = propagar(theta, clave, o, z, a), yhat = sigmoide(t), y = DATOS.y[i];
+  var dy = yhat - y, dp = new Float64Array(NMAPA), g = new Float64Array(NPARAM);
+  var activos = [], p, r, c;
+  for (p = 0; p < NMAPA; p++) {
+    var fp = A.d(z[p]);
+    dp[p] = dy * theta[I_U + p] * fp;
+    if (fp !== 0) activos.push(p);
+  }
+  for (p = 0; p < NMAPA; p++) {
+    var pi = p >> 2, pj = p & 3;
+    for (r = 0; r < 3; r++) for (c = 0; c < 3; c++)
+      g[r * 3 + c] += dp[p] * X[o + (pi + r) * 6 + pj + c];
+    g[I_B] += dp[p];
+    g[I_U + p] = dy * a[p];
+  }
+  g[I_C] = dy;
+  return { i: i, o: o, y: y, z: z, a: a, t: t, yhat: yhat, perdida: perdidaPunto(yhat, y),
+           dy: dy, dp: dp, g: g, activos: activos };
+}
+/* El ajuste de cada parámetro, −η·gradiente, congelado con la η que había
+   cuando empezó el paso: si el alumno mueve la tasa a media animación, lo que
+   se dibujó no puede dejar de ser lo que se aplique. */
+function conAjuste(s, etaPaso) {
+  s.eta = etaPaso;
+  s.d = new Array(NPARAM);
+  var M = 0;
+  for (var q = 0; q < NPARAM; q++) {
+    s.d[q] = -etaPaso * s.g[q];
+    if (Math.abs(s.d[q]) > M) M = Math.abs(s.d[q]);
+  }
+  s.maxAjuste = M;
+  s.mayor = 0;
+  for (var m = 0; m < NPARAM; m++) if (Math.abs(s.d[m]) === M) { s.mayor = m; break; }
+  return s;
+}
+/* Lo que sólo la animación necesita: la escala de la tinta, congelada con el
+   filtro de ESTE paso, y las escalas de los anillos de δ y de los píxeles. */
+function detallar(s, theta, clave) {
+  var X = DATOS.X, mxC = 0, dMax = Math.abs(s.dy), j, r, c;
+  s.escalaA = escalaA(theta, clave);
+  for (j = 0; j < s.activos.length; j++) {
+    var p = s.activos[j], pi = p >> 2, pj = p & 3;
+    if (Math.abs(s.dp[p]) > dMax) dMax = Math.abs(s.dp[p]);
+    for (r = 0; r < 3; r++) for (c = 0; c < 3; c++) {
+      var v = Math.abs(s.dp[p] * X[s.o + (pi + r) * 6 + pj + c]);
+      if (v > mxC) mxC = v;
+    }
+  }
+  s.mxC = mxC; s.dMax = dMax;
+  return s;
+}
+/* El cambio del filtro y de b después de visitar las n primeras posiciones
+   encendidas. Con n = todas da exactamente s.d[0..9]: la misma suma, en el
+   mismo orden. */
+function acumular(s, n) {
+  var g = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], X = DATOS.X, j, r, c;
+  for (j = 0; j < n; j++) {
+    var p = s.activos[j], pi = p >> 2, pj = p & 3, d = s.dp[p];
+    for (r = 0; r < 3; r++) for (c = 0; c < 3; c++) g[r * 3 + c] += d * X[s.o + (pi + r) * 6 + pj + c];
+    g[9] += d;
+  }
+  for (j = 0; j < 10; j++) g[j] = -s.eta * g[j];
+  return g;
+}
+
+/* ── LA VERIFICACIÓN DEL PASO HACIA ATRÁS ──────────────────────────────────
+   Corre ANTES de montar nada. Compara los 27 gradientes analíticos contra
+   diferencias centradas de la pérdida de la misma imagen, en las dos
+   activaciones, con el vector inicial y con vectores al azar. Se salta un
+   parámetro si con ReLU alguna z_p está a menos de 1e-4 de cero, porque ahí la
+   derivada no existe y la diferencia centrada mide la pendiente promedio de los
+   dos lados. La segunda mitad es el control: con el signo de la derivada
+   respecto de b invertido, la comprobación TIENE que rechazar. */
+function compararGradiente(alterar) {
+  var H = 1e-6, TOL = 1e-5, r = new Sorteador(SEMILLA_VERIF);
+  var comparados = 0, peor = 0, fallo = null;
+  ['relu', 'lineal'].forEach(function (clave) {
+    for (var ensayo = 0; ensayo < 25; ensayo++) {
+      var th = THETA_INICIAL.slice(), k;
+      if (ensayo > 0) for (k = 0; k < NPARAM; k++) th[k] = (r.next() * 2 - 1) * 1.5;
+      var im = Math.floor(NTRAIN * r.next());
+      if (im >= NTRAIN) im = NTRAIN - 1;
+      var s = analizar(th, clave, im), g = Array.prototype.slice.call(s.g);
+      if (alterar) alterar(g);
+      var cerca = false;
+      for (var p = 0; p < NMAPA; p++) if (Math.abs(s.z[p]) < 1e-4) cerca = true;
+      if (clave === 'relu' && cerca) continue;
+      for (k = 0; k < NPARAM; k++) {
+        var mas = th.slice(), menos = th.slice();
+        mas[k] += H; menos[k] -= H;
+        var lm = perdidaPunto(sigmoide(propagar(mas, clave, im * 36, ZS, AS)), s.y);
+        var ln = perdidaPunto(sigmoide(propagar(menos, clave, im * 36, ZS, AS)), s.y);
+        var num = (lm - ln) / (2 * H);
+        var err = Math.abs(num - g[k]) / Math.max(1e-8, Math.abs(num) + Math.abs(g[k]));
+        comparados++;
+        if (err > peor) peor = err;
+        if (!(err < TOL) && fallo === null)
+          fallo = { clave: clave, k: k, analitico: g[k], numerico: num, err: err };
+      }
+    }
+  });
+  return { comparados: comparados, peor: peor, fallo: fallo, tol: TOL };
+}
+function verificarGradiente() {
+  var ok = compararGradiente(null);
+  if (ok.fallo)
+    throw new Error('el paso hacia atrás no es la derivada de la pérdida: en ' + ok.fallo.clave +
+                    ', parámetro ' + ok.fallo.k + ' (' + NOMBRES[ok.fallo.k] + ') el gradiente analítico vale ' +
+                    ok.fallo.analitico.toExponential(6) + ' y la diferencia centrada ' +
+                    ok.fallo.numerico.toExponential(6) + '. Error relativo ' + ok.fallo.err.toExponential(2) +
+                    ', tolerancia ' + ok.tol + '.');
+  if (ok.comparados < 500)
+    throw new Error('la verificación del gradiente sólo comparó ' + ok.comparados + ' derivadas; tienen que ser al menos 500');
+  var malo = compararGradiente(function (g) { g[I_B] = -g[I_B]; });
+  if (malo.fallo === null)
+    throw new Error('el control de la verificación falló: con el signo de b invertido la comprobación no lo rechazó, ' +
+                    'así que no comprueba nada');
+  return { comparados: ok.comparados, peor: ok.peor, controlRechazado: malo.peor };
+}
+
+/* ── Las redes: una por activación, cada una con SU entrenamiento ──────────
+   orden y pos: el barajado de la época en curso y cuántas imágenes van. Un
+   barajado nuevo sale del mismo sorteador cada vez que pos vuelve a cero. */
+function identidad() { var a = []; for (var i = 0; i < NTRAIN; i++) a.push(i); return a; }
+function nuevaRed(clave) {
+  var sor = new Sorteador(SEMILLA_ARRANQUE);
+  var th = vectorInicial(sor);
+  var r = { clave: clave, theta: th, sorteador: sor, orden: null, pos: 0, epoca: 0, iter: 0,
+            hist: [perdidaMedia(th, clave)], cache: null };
+  refrescar(r);
+  return r;
+}
+function refrescar(r) {
+  r.cache = { eTrain: malClasificados(r.theta, r.clave, 0, NTRAIN),
+              eTest: malClasificados(r.theta, r.clave, NTRAIN, N),
+              L: r.hist[r.hist.length - 1],
+              apagada: redApagada(r.theta, r.clave) };
+}
+function proximaImagen(r) {
+  if (r.pos === 0) r.orden = barajar(identidad(), r.sorteador);
+  return r.orden[r.pos];
+}
+function aplicar(r, s) {
+  for (var q = 0; q < NPARAM; q++) r.theta[q] += s.d[q];
+  r.iter++;
+  r.pos++;
+  if (r.pos === NTRAIN) { r.pos = 0; r.epoca++; }
+  r.hist.push(perdidaMedia(r.theta, r.clave));
+}
+function pasoCompleto(r) {
+  var i = proximaImagen(r);
+  var s = conAjuste(analizar(r.theta, r.clave, i), eta);
+  aplicar(r, s);
+  return s;
+}
+/* Avanza hasta la siguiente frontera de época; si ya está en una, hace una
+   época entera. */
+function hastaFrontera(r) {
+  do { pasoCompleto(r); } while (r.pos !== 0);
+}
+
+var REDES = { relu: nuevaRed('relu'), lineal: nuevaRed('lineal') };
+var redActiva = 'relu';
+function red() { return REDES[redActiva]; }
+var eta = ETA_INICIAL;
+
+/* ── Las fases de la animación ─────────────────────────────────────────────
+   Un solo paso, en ocho tiempos. Los rótulos son la explicación hablada del
+   mecanismo, escrita. El octavo dura según cuántas posiciones visita. */
+var FASES = [
+  { ms: 500, rot: 'se sortea una imagen de entrenamiento' },
+  { ms: 800, rot: 'la ventana recorre la imagen con el mismo filtro y llena el mapa' },
+  { ms: 680, rot: 'los dieciséis nodos mandan su valor a la salida' },
+  { ms: 560, rot: 'se compara ŷ con la clase verdadera' },
+  { ms: 480, rot: 'el error en la salida: δ = ŷ − y' },
+  { ms: 800, rot: 'δ regresa a cada nodo, multiplicado por u_p y φ′(z_p)' },
+  { ms: 900, rot: 'cambian las líneas a la salida: −η·δ·a_p' },
+  { ms: 0,   rot: 'la ventana regresa por los nodos encendidos y el filtro suma −η·δ_p·(los nueve píxeles)' }
+];
+var MS_POR_ACTIVA = 75, MS_SIN_ACTIVAS = 450;
+function duraciones(s) {
+  var d = FASES.map(function (f) { return f.ms; });
+  d[7] = s.activos.length > 0 ? MS_POR_ACTIVA * s.activos.length : MS_SIN_ACTIVAS;
+  return d;
+}
+function faseEn(ms, dur) {
+  var acc = 0;
+  for (var i = 0; i < dur.length; i++) {
+    if (ms < acc + dur[i]) return { i: i, u: (ms - acc) / dur[i] };
+    acc += dur[i];
+  }
+  return { i: dur.length - 1, u: 1 };
+}
+
+/* Estado de la animación. paso es el último paso mostrado —o null, que es como
+   queda después de una tanda y al reiniciar—. */
+var paso = null, fase = -1, u = 0, animando = false, t0 = 0, pendiente = null;
+
+/* ── Geometría del diagrama: la de la quinta ───────────────────────────────
+   De izquierda a derecha: la imagen, la flecha con el filtro debajo, el mapa,
+   las llaves de los grupos, los nodos y la salida con su texto. Todo centrado
+   en CENTRO_Y, que es también la altura de la salida. */
+var DIAG_W = 708, DIAG_H = 446, CENTRO_Y = 223;
+var IMG_X = 12, IMG_CEL = 36, IMG_L = 6 * IMG_CEL, IMG_Y = CENTRO_Y - IMG_L / 2;
+var MAPA_X = 324, MAPA_CEL = 30, MAPA_L = 4 * MAPA_CEL, MAPA_Y = CENTRO_Y - MAPA_L / 2;
+var FIL_CEL = 20, FIL_L = 3 * FIL_CEL;
+var FIL_CX = (IMG_X + IMG_L + MAPA_X) / 2, FIL_X = FIL_CX - FIL_L / 2, FIL_Y = CENTRO_Y + 14;
+var B_Y = FIL_Y + FIL_L + 28;
+var LLAVE_X = 488, NODO_X = 504, NODO_R = 8, NODO_PASO = 22, GRUPO_SEP = 16;
+var NODO_Y0 = CENTRO_Y - (3 * (4 * NODO_PASO + GRUPO_SEP) + 3 * NODO_PASO) / 2;
+var SAL_X = 586, SAL_Y = CENTRO_Y, SAL_R = 18, C_Y = SAL_Y + 78, TEXTO_X = 617;
+var TB = 10;   // medio lado del triángulo del sesgo
+var COL_W = 372, TOTAL_W = DIAG_W + 38 + 22 + COL_W;
+
+function yNodo(p) { return NODO_Y0 + (p >> 2) * (4 * NODO_PASO + GRUPO_SEP) + (p & 3) * NODO_PASO; }
+
+/* ── EL ANCLA ──────────────────────────────────────────────────────────────
+   Cuatro arreglos de descriptores, uno por cosa que se ilumina junta. Todo lo
+   que se dibuja y todo lo que se ilumina sale de ellos, y se verifican ANTES
+   de crear ningún lienzo. */
+function construirCeldas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++)
+    d.push({ p: p, fila: p >> 2, col: p & 3,
+             x: MAPA_X + (p & 3) * MAPA_CEL, y: MAPA_Y + (p >> 2) * MAPA_CEL, lado: MAPA_CEL });
+  return d;
+}
+function construirNodos() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++) d.push({ p: p, grupo: p >> 2, puesto: p & 3, cx: NODO_X, cy: yNodo(p) });
+  return d;
+}
+function construirVentanas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++) d.push({ p: p, fila: p >> 2, col: p & 3 });
+  return d;
+}
+function construirLineas() {
+  var d = [];
+  for (var p = 0; p < NMAPA; p++)
+    d.push({ p: p, idx: I_U + p, ax: NODO_X, ay: yNodo(p), bx: SAL_X, by: SAL_Y });
+  return d;
+}
+/* La línea de c no es de ninguna posición: sale del triángulo de la salida. */
+var LINEA_C = { idx: I_C, ax: SAL_X, ay: C_Y - TB, bx: SAL_X, by: SAL_Y };
+
+function verificarPermutacion(nombre, arr) {
+  if (!Array.isArray(arr))
+    throw new Error('ancla: los descriptores de ' + nombre + ' no son un arreglo');
+  if (arr.length !== NMAPA)
+    throw new Error('ancla: hay ' + arr.length + ' descriptores de ' + nombre + ' y tiene que haber ' + NMAPA);
+  var visto = [], k;
+  for (k = 0; k < NMAPA; k++) visto.push(0);
+  for (k = 0; k < arr.length; k++) {
+    var p = arr[k].p;
+    if (!Number.isInteger(p) || p < 0 || p >= NMAPA)
+      throw new Error('ancla: el descriptor ' + k + ' de ' + nombre + ' apunta a la posición ' + p + ', fuera de 0..15');
+    visto[p]++;
+  }
+  for (k = 0; k < NMAPA; k++)
+    if (visto[k] !== 1)
+      throw new Error('ancla: la posición ' + k + ' aparece en ' + visto[k] + ' descriptores de ' + nombre +
+                      '. Tienen que ser una permutación de 0..15.');
+  var porP = [];
+  for (k = 0; k < arr.length; k++) porP[arr[k].p] = arr[k];
+  return porP;
+}
+function verificarAncla(celdas, nodos, ventanas, lineas) {
+  var C = verificarPermutacion('celdas', celdas), Nd = verificarPermutacion('nodos', nodos);
+  var V = verificarPermutacion('ventanas', ventanas), L = verificarPermutacion('líneas', lineas);
+  for (var p = 0; p < NMAPA; p++) {
+    var fila = p >> 2, col = p & 3;
+    if (V[p].fila !== fila || V[p].col !== col)
+      throw new Error('ancla: la ventana de la posición ' + p + ' está en (' + V[p].fila + ', ' + V[p].col +
+                      ') y tiene que estar en (' + fila + ', ' + col + ')');
+    if (C[p].fila !== fila || C[p].col !== col ||
+        C[p].x !== MAPA_X + col * MAPA_CEL || C[p].y !== MAPA_Y + fila * MAPA_CEL)
+      throw new Error('ancla: la celda ' + p + ' no ocupa el lugar (' + fila + ', ' + col + ') del mapa');
+    if (Nd[p].grupo !== fila || Nd[p].puesto !== col)
+      throw new Error('ancla: el nodo ' + p + ' está en el grupo ' + Nd[p].grupo + ', puesto ' + Nd[p].puesto +
+                      ', y tiene que estar en el grupo ' + fila + ', puesto ' + col);
+    if (L[p].idx !== I_U + p)
+      throw new Error('ancla: la línea de la posición ' + p + ' lee theta[' + L[p].idx + '] y tiene que leer theta[' +
+                      (I_U + p) + ']');
+    if (L[p].ax !== Nd[p].cx || L[p].ay !== Nd[p].cy)
+      throw new Error('ancla: la línea de la posición ' + p + ' no sale de su nodo');
+  }
+  return { celdas: C, nodos: Nd, ventanas: V, lineas: L };
+}
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+var BORDE_CLASE = ['#2f6590', '#b35a36'];
+var VERDE = '34,160,80';
+var C_SENAL = '47,58,68', C_DELTA = '31,138,138', C_SUBE = '122,79,181', C_BAJA = '176,125,43';
+var ANCLA = null;
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+
+function tinta(v) {
+  var g = Math.round(255 * (1 - Math.max(0, Math.min(1, v))));
+  return 'rgb(' + g + ',' + g + ',' + g + ')';
+}
+/* Fracción de tinta de un valor: al menos 12 % si es distinto de cero, para que
+   «casi cero» no se confunda con «cero». */
+function fracTinta(v, esc) { return 0.12 + 0.88 * Math.min(1, Math.abs(v) / esc); }
+function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / ESCALA_GROSOR, 1)); }
+function grosorDe(v) { return 1 + fuerza(v) * 9; }
+function colorPeso(v, alfa) {
+  return (v >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + alfa.toFixed(3) + ')';
+}
+function linea(ctx, ax, ay, bx, by, v, tenue) {
+  var op = 0.28 + fuerza(v) * 0.7;
+  if (tenue) op *= 0.3;
+  ctx.lineWidth = grosorDe(v);
+  ctx.strokeStyle = colorPeso(v, op);
+  ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+}
+function triangulo(ctx, x, y) {
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - TB); ctx.lineTo(x - TB, y + TB); ctx.lineTo(x + TB, y + TB);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#6d5b00'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('1', x, y + TB + 3);
+}
+function sobre(A, B, t) { return { x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t }; }
+
+/* Rayado fino para un valor negativo (sólo con lineal). Claro sobre tinta
+   oscura, oscuro sobre tinta clara. */
+function rayarRect(ctx, x, y, w, h, claro) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.strokeStyle = claro ? 'rgba(255,255,255,0.85)' : 'rgba(35,40,46,0.6)'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (var d = -h; d < w; d += 6) { ctx.moveTo(x + d, y + h); ctx.lineTo(x + d + h, y); }
+  ctx.stroke(); ctx.restore();
+}
+function rayarDisco(ctx, cx, cy, R, claro) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+  ctx.strokeStyle = claro ? 'rgba(255,255,255,0.85)' : 'rgba(35,40,46,0.6)'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (var d = -2 * R; d < 2 * R; d += 5) { ctx.moveTo(cx - R + d, cy + R); ctx.lineTo(cx + R + d, cy - R); }
+  ctx.stroke(); ctx.restore();
+}
+
+function dibujarDiagrama(vista) {
+  var r = red(), th = r.theta, clave = redActiva, ctx = vista.ctx, p, q, rr, c, k;
+  var hay = paso !== null, nAct = hay ? paso.activos.length : 0;
+
+  /* Qué se muestra en cada tiempo. Una vez que algo apareció no se quita hasta
+     el paso siguiente: el alumno tiene que poder leer al final lo que pasó al
+     principio. */
+  var kf = -1;                 /* hasta qué posición llegó el recorrido de ida */
+  var pv = null;               /* la posición en turno, o null */
+  var jRet = -1;               /* cuántas encendidas lleva el regreso */
+  if (hay) {
+    if (fase === 1 && animando) { kf = Math.min(NMAPA - 1, Math.floor(u * NMAPA)); pv = kf; }
+    else if (fase >= 1) kf = NMAPA - 1;
+    if (fase === 7 && animando && nAct > 0) {
+      jRet = Math.min(nAct - 1, Math.floor(u * nAct));
+      pv = paso.activos[jRet];
+    }
+  }
+  var verDecision = hay && fase >= 3;
+  var verDeltaY = hay && fase >= 4;
+  var anillosDelta = !hay ? 0 : (fase > 5 ? 1 : (fase === 5 ? Math.max(0, (u - 0.55) / 0.45) : 0));
+  var pulso = (hay && fase === 6) ? Math.sin(Math.PI * u) : 0;
+  var nAcum = 0;
+  if (hay && fase >= 7) nAcum = animando ? (nAct > 0 ? jRet + 1 : 0) : nAct;
+  var cum = (hay && fase >= 7) ? acumular(paso, nAcum) : null;
+  var visto = function (qq) { return hay && qq <= kf; };
+  var esc = hay ? paso.escalaA : 1;
+
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+
+  /* La imagen. Sin paso, el lugar queda vacío: no hay imagen en curso. */
+  if (hay) {
+    ctx.globalAlpha = fase === 0 ? 0.25 + 0.75 * u : 1;
+    for (rr = 0; rr < 6; rr++) for (c = 0; c < 6; c++) {
+      var vpix = DATOS.X[paso.o + rr * 6 + c];
+      var gg = Math.round(255 * (1 - Math.max(0, Math.min(1, vpix))));
+      ctx.fillStyle = 'rgb(' + gg + ',' + gg + ',' + gg + ')';
+      ctx.fillRect(IMG_X + c * IMG_CEL, IMG_Y + rr * IMG_CEL, IMG_CEL, IMG_CEL);
+    }
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = '#fbfcfd'; ctx.fillRect(IMG_X, IMG_Y, IMG_L, IMG_L);
+  }
+  /* En el regreso, cada píxel bajo la ventana en turno se tiñe: violeta si pide
+     que su celda del filtro suba (Δw = −η·δ_p·x > 0), ocre si pide que baje. */
+  if (hay && fase === 7 && animando && pv !== null && paso.mxC > 0) {
+    var pi0 = pv >> 2, pj0 = pv & 3;
+    for (rr = 0; rr < 3; rr++) for (c = 0; c < 3; c++) {
+      var vv = paso.dp[pv] * DATOS.X[paso.o + (pi0 + rr) * 6 + pj0 + c];
+      var al = 0.18 + 0.72 * Math.min(1, Math.abs(vv) / paso.mxC);
+      ctx.fillStyle = 'rgba(' + (vv < 0 ? C_SUBE : C_BAJA) + ',' + al.toFixed(3) + ')';
+      ctx.fillRect(IMG_X + (pj0 + c) * IMG_CEL, IMG_Y + (pi0 + rr) * IMG_CEL, IMG_CEL, IMG_CEL);
+    }
+  }
+  ctx.strokeStyle = '#d6dbe0'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (rr = 1; rr < 6; rr++) {
+    ctx.moveTo(IMG_X, IMG_Y + rr * IMG_CEL + 0.5); ctx.lineTo(IMG_X + IMG_L, IMG_Y + rr * IMG_CEL + 0.5);
+    ctx.moveTo(IMG_X + rr * IMG_CEL + 0.5, IMG_Y); ctx.lineTo(IMG_X + rr * IMG_CEL + 0.5, IMG_Y + IMG_L);
+  }
+  ctx.stroke();
+  ctx.save();
+  if (!hay) ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = '#9aa4ac';
+  ctx.strokeRect(IMG_X + 0.5, IMG_Y + 0.5, IMG_L - 1, IMG_L - 1);
+  ctx.restore();
+  if (!hay) {
+    ctx.fillStyle = '#9aa4ac'; ctx.font = '12.5px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('sin imagen en curso', IMG_X + IMG_L / 2, IMG_Y + IMG_L / 2);
+  }
+  /* El sorteo: un marco que se cierra sobre la imagen. */
+  if (hay && fase === 0) {
+    var off = 10 * (1 - u);
+    ctx.strokeStyle = 'rgba(' + C_SENAL + ',0.75)'; ctx.lineWidth = 2;
+    ctx.strokeRect(IMG_X - off, IMG_Y - off, IMG_L + 2 * off, IMG_L + 2 * off);
+  }
+  /* La ventana de la posición en turno. */
+  if (pv !== null) {
+    var v = ANCLA.ventanas[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 3;
+    ctx.strokeRect(IMG_X + v.col * IMG_CEL + 1.5, IMG_Y + v.fila * IMG_CEL + 1.5, 3 * IMG_CEL - 3, 3 * IMG_CEL - 3);
+  }
+
+  ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText('imagen', IMG_X, IMG_Y - 5);
+  ctx.fillText('mapa', MAPA_X, MAPA_Y - 5);
+
+  /* La flecha de la imagen al mapa, y el filtro con su sesgo debajo. */
+  var fx0 = IMG_X + IMG_L + 8, fx1 = MAPA_X - 8;
+  ctx.strokeStyle = '#6d777f'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(fx0, CENTRO_Y); ctx.lineTo(fx1, CENTRO_Y); ctx.stroke();
+  ctx.fillStyle = '#6d777f';
+  ctx.beginPath(); ctx.moveTo(fx1 + 1, CENTRO_Y); ctx.lineTo(fx1 - 8, CENTRO_Y - 5); ctx.lineTo(fx1 - 8, CENTRO_Y + 5);
+  ctx.closePath(); ctx.fill();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText(ACTS[clave].rot, FIL_CX, CENTRO_Y - 5);
+
+  ctx.lineCap = 'round';
+  linea(ctx, FIL_CX, B_Y - TB, FIL_CX, FIL_Y + FIL_L, th[I_B], false);
+  for (rr = 0; rr < 3; rr++) for (c = 0; c < 3; c++) {
+    var w = th[rr * 3 + c];
+    ctx.fillStyle = colorPeso(w, 0.12 + 0.88 * fuerza(w));
+    ctx.fillRect(FIL_X + c * FIL_CEL, FIL_Y + rr * FIL_CEL, FIL_CEL, FIL_CEL);
+  }
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (rr = 1; rr < 3; rr++) {
+    ctx.moveTo(FIL_X, FIL_Y + rr * FIL_CEL); ctx.lineTo(FIL_X + FIL_L, FIL_Y + rr * FIL_CEL);
+    ctx.moveTo(FIL_X + rr * FIL_CEL, FIL_Y); ctx.lineTo(FIL_X + rr * FIL_CEL, FIL_Y + FIL_L);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = '#6d777f';
+  ctx.strokeRect(FIL_X + 0.5, FIL_Y + 0.5, FIL_L - 1, FIL_L - 1);
+  triangulo(ctx, FIL_CX, B_Y);
+
+  /* EL CAMBIO DEL FILTRO. Cada celda es azul o roja por el signo de su PESO,
+     así que su cambio va como un cuadro interior violeta u ocre, de lado
+     proporcional a la raíz de |Δw| contra el mayor ajuste de este paso (los 27).
+     El de b es un punto junto a su triángulo. */
+  if (cum !== null && paso.maxAjuste > 0) {
+    for (rr = 0; rr < 3; rr++) for (c = 0; c < 3; c++) {
+      var dv = cum[rr * 3 + c];
+      if (Math.abs(dv) > 1e-15) {
+        var lado = 4 + 12 * Math.sqrt(Math.min(1, Math.abs(dv) / paso.maxAjuste));
+        var cx = FIL_X + c * FIL_CEL + FIL_CEL / 2, cy = FIL_Y + rr * FIL_CEL + FIL_CEL / 2;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(cx - lado / 2 - 1.5, cy - lado / 2 - 1.5, lado + 3, lado + 3);
+        ctx.fillStyle = 'rgb(' + (dv > 0 ? C_SUBE : C_BAJA) + ')';
+        ctx.fillRect(cx - lado / 2, cy - lado / 2, lado, lado);
+      }
+    }
+    var db = cum[9];
+    if (Math.abs(db) > 1e-15) {
+      var rad = 3 + 6 * Math.sqrt(Math.min(1, Math.abs(db) / paso.maxAjuste));
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(FIL_CX + 30, B_Y, rad + 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgb(' + (db > 0 ? C_SUBE : C_BAJA) + ')';
+      ctx.beginPath(); ctx.arc(FIL_CX + 30, B_Y, rad, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  /* El mapa. Una celda sin recorrer todavía va punteada; con ReLU, una en cero
+     va vacía; con lineal, un valor negativo lleva rayado. */
+  for (p = 0; p < NMAPA; p++) {
+    var cel = ANCLA.celdas[p];
+    if (!visto(p)) {
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+      ctx.strokeRect(cel.x + 0.5, cel.y + 0.5, cel.lado - 1, cel.lado - 1); ctx.restore();
+      continue;
+    }
+    var ap = paso.a[p], pinta = ap !== 0;
+    var fr = pinta ? fracTinta(ap, esc) : 0;
+    ctx.fillStyle = pinta ? tinta(fr) : '#ffffff';
+    ctx.fillRect(cel.x, cel.y, cel.lado, cel.lado);
+    if (pinta && ap < 0) rayarRect(ctx, cel.x, cel.y, cel.lado, cel.lado, fr > 0.5);
+    ctx.strokeStyle = '#aeb7bf'; ctx.lineWidth = 1;
+    ctx.strokeRect(cel.x + 0.5, cel.y + 0.5, cel.lado - 1, cel.lado - 1);
+  }
+  if (pv !== null) {
+    var cv = ANCLA.celdas[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 3;
+    ctx.strokeRect(cv.x + 1.5, cv.y + 1.5, cv.lado - 3, cv.lado - 3);
+  }
+
+  /* Aplanar: cada fila del mapa, una línea punteada a su grupo de cuatro. */
+  ctx.save();
+  ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1.3;
+  for (var g = 0; g < 4; g++) {
+    var yIni = yNodo(4 * g), yFin = yNodo(4 * g + 3), yMed = (yIni + yFin) / 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(LLAVE_X + 5, yIni - NODO_R); ctx.lineTo(LLAVE_X, yIni - NODO_R);
+    ctx.lineTo(LLAVE_X, yFin + NODO_R); ctx.lineTo(LLAVE_X + 5, yFin + NODO_R);
+    ctx.stroke();
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(MAPA_X + MAPA_L + 4, MAPA_Y + (g + 0.5) * MAPA_CEL); ctx.lineTo(LLAVE_X - 2, yMed);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* Las dieciséis líneas a la salida y la del sesgo c. Con ReLU, la de un nodo
+     apagado queda tenue: no aporta nada. */
+  for (p = 0; p < NMAPA; p++) {
+    var l = ANCLA.lineas[p];
+    linea(ctx, l.ax, l.ay, l.bx, l.by, th[l.idx], visto(p) && clave === 'relu' && paso.a[p] === 0);
+  }
+  linea(ctx, LINEA_C.ax, LINEA_C.ay, LINEA_C.bx, LINEA_C.by, th[I_C], false);
+
+  /* EL PULSO DEL AJUSTE, punteado sobre la línea. Lee paso.d[l.idx]: el mismo
+     índice que da el grosor, así que la línea que se ilumina es el peso que
+     cambia, por construcción. Normalizado contra el mayor ajuste de ESTE paso. */
+  if (pulso > 0 && paso.maxAjuste > 0) {
+    ctx.save();
+    ctx.setLineDash([7, 5]); ctx.lineCap = 'butt';
+    var todas = ANCLA.lineas.concat([LINEA_C]);
+    for (k = 0; k < todas.length; k++) {
+      var lp = todas[k], dd = paso.d[lp.idx];
+      if (dd === 0) continue;
+      var rel = Math.sqrt(Math.abs(dd) / paso.maxAjuste);
+      ctx.lineWidth = 1.5 + rel * 8;
+      ctx.strokeStyle = 'rgba(' + (dd > 0 ? C_SUBE : C_BAJA) + ',' + (pulso * 0.85).toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(lp.ax, lp.ay); ctx.lineTo(lp.bx, lp.by); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.lineCap = 'round';
+  }
+
+  /* LO QUE VIAJA. Hacia adelante, gris pizarra, por las líneas de los nodos a la
+     salida (y la del sesgo c). Hacia atrás, verde azulado, de la salida a los
+     nodos. El radio de cada bolita es la contribución que lleva esa línea,
+     comparada con las de su grupo. */
+  function bolitas(grupo, haciaAtras, color) {
+    var M = 0, kk;
+    for (kk = 0; kk < grupo.length; kk++) M = Math.max(M, Math.abs(grupo[kk].v));
+    for (kk = 0; kk < grupo.length; kk++) {
+      var e = grupo[kk];
+      var A = { x: e.a.ax, y: e.a.ay }, B = { x: e.a.bx, y: e.a.by };
+      var pp = haciaAtras ? sobre(B, A, u) : sobre(A, B, u);
+      var radb = 2 + (M > 0 ? Math.sqrt(Math.abs(e.v) / M) : 0) * 3.5;
+      ctx.fillStyle = 'rgba(' + color + ',0.92)';
+      ctx.beginPath(); ctx.arc(pp.x, pp.y, radb, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  if (hay && animando && fase === 2) {
+    var g2 = [];
+    for (p = 0; p < NMAPA; p++) g2.push({ a: ANCLA.lineas[p], v: th[I_U + p] * paso.a[p] });
+    g2.push({ a: LINEA_C, v: th[I_C] });
+    bolitas(g2, false, C_SENAL);
+  }
+  if (hay && animando && fase === 5) {
+    var g3 = [];
+    for (p = 0; p < NMAPA; p++) g3.push({ a: ANCLA.lineas[p], v: paso.dy * th[I_U + p] });
+    bolitas(g3, true, C_DELTA);
+  }
+
+  /* Los nodos: la misma tinta que su celda; encima de cada uno, su anillo de δ.
+     El anillo es la ÚNICA cosa que dibuja δ, y vive en el nodo: δ no corre por
+     el cable. Un nodo apagado no lleva anillo: φ′ = 0. */
+  function anillo(cx, cy, valor, alfa, grande) {
+    if (alfa <= 0 || !hay || paso.dMax <= 0) return;
+    var gr = Math.abs(valor) / paso.dMax;
+    if (gr < 1e-4) return;
+    var lw = grande ? 1.5 + Math.sqrt(gr) * 3 : 1.2 + Math.sqrt(gr) * 1.8;
+    var R0 = (grande ? SAL_R : NODO_R) + 2 + lw / 2;
+    ctx.strokeStyle = 'rgba(' + C_DELTA + ',' + (alfa * 0.95).toFixed(3) + ')';
+    ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.arc(cx, cy, R0, 0, Math.PI * 2); ctx.stroke();
+  }
+  for (p = 0; p < NMAPA; p++) {
+    var n = ANCLA.nodos[p];
+    if (anillosDelta > 0) anillo(n.cx, n.cy, paso.dp[p], anillosDelta, false);
+    ctx.beginPath(); ctx.arc(n.cx, n.cy, NODO_R, 0, Math.PI * 2);
+    if (!visto(p)) {
+      ctx.save(); ctx.setLineDash([2, 2]); ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = '#aeb7bf'; ctx.lineWidth = 1.2; ctx.stroke(); ctx.restore();
+      continue;
+    }
+    var an = paso.a[p], pn = an !== 0, fn = pn ? fracTinta(an, esc) : 0;
+    ctx.fillStyle = pn ? tinta(fn) : '#ffffff'; ctx.fill();
+    if (pn && an < 0) rayarDisco(ctx, n.cx, n.cy, NODO_R, fn > 0.5);
+    ctx.beginPath(); ctx.arc(n.cx, n.cy, NODO_R, 0, Math.PI * 2);
+    ctx.strokeStyle = '#6d777f'; ctx.lineWidth = 1.4; ctx.stroke();
+  }
+  if (pv !== null) {
+    var nv = ANCLA.nodos[pv];
+    ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(nv.cx, nv.cy, NODO_R + 5.5, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  /* La salida. Sin decisión todavía, va en gris. El anillo de δy es el de la
+     cuarta: el mismo recurso, en el nodo. */
+  if (verDeltaY) anillo(SAL_X, SAL_Y, paso.dy, 1, true);
+  var dice = verDecision ? (paso.yhat >= 0.5 ? 1 : 0) : 0;
+  ctx.beginPath(); ctx.arc(SAL_X, SAL_Y, SAL_R, 0, Math.PI * 2);
+  ctx.fillStyle = verDecision ? COLOR_CLASE[dice] : '#e3e7eb'; ctx.fill();
+  ctx.strokeStyle = verDecision ? BORDE_CLASE[dice] : '#9aa4ac'; ctx.lineWidth = 2; ctx.stroke();
+  triangulo(ctx, SAL_X, C_Y);
+
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#3a434b'; ctx.font = '12.5px system-ui, sans-serif';
+  ctx.fillText('¿Hay un trazo', TEXTO_X, SAL_Y - 30);
+  ctx.fillText('vertical?', TEXTO_X, SAL_Y - 14);
+  if (verDecision) {
+    ctx.fillStyle = BORDE_CLASE[dice]; ctx.font = '700 22px system-ui, sans-serif';
+    ctx.fillText(dice ? 'Sí' : 'No', TEXTO_X, SAL_Y + 12);
+    ctx.fillStyle = '#5c666f'; ctx.font = '12.5px system-ui, sans-serif';
+    ctx.fillText('ŷ = ' + paso.yhat.toFixed(2), TEXTO_X, SAL_Y + 31);
+    ctx.fillText('y = ' + paso.y, TEXTO_X, SAL_Y + 49);
+    if (verDeltaY) {
+      ctx.fillStyle = 'rgb(' + C_DELTA + ')';
+      ctx.fillText('δ = ' + (paso.dy < 0 ? '−' : '') + Math.abs(paso.dy).toFixed(2), TEXTO_X, SAL_Y + 67);
+    }
+  } else {
+    ctx.fillStyle = '#9aa4ac'; ctx.font = '700 22px system-ui, sans-serif';
+    ctx.fillText('…', TEXTO_X, SAL_Y + 12);
+  }
+}
+
+/* ── La curva de la pérdida ────────────────────────────────────────────────
+   Es la cantidad continua que baja, que es lo que el contador entero no puede
+   ser. Se dibuja entera desde la iteración cero, diezmada a un valor por
+   columna de píxel cuando hay más iteraciones que ancho. La raya de ln 2 es el
+   ancla de lectura: por encima de ella la red todavía no sabe más que una
+   moneda. Una marca fina por época. */
+var CURVA_W = TOTAL_W - 2 - 32 - 470 - 24, CURVA_H = 94;
+var LN2 = Math.log(2);
+function dibujarCurva(vista, r) {
+  var ctx = vista.ctx, k;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+  var IZQ = 44, DER = 12, ARR = 12, ABA = 22;
+  var W = vista.w - IZQ - DER, H = vista.h - ARR - ABA;
+
+  var xmax = Math.max(3 * NTRAIN, r.iter);
+  var ymax = 0;
+  for (k = 0; k < r.hist.length; k++) if (r.hist[k] > ymax) ymax = r.hist[k];
+  ymax = Math.max(0.8, Math.ceil(ymax * 4) / 4);
+  function X(it) { return IZQ + (it / xmax) * W; }
+  function Y(L) { return ARR + H - Math.min(1, L / ymax) * H; }
+
+  /* Las fronteras de época, sólo si quedan a 5 px o más una de otra. */
+  if (W * NTRAIN / xmax >= 5) {
+    ctx.strokeStyle = '#eef1f4'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var e = 1; e * NTRAIN <= xmax; e++) {
+      ctx.moveTo(Math.round(X(e * NTRAIN)) + 0.5, ARR); ctx.lineTo(Math.round(X(e * NTRAIN)) + 0.5, ARR + H);
+    }
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(IZQ + 0.5, ARR); ctx.lineTo(IZQ + 0.5, ARR + H + 0.5); ctx.lineTo(IZQ + W, ARR + H + 0.5);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = 'rgba(140,150,160,0.9)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(IZQ, Y(LN2)); ctx.lineTo(IZQ + W, Y(LN2)); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#8b959d'; ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText('ln 2 — decir 50 % a todo', IZQ + 6, Y(LN2) - 2);
+
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText(ymax.toFixed(2), IZQ - 6, Y(ymax));
+  ctx.fillText('0', IZQ - 6, Y(0));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillText('0', IZQ, ARR + H + 5);
+  ctx.fillText('iteraciones (una imagen cada una) · una raya fina = una época', IZQ + W / 2, ARR + H + 5);
+  ctx.textAlign = 'right';
+  ctx.fillText(String(xmax), IZQ + W, ARR + H + 5);
+
+  /* Diezmado: un valor por columna, el de esa columna. No es el promedio del
+     tramo; es la pérdida real en una iteración real. */
+  ctx.strokeStyle = 'rgb(' + C_SENAL + ')'; ctx.lineWidth = 1.7;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  var paso1 = Math.max(1, Math.ceil(r.hist.length / W)), primero = true;
+  for (k = 0; k < r.hist.length; k += paso1) {
+    var x = X(k), y = Y(r.hist[k]);
+    if (primero) { ctx.moveTo(x, y); primero = false; } else ctx.lineTo(x, y);
+  }
+  var ux = X(r.iter), uy = Y(r.hist[r.hist.length - 1]);
+  ctx.lineTo(ux, uy);
+  ctx.stroke();
+  ctx.fillStyle = 'rgb(' + C_SENAL + ')';
+  ctx.beginPath(); ctx.arc(ux, uy, 3.2, 0, Math.PI * 2); ctx.fill();
+}
+
+/* ── Los dos paneles de lectura ────────────────────────────────────────────
+   El de la imagen dice qué imagen y qué contestó la red; el de δ dice qué
+   regresó y qué cambió. Son el mismo paso leído desde los dos lados. */
+var SEP = ' <span class="tenue">·</span> ';
+function signo(v, dec) { return (v < 0 ? '−' : '') + Math.abs(v).toFixed(dec); }
+function textoPanelImagen() {
+  if (paso === null)
+    return '<div class="tit">Ningún paso en curso</div>' +
+           '<div class="rotfase mudo">«Un paso» muestra uno completo, en ocho tiempos</div>' +
+           '<div class="fila mudo">«+1 época» y «+10 épocas» lo repiten sin animación y sin resaltar nada</div>';
+  var r = red(), y = paso.y;
+  var s = '<div class="tit">Imagen ' + (paso.pos + 1) + ' de ' + NTRAIN + ' · época ' + (paso.epoca + 1) + '</div>';
+  s += '<div class="rotfase">' + FASES[Math.max(0, fase)].rot + '</div>';
+  s += '<div class="fila"><span class="tenue">clase verdadera</span> y = ' + y + (y ? ' (vertical)' : ' (horizontal)') + '</div>';
+  s += (fase >= 3)
+    ? '<div class="fila">ŷ = ' + paso.yhat.toFixed(4) + ' → dice ' + (paso.yhat >= 0.5 ? 1 : 0) +
+      ((paso.yhat >= 0.5 ? 1 : 0) === y ? ' <span class="tenue">(acierta)</span>' : ' <span class="tenue">(falla)</span>') +
+      '</div>' +
+      '<div class="fila"><span class="tenue">pérdida</span> ' + paso.perdida.toFixed(4) + SEP +
+      '<span class="tenue">media sobre las ' + NTRAIN + '</span> ' + r.cache.L.toFixed(4) + '</div>'
+    : '<div class="fila mudo">ŷ todavía no llega a la salida</div>' +
+      '<div class="fila mudo">la pérdida se calcula al llegar a la salida</div>';
+  return s;
+}
+function textoPanelDelta() {
+  if (paso === null)
+    return '<div class="tit">δ y ajuste</div>' +
+           '<div class="rotfase mudo">δ vive en el nodo · el ajuste, en la línea y en el filtro</div>' +
+           '<div class="fila mudo">δ = ŷ − y  ·  δ_p = δ·u_p·φ′(z_p)</div>' +
+           '<div class="fila mudo">Δu_p = −η·δ·a_p  ·  Δw = −η·Σ_p δ_p·(píxeles de la ventana p)</div>';
+  var nAct = paso.activos.length;
+  var s = '<div class="tit">δ y ajuste</div><div class="rotfase mudo"> </div>';
+  if (fase >= 4) {
+    s += '<div class="fila">δ = ŷ − y = ' + signo(paso.dy, 4);
+    if (fase >= 5)
+      s += SEP + '<span class="tenue">recibe δ</span> ' + nAct + ' de ' + NMAPA + ' nodos' +
+           (nAct < NMAPA ? ' <span class="tenue">(' + (NMAPA - nAct) + ' con φ′=0)</span>' : '');
+    else s += SEP + '<span class="mudo">δ todavía no regresa a los nodos</span>';
+    s += '</div>';
+  } else {
+    s += '<div class="fila mudo">el error todavía no se calcula</div>';
+  }
+  if (fase >= 6)
+    s += '<div class="fila"><span class="tenue">mayor ajuste</span> Δθ = ' + signo(paso.d[paso.mayor], 5) +
+         ' <span class="tenue">en</span> ' + NOMBRES[paso.mayor] + SEP + '<span class="tenue">η =</span> ' +
+         paso.eta.toFixed(2) + '</div>';
+  else
+    s += '<div class="fila mudo">ningún peso ha cambiado todavía</div>';
+  if (fase >= 7) {
+    if (nAct === 0)
+      s += '<div class="fila">ningún nodo quedó encendido: el filtro y las u_p no cambian, sólo c</div>';
+    else if (animando) {
+      var j = Math.min(nAct - 1, Math.floor(u * nAct)), p = paso.activos[j];
+      s += '<div class="fila"><span class="tenue">regreso</span> posición ' + p + ' (fila ' + (p >> 2) +
+           ', col. ' + (p & 3) + ')' + SEP + 'δ_p = ' + signo(paso.dp[p], 4) + SEP +
+           '<span class="tenue">' + (j + 1) + ' de ' + nAct + '</span></div>';
+    } else
+      s += '<div class="fila"><span class="tenue">el filtro sumó</span> ' + nAct + ' de ' + NMAPA + ' posiciones</div>';
+  }
+  return s;
+}
+function textoPie(r) {
+  if (r.cache.apagada)
+    return 'La red está apagada: con ReLU todas las z_p valen cero o menos en las 200 imágenes, todos los ' +
+           'nodos están en cero y la salida es la misma para todas. Sólo c puede cambiar. Con tasas altas pasa más; ' +
+           'Reinicia, o baja η.';
+  if (r.clave === 'relu' && r.cache.eTrain === 0 && r.cache.eTest === 0)
+    return 'Cero errores en las 160 y en las 40. Sigue entrenando y mira la curva: entre una cuarta parte y la ' +
+           'mitad de las redes que llegan a cero vuelven a fallar si se entrenan 50 épocas más (medido en el arnés).';
+  if (r.clave === 'lineal' && r.epoca >= 1)
+    return 'Con activación lineal la red entera es lineal en los píxeles y no separa verticales de horizontales: ' +
+           'las tres columnas de un cuadrado 3×3 suman lo mismo que sus tres filas. Ninguno de los 2 000 arranques ' +
+           'medidos llegó a cero.';
+  return '';
+}
+
+/* ── Montaje ───────────────────────────────────────────────────────────────*/
+var vistaDiag = null, vistaCurva = null, nodos = {};
+
+function redibujar() {
+  var r = red(), c = r.cache;
+  dibujarDiagrama(vistaDiag);
+  dibujarCurva(vistaCurva, r);
+  nodos.cTrain.textContent = c.eTrain;
+  nodos.cTest.textContent = c.eTest;
+  nodos.cPerdida.textContent = c.L.toFixed(4);
+  nodos.cIter.textContent = r.iter;
+  nodos.deIter.textContent = 'época ' + (r.epoca + 1) + ' · van ' + r.pos + ' de ' + NTRAIN;
+  nodos.cTrain.className = 'cifra ' + (c.eTrain === 0 ? 'cero' : 'noCero');
+  nodos.cTest.className = 'cifra ' + (c.eTest === 0 ? 'cero' : 'noCero');
+  nodos.panelImagen.innerHTML = textoPanelImagen();
+  nodos.panelDelta.innerHTML = textoPanelDelta();
+  nodos.panelImagen.className = 'panel' + (paso === null ? ' apagado' : '');
+  nodos.panelDelta.className = 'panel' + (paso === null ? ' apagado' : '');
+  nodos.pie.innerHTML = textoPie(r);
+  nodos.itRayado.style.display = redActiva === 'lineal' ? '' : 'none';
+  Array.prototype.forEach.call(nodos.etiquetas, function (lab) {
+    lab.className = (lab.dataset.red === redActiva) ? 'puesto' : '';
+  });
+}
+
+/* Mientras corre la animación no se puede empezar otra cosa: los botones se
+   apagan. Es la única vez que la página se cierra a la entrada. */
+function habilitar(puede) {
+  ['bPaso', 'bEpoca', 'bDiez', 'bReiniciar'].forEach(function (id) { nodos[id].disabled = !puede; });
+  Array.prototype.forEach.call(nodos.etiquetas, function (lab) {
+    lab.querySelector('input').disabled = !puede;
+  });
+}
+
+function cuadro(ahora) {
+  var ms = ahora - t0;
+  var f = faseEn(Math.min(ms, paso.total - 0.001), paso.dur);
+  fase = f.i; u = f.u;
+  redibujar();
+  if (ms < paso.total) { requestAnimationFrame(cuadro); return; }
+  /* Fin del paso: AQUÍ se aplican los pesos. Durante toda la animación el
+     diagrama mostró los de antes, que son los que produjeron ese ŷ y esas δ. */
+  fase = FASES.length - 1; u = 1;
+  var r = red();
+  aplicar(r, pendiente);
+  refrescar(r);
+  pendiente = null;
+  animando = false;
+  habilitar(true);
+  redibujar();
+}
+
+function unPaso() {
+  if (animando) return;
+  var r = red();
+  var i = proximaImagen(r);
+  var s = detallar(conAjuste(analizar(r.theta, r.clave, i), eta), r.theta, r.clave);
+  s.pos = r.pos; s.epoca = r.epoca;
+  s.dur = duraciones(s);
+  s.total = s.dur.reduce(function (a, b) { return a + b; }, 0);
+  paso = s;
+  /* Con «reducir movimiento» no hay animación: se aplica el paso y se muestra
+     su lectura completa, que es lo que la animación deja al final. */
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    fase = FASES.length - 1; u = 1;
+    aplicar(r, s);
+    refrescar(r);
+    redibujar();
+    return;
+  }
+  pendiente = s;
+  animando = true;
+  habilitar(false);
+  fase = 0; u = 0;
+  t0 = performance.now();
+  requestAnimationFrame(cuadro);
+}
+
+function tandaEpocas(n) {
+  if (animando) return;
+  var r = red();
+  for (var e = 0; e < n; e++) hastaFrontera(r);
+  /* Se apaga el resalte. Dejarlo en la última imagen sería señalar un caso
+     particular como si resumiera las cientos. */
+  paso = null; fase = -1; u = 0;
+  refrescar(r);
+  redibujar();
+}
+
+function reiniciar() {
+  if (animando) return;
+  REDES[redActiva] = nuevaRed(redActiva);
+  paso = null; fase = -1; u = 0;
+  redibujar();
+}
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+
+  var barra = document.createElement('div');
+  barra.className = 'barra';
+  var rot = document.createElement('span');
+  rot.className = 'rot'; rot.textContent = 'Activación:';
+  barra.appendChild(rot);
+  ['relu', 'lineal'].forEach(function (clave) {
+    var lab = document.createElement('label');
+    lab.dataset.red = clave;
+    var inp = document.createElement('input');
+    inp.type = 'radio'; inp.name = 'act'; inp.value = clave;
+    inp.checked = (clave === redActiva);
+    inp.addEventListener('change', function () {
+      /* Cada activación conserva SU entrenamiento: sus pesos, sus iteraciones y
+         su curva. Cambiar de una a otra no reinicia nada. */
+      redActiva = clave;
+      paso = null; fase = -1; u = 0;
+      redibujar();
+    });
+    lab.appendChild(inp);
+    lab.appendChild(document.createTextNode(ACTS[clave].etiqueta));
+    barra.appendChild(lab);
+  });
+
+  var d1 = document.createElement('span'); d1.className = 'divisor'; barra.appendChild(d1);
+
+  var tasa = document.createElement('span');
+  tasa.className = 'tasa';
+  var rotEta = document.createElement('span');
+  rotEta.textContent = 'tasa η';
+  var slEta = document.createElement('input');
+  slEta.type = 'range'; slEta.id = 'eta';
+  slEta.min = ETA_MIN; slEta.max = ETA_MAX; slEta.step = ETA_PASO; slEta.value = ETA_INICIAL;
+  var valEta = document.createElement('span');
+  valEta.className = 'val'; valEta.textContent = ETA_INICIAL.toFixed(2);
+  tasa.appendChild(rotEta); tasa.appendChild(slEta); tasa.appendChild(valEta);
+  barra.appendChild(tasa);
+  slEta.addEventListener('input', function () {
+    eta = parseFloat(slEta.value);
+    valEta.textContent = eta.toFixed(2);
+  });
+
+  var d2 = document.createElement('span'); d2.className = 'divisor'; barra.appendChild(d2);
+
+  function boton(id, texto, clase) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = id; b.textContent = texto;
+    if (clase) b.className = clase;
+    barra.appendChild(b);
+    return b;
+  }
+  var bPaso = boton('b-paso', 'Un paso', 'principal');
+  var bEpoca = boton('b-epoca', '+1 época');
+  var bDiez = boton('b-diez', '+10 épocas');
+  var bReiniciar = boton('b-reiniciar', 'Reiniciar');
+  raiz.appendChild(barra);
+
+  /* ── la franja de instrumentos ── */
+  var instr = document.createElement('div');
+  instr.className = 'instrumentos';
+  instr.style.width = TOTAL_W + 'px';
+  var cifras = document.createElement('div');
+  cifras.className = 'cifras';
+  function par(clase, rotulo, detalle) {
+    var caja = document.createElement('div');
+    caja.className = 'par';
+    var cifra = document.createElement('span');
+    cifra.className = 'cifra ' + clase; cifra.textContent = '–';
+    var rt = document.createElement('span');
+    rt.className = 'rotulo'; rt.textContent = rotulo;
+    rt.appendChild(document.createElement('br'));
+    var de = document.createElement('span');
+    de.className = 'de'; de.textContent = detalle;
+    rt.appendChild(de);
+    caja.appendChild(cifra); caja.appendChild(rt);
+    cifras.appendChild(caja);
+    return { cifra: cifra, de: de };
+  }
+  nodos.cTrain = par('noCero', 'mal clasificados', 'de ' + NTRAIN + ' entren.').cifra;
+  nodos.cTest = par('noCero', 'mal clasificados', 'de ' + NTEST + ' prueba').cifra;
+  nodos.cPerdida = par('neutra', 'pérdida media', '−log verosimilitud, en las ' + NTRAIN).cifra;
+  var pIter = par('neutra', 'imágenes vistas', '');
+  nodos.cIter = pIter.cifra; nodos.deIter = pIter.de;
+  instr.appendChild(cifras);
+  vistaCurva = lienzo(CURVA_W, CURVA_H);
+  instr.appendChild(vistaCurva.el);
+  raiz.appendChild(instr);
+
+  var tablero = document.createElement('div');
+  tablero.className = 'tablero';
+
+  /* ── el diagrama, que es el de la quinta ── */
+  var cajaDiag = document.createElement('div');
+  cajaDiag.className = 'caja';
+  cajaDiag.style.width = (DIAG_W + 38) + 'px';
+  vistaDiag = lienzo(DIAG_W, DIAG_H);
+  cajaDiag.appendChild(vistaDiag.el);
+  tablero.appendChild(cajaDiag);
+
+  /* ── la columna de lectura: los dos paneles y el pie; la leyenda va debajo del diagrama ── */
+  var cajaCol = document.createElement('div');
+  cajaCol.className = 'caja';
+  cajaCol.style.width = COL_W + 'px';
+  var panelImagen = document.createElement('div');
+  panelImagen.className = 'panel apagado';
+  cajaCol.appendChild(panelImagen);
+  var panelDelta = document.createElement('div');
+  panelDelta.className = 'panel apagado';
+  cajaCol.appendChild(panelDelta);
+  var leyenda = document.createElement('div');
+  leyenda.className = 'leyenda';
+  leyenda.innerHTML =
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>peso positivo · ' +
+      '<span class="marca" style="background:#d23c3c"></span>peso negativo</span>' +
+    '<span class="it">grosor = |peso| contra un tope fijo de ' + ESCALA_GROSOR + '</span>' +
+    '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
+    '<span class="it">más oscuro = mayor · vacío = cero, la ReLU lo apagó</span>' +
+    '<span class="it"><span class="llave" style="border:2px solid rgb(' + VERDE + ')"></span>' +
+      'la posición en turno: su ventana, su celda y su nodo</span>' +
+    '<span class="it"><span class="anillo"></span>δ, la señal de error, en el nodo</span>' +
+    '<span class="it"><span class="marca" style="background:#7a4fb5"></span>el peso sube · ' +
+      '<span class="marca" style="background:#b07d2b"></span>el peso baja</span>' +
+    '<span class="it">punteado sobre la línea, cuadro dentro de la celda del filtro y punto junto a b: el cambio</span>' +
+    '<span class="it">tamaño del cambio = |Δθ| contra el mayor de ESTE paso (los 27), no contra el tamaño del peso</span>';
+  var itRayado = document.createElement('span');
+  itRayado.className = 'it';
+  itRayado.textContent = 'rayado = valor negativo (sólo con lineal)';
+  leyenda.appendChild(itRayado);
+  cajaDiag.appendChild(leyenda);
+  var pie = document.createElement('div');
+  pie.className = 'pie';
+  cajaCol.appendChild(pie);
+  tablero.appendChild(cajaCol);
+
+  raiz.appendChild(tablero);
+
+  nodos.panelImagen = panelImagen; nodos.panelDelta = panelDelta;
+  nodos.pie = pie; nodos.itRayado = itRayado;
+  nodos.etiquetas = barra.querySelectorAll('label[data-red]');
+  nodos.bPaso = bPaso; nodos.bEpoca = bEpoca; nodos.bDiez = bDiez; nodos.bReiniciar = bReiniciar;
+
+  bPaso.addEventListener('click', unPaso);
+  bEpoca.addEventListener('click', function () { tandaEpocas(1); });
+  bDiez.addEventListener('click', function () { tandaEpocas(10); });
+  bReiniciar.addEventListener('click', reiniciar);
+
+  redibujar();
+}
+
+function fallar(err) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no arrancó y no se dibujó ningún lienzo.\n\n' + err.message;
+  document.getElementById('raiz').appendChild(caja);
+}
+
+/* Las verificaciones corren ANTES de crear ningún lienzo. Si alguna lanza, no
+   hay canvas en el documento: se comprueba y sólo entonces se dibuja. */
+var VERIF = null;
+try {
+  ANCLA = verificarAncla(construirCeldas(), construirNodos(), construirVentanas(), construirLineas());
+  verificarDatos();
+  VERIF = verificarGradiente();
+  montar();
+} catch (err) {
+  fallar(err);
+  throw err;
+}
+
+/* Lo que la página expone para poder verificarse desde fuera. No añade
+   comportamiento: son las mismas estructuras que ya usa para dibujar. */
+window.EXPL = {
+  NPARAM: NPARAM, NOMBRES: NOMBRES, DATOS: DATOS, ANCLA: ANCLA, VERIF: VERIF,
+  ESCALA_GROSOR: ESCALA_GROSOR, FASES: FASES, ACTS: ACTS,
+  SEMILLA_DATOS: SEMILLA_DATOS, SEMILLA_ARRANQUE: SEMILLA_ARRANQUE, THETA_INICIAL: THETA_INICIAL,
+  redes: REDES, redActiva: function () { return redActiva; },
+  eta: function () { return eta; }, setEta: function (v) { eta = v; },
+  paso: function () { return paso; }, fase: function () { return fase; },
+  propagar: propagar, analizar: analizar, conAjuste: conAjuste, detallar: detallar, acumular: acumular,
+  compararGradiente: compararGradiente, verificarGradiente: verificarGradiente,
+  perdidaMedia: perdidaMedia, malClasificados: malClasificados, redApagada: redApagada,
+  escalaA: escalaA, vectorInicial: vectorInicial, generarDatos: generarDatos,
+  proximaImagen: proximaImagen, aplicar: aplicar, pasoCompleto: pasoCompleto, hastaFrontera: hastaFrontera,
+  duraciones: duraciones, faseEn: faseEn,
+  unPaso: unPaso, tandaEpocas: tandaEpocas, reiniciar: reiniciar, redibujar: redibujar,
+  ponerFase: function (f, uu, animar) { fase = f; u = uu; animando = !!animar; redibujar(); },
+  ponerPaso: function (s) { paso = s; },
+  cambiarActivacion: function (clave) { redActiva = clave; paso = null; fase = -1; u = 0; redibujar(); }
+};
+
+})();
+</script>
+</body>
+</html>
