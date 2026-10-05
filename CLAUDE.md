@@ -47,14 +47,14 @@ TODO.md               pendientes con su razonamiento, para quien revise
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
 - La 4, la 6 y la 9 comparan su gradiente con diferencias centradas al montar.
-- Se proyecta: 1 a 9 caben en 1196×940 sin desplazamiento, aun con barra; index no.
+- Se proyecta: 1 a 9 caben en 1196×940 sin desplazamiento; con barra, no (arriba).
 
 ## Conductas verificadas
 
-Ninguna registrada todavía.
+- Bajo ~1185 px de ancho el tablero envuelve: la 5, 6, 8 y 9 saltan a 1228–1533 px.
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- La serie se recorrió: la neurona en el tiempo es la 7 (D1); las nueve montan.
-- Sigue: rehacer la 8 con el diagrama plegado arriba, que la 9 heredaría.
+- La 8 se rehizo: la red dibujada una vez arriba, el desenrollado abajo (D4).
+- Sigue: adaptar la 9, que conserva la figura que la 8 tenía antes.
 - Abierto: el desvanecimiento que mide la 9; está en `TODO.md`, sección 7.

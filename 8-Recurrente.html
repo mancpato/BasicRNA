@@ -71,13 +71,16 @@
   .llave { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 
   /* El mando va ENCIMA del diagrama, sin línea que los separe. */
-  .mando { margin-bottom: 10px; }
+  .mando { flex: 1; min-width: 0; padding-top: 2px; }
+  /* La red dibujada una vez y el deslizador comparten renglón: la red y la
+     perilla que la mueve, juntas. */
+  .fila-red { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 8px; }
   /* Lo atenuado es lo que todavía no se puede usar: la pista, su pie y el
      hueco del valor. El rótulo NO, que ahí va la primera instrucción. */
   .mando.apagado .pista,
   .mando.apagado .pista-pie,
   .mando.apagado .mando-val { opacity: 0.55; }
-  .mando-cab { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .mando-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-bottom: 6px; min-height: 64px; }
   .mando-rot { font-size: 14px; font-weight: 600; }
   .mando-rot.vacio { font-weight: 700; color: var(--tinta); }
   .mando-copias { font-size: 13px; color: var(--tinta-suave); }
@@ -137,10 +140,11 @@ entrenará esta misma red.
 Lo que esta página enseña son las dos ideas que hacen distinta a una red
 recurrente, cada una con su gesto:
 
-  el mismo parámetro en cada paso: la red se dibuja desenrollada, una copia de
-  la celda por píxel, y las siete flechas w son UN número, igual que las seis
-  flechas u y los siete sesgos b. Señalar cualquier copia ilumina todas, y el
-  deslizador las mueve juntas. Es la misma idea que el filtro de la página 5,
+  el mismo parámetro en cada paso: la red se dibuja dos veces. Arriba, una
+  vez, con una línea por parámetro; abajo, desenrollada, una copia de la
+  celda por píxel, y las siete flechas w son UN número, igual que las seis
+  flechas u y los siete sesgos b. Señalar una línea, arriba o abajo, ilumina
+  la de arriba y todas sus copias, y el deslizador las mueve juntas. Es la misma idea que el filtro de la página 5,
   que es el mismo en todas las posiciones, pero en el tiempo en vez de en el
   espacio.
 
@@ -238,6 +242,21 @@ las tiras sale con ŷ pegada a 0 o a 1, porque un |u| > 1 explota; con ±2 el 48
 El recorrido del deslizador sí es ±6, fijo, y el grosor de las líneas se mide
 contra ese tope con raíz, como en todas las páginas.
 
+LA RED, DIBUJADA UNA VEZ
+La séptima enseña que los círculos del desenrollado son la misma neurona en
+momentos distintos; ésta lo da por sabido y lo usa. Arriba a la izquierda va la
+red dibujada una vez, con la forma de la séptima: el píxel arriba, el sesgo
+abajo, el lazo a la izquierda y la salida a la derecha, que aquí lleva su sesgo
+c porque se mueve. Va junto al deslizador porque ése es el gesto de la página:
+la red y la perilla en el mismo renglón, y la consecuencia —todas las copias
+moviéndose juntas— justo debajo. Junto a cada línea va escrito el valor de su
+parámetro, como el «×2» de la séptima: el deslizador sólo da el del
+seleccionado, y así se leen los cinco de un vistazo. Dentro de la neurona va la
+forma de su activación y no un número: con tanh el estado no es entero, y lo
+que hace en cada momento ya lo dice el panel. La salida lleva el color de lo
+que decide sobre la tira de abajo, igual que su copia: es la misma neurona.
+Los títulos y el panel hablan de «momentos», como la séptima, no de «pasos».
+
 EL ANCLA, CON COPIAS
 En las páginas 1 a 3 la promesa es que la línea que se señala es el parámetro
 que se mueve, y la verificación exige que los índices sean una permutación. Aquí
@@ -250,6 +269,10 @@ llega al estado t. Y se verifica que la recurrencia lineal da lo mismo que el
 polinomio evaluado término a término, en todas las tiras, con los pesos
 iniciales y con las seis soluciones: si Horner no coincidiera con la suma, la
 página no montaría.
+La red dibujada una vez tiene el ancla de las páginas 1 a 3, sin copias: sus
+cinco índices son una permutación, cada línea une lo que tiene que unir y los
+dos extremos del lazo caen sobre la neurona. Comprobado por Claude al
+construirla: si la línea de w lee el índice de b, la página no monta y lo dice.
 
 LA SELECCIÓN, POR PARÁMETRO
 La regla de la página 2 —ante la duda no se selecciona nada— compara la línea
@@ -259,6 +282,10 @@ tocan en el nodo, así que cerca de cada nodo se estorbarían entre sí y no se
 podría elegir nada. Por eso se compara por PARÁMETRO: la segunda distancia es la
 de la línea más cercana DE OTRO ÍNDICE. La tolerancia y la separación mínima
 son las mismas de la página 2.
+Arriba vale la misma regla, en su propio lienzo. El lazo es una curva, y su
+distancia se mide contra 48 tramos rectos que la siguen. Comprobado por Claude:
+el punto medio de cada una de las cinco líneas selecciona su parámetro, y el
+centro de la neurona, donde se juntan cuatro, no selecciona ninguno.
 
 EL PANEL DE ABAJO
 Cada línea es una tira, y su altura en el paso t es σ(v·h_t + c): lo que diría la
@@ -284,7 +311,10 @@ No en el último, No en la mayoría y Sí en el primero.
 
 DÓNDE VA CADA COSA
 Entra entera en una ventana de 1196 × 940 sin desplazamiento, con el mismo
-criterio que las páginas 4 y 5. Con una tira de 7 los píxeles 8 y 9 quedan
+criterio que las páginas 4 y 5. Medido por Claude en Chromium sin ventana: el
+contenido mide 919 px de alto, también con 1181 px de ancho, que es lo que deja
+una barra de desplazamiento. Para que cupiera la red dibujada una vez, el
+deslizador pasó de 640 a 380 px y el panel de 266 a 198 px de alto. Con una tira de 7 los píxeles 8 y 9 quedan
 punteados: es el lugar que ocupa una tira de prueba, y la línea de v cruza ese
 hueco porque la salida siempre lee el ÚLTIMO estado.
 
@@ -309,7 +339,7 @@ var NOMBRES = ['w, entrada → estado', 'u, estado anterior → estado', 'b, ses
 var RANGO_MIN = -6, RANGO_MAX = 6, PASO = 0.01;
 /* El sorteo inicial sólo en ±2 — ver EL SORTEO INICIAL en la cabecera. */
 var SORTEO_MIN = -2, SORTEO_MAX = 2;
-var PISTA_W = 640, POMO = 18;
+var PISTA_W = 380, POMO = 18;   /* comparte renglón con la red dibujada una vez */
 
 /* Sorteo con semilla: splitmix32, el mismo de las otras páginas. Aritmética
    entera de 32 bits con Math.imul, exacta, y con el mezclador de salida para
@@ -408,15 +438,73 @@ function malClasificadas(th, act, k, tiras) {
    estado abajo, el triángulo de b debajo del estado y, en el panel, la
    columna t de todas las líneas. Se reparten nueve columnas, las de una tira
    de prueba; una de entrenamiento usa las siete primeras. */
-var DIAG_W = 708, DIAG_H = 516;
+var DIAG_W = 708, DIAG_H = 452;
 var X0 = 46, PASO_T = 58;
 function xPaso(t) { return X0 + t * PASO_T; }
-var PIX = 34, PIX_Y = 20;
-var NODO_Y = 110, NODO_R = 15;
-var TB = 10, B_Y = 162;
+var PIX = 34, PIX_Y = 30;
+var NODO_Y = 120, NODO_R = 15;
+var TB = 10, B_Y = 172;
 var SAL_X = 580, SAL_Y = NODO_Y, SAL_R = 18, C_Y = B_Y, TEXTO_X = 606;
-var PAN_X0 = xPaso(0) - 18, PAN_X1 = xPaso(T_TE - 1) + 18, PAN_Y1 = 216, PAN_Y0 = 482;
+var PAN_X0 = xPaso(0) - 18, PAN_X1 = xPaso(T_TE - 1) + 18, PAN_Y1 = 222, PAN_Y0 = 420;
 function yPanel(v) { return PAN_Y0 - v * (PAN_Y0 - PAN_Y1); }
+
+/* ── La red, dibujada una vez ──────────────────────────────────────────────
+   Su propio lienzo, arriba a la izquierda, junto al deslizador. Vertical como
+   cada columna del desenrollado y como la séptima: el píxel arriba, el sesgo
+   abajo, el lazo a la izquierda y la salida a la derecha. Cada parámetro
+   tiene UNA línea. */
+var RED_W = 296, RED_H = 190;
+var RX = 150, RPIX = 28, RPIX_Y = 30, RNY = 100, RNR = 17, RB_Y = 156;
+var ROX = 250, ROR = 15, RC_Y = 156, RVAL_Y = 184;
+var LAZO = (function () {
+  var a = Math.PI / 6;
+  return { p0: { x: RX - RNR * Math.cos(a), y: RNY + RNR * Math.sin(a) },   /* sale */
+           c1: { x: RX - 92, y: RNY + 62 },
+           c2: { x: RX - 92, y: RNY - 62 },
+           p3: { x: RX - RNR * Math.cos(a), y: RNY - RNR * Math.sin(a) } }; /* regresa */
+})();
+function bezier(s) {
+  var r = 1 - s, p0 = LAZO.p0, c1 = LAZO.c1, c2 = LAZO.c2, p3 = LAZO.p3;
+  return { x: r * r * r * p0.x + 3 * r * r * s * c1.x + 3 * r * s * s * c2.x + s * s * s * p3.x,
+           y: r * r * r * p0.y + 3 * r * r * s * c1.y + 3 * r * s * s * c2.y + s * s * s * p3.y };
+}
+function construirRed() {
+  return [
+    { idx: I_W, papel: 'w', ax: RX, ay: RPIX_Y + RPIX, bx: RX, by: RNY },
+    { idx: I_U, papel: 'u', lazo: true },
+    { idx: I_B, papel: 'b', ax: RX, ay: RB_Y - TB, bx: RX, by: RNY },
+    { idx: I_V, papel: 'v', ax: RX, ay: RNY, bx: ROX, by: RNY },
+    { idx: I_C, papel: 'c', ax: ROX, ay: RC_Y - TB, bx: ROX, by: RNY }
+  ];
+}
+/* El ancla de las páginas 1 a 3, sin copias: los índices son una permutación
+   de 0..4, cada línea une lo que tiene que unir y los dos extremos del lazo
+   caen sobre la neurona. */
+function verificarRed(red) {
+  var visto = [0, 0, 0, 0, 0], k;
+  red.forEach(function (l, n) {
+    if (!Number.isInteger(l.idx) || l.idx < 0 || l.idx >= NPARAM)
+      throw new Error('la red dibujada una vez: la línea ' + n + ' apunta al índice ' + l.idx);
+    if (LETRA[l.idx] !== l.papel)
+      throw new Error('la red dibujada una vez: la línea ' + n + ' dice ser ' + l.papel + ' y lee θ[' + l.idx + '], que es ' + LETRA[l.idx]);
+    visto[l.idx]++;
+    var ok;
+    if (l.papel === 'w') ok = l.ax === RX && l.ay === RPIX_Y + RPIX && l.bx === RX && l.by === RNY;
+    else if (l.papel === 'b') ok = l.ax === RX && l.bx === RX && l.by === RNY;
+    else if (l.papel === 'v') ok = l.ax === RX && l.ay === RNY && l.bx === ROX && l.by === RNY;
+    else if (l.papel === 'c') ok = l.ax === ROX && l.bx === ROX && l.by === RNY;
+    else ok = l.lazo === true;
+    if (!ok) throw new Error('la red dibujada una vez: la línea de ' + l.papel + ' no une lo que tiene que unir');
+  });
+  for (k = 0; k < NPARAM; k++)
+    if (visto[k] !== 1) throw new Error('la red dibujada una vez: ' + LETRA[k] + ' tiene ' + visto[k] + ' líneas y tiene que tener una');
+  [LAZO.p0, LAZO.p3].forEach(function (p, j) {
+    if (Math.abs(Math.hypot(p.x - RX, p.y - RNY) - RNR) > 1e-9)
+      throw new Error('la red dibujada una vez: el ' + (j ? 'regreso' : 'arranque') + ' del lazo no está sobre la neurona');
+  });
+  return red;
+}
+var RED = null;
 
 /* ── EL ANCLA, CON COPIAS ──────────────────────────────────────────────────
    El diagrama sale de descriptores, uno por COPIA: cada línea lleva el índice
@@ -586,6 +674,84 @@ function glifoActivacion(ctx, cx, cy, cual) {
   ctx.restore();
 }
 
+function valorTexto(v) { return (v < 0 ? '−' : '') + Math.abs(v).toFixed(2); }
+function trazoLazo(ctx) {
+  ctx.beginPath(); ctx.moveTo(LAZO.p0.x, LAZO.p0.y);
+  ctx.bezierCurveTo(LAZO.c1.x, LAZO.c1.y, LAZO.c2.x, LAZO.c2.y, LAZO.p3.x, LAZO.p3.y);
+  ctx.stroke();
+}
+function trazoRecta(ctx, l) { ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by); ctx.stroke(); }
+function dibujarRed(vista, lectura) {
+  var ctx = vista.ctx;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#3a434b'; ctx.font = '600 13px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('La red, dibujada una vez', 4, 14);
+
+  /* Los halos, debajo, como en el desenrollado. */
+  ctx.lineCap = 'round';
+  [{ i: seleccionado, color: 'rgba(140,90,200,0.55)', mas: 13 },
+   { i: resaltado,    color: 'rgba(90,105,120,0.32)', mas: 8 }].forEach(function (h) {
+    if (h.i === null) return;
+    ctx.lineWidth = grosorDe(theta[h.i]) + h.mas;
+    ctx.strokeStyle = h.color;
+    RED.forEach(function (l) { if (l.idx === h.i) { if (l.lazo) trazoLazo(ctx); else trazoRecta(ctx, l); } });
+  });
+  /* Las líneas: la misma regla de color, grosor y opacidad que sus copias. */
+  RED.forEach(function (l) {
+    var w = theta[l.idx], f = fuerza(w);
+    var marcado = (l.idx === resaltado || l.idx === seleccionado);
+    var op = marcado ? Math.min(1, 0.55 + f * 0.45) : 0.28 + f * 0.7;
+    ctx.lineWidth = grosorDe(w) + (l.idx === resaltado ? 2.5 : 0);
+    ctx.strokeStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + op.toFixed(3) + ')';
+    if (l.lazo) {
+      trazoLazo(ctx);
+      /* La punta, donde el lazo regresa a la neurona. */
+      var dx = LAZO.p3.x - LAZO.c2.x, dy = LAZO.p3.y - LAZO.c2.y, n = Math.hypot(dx, dy), T = 9;
+      dx /= n; dy /= n;
+      ctx.fillStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + Math.max(op, 0.6).toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(LAZO.p3.x, LAZO.p3.y);
+      ctx.lineTo(LAZO.p3.x - T * dx + T * 0.55 * dy, LAZO.p3.y - T * dy - T * 0.55 * dx);
+      ctx.lineTo(LAZO.p3.x - T * dx - T * 0.55 * dy, LAZO.p3.y - T * dy + T * 0.55 * dx);
+      ctx.closePath(); ctx.fill();
+    } else trazoRecta(ctx, l);
+  });
+
+  /* El píxel: aquí no es ninguno en particular, es la entrada de cada momento. */
+  ctx.fillStyle = '#eef1f4'; ctx.fillRect(RX - RPIX / 2, RPIX_Y, RPIX, RPIX);
+  ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1;
+  ctx.strokeRect(RX - RPIX / 2 + 0.5, RPIX_Y + 0.5, RPIX - 1, RPIX - 1);
+  ctx.fillStyle = '#3a434b'; ctx.font = '14px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('x', RX, RPIX_Y + RPIX / 2);
+
+  ctx.fillStyle = 'rgb(80,130,200)'; ctx.strokeStyle = 'rgb(48,78,120)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(RX, RNY, RNR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  glifoActivacion(ctx, RX, RNY, act());
+  triangulo(ctx, RX, RB_Y);
+
+  var dice = lectura.yhat >= 0.5 ? 1 : 0;
+  ctx.beginPath(); ctx.arc(ROX, RNY, ROR, 0, Math.PI * 2);
+  ctx.fillStyle = COLOR_CLASE[dice]; ctx.fill();
+  ctx.strokeStyle = BORDE_CLASE[dice]; ctx.lineWidth = 2; ctx.stroke();
+  glifoActivacion(ctx, ROX, RNY, 'sigmoide');
+  triangulo(ctx, ROX, RC_Y);
+
+  /* Los cinco valores, cada uno junto a su única línea. */
+  ctx.font = '12px system-ui, sans-serif'; ctx.textBaseline = 'alphabetic';
+  function rot(i, x, y, al) {
+    ctx.fillStyle = (i === seleccionado) ? '#5a2f96' : '#3a434b';
+    ctx.font = (i === seleccionado ? '700 ' : '') + '12px system-ui, sans-serif';
+    ctx.textAlign = al; ctx.fillText(LETRA[i] + ' = ' + valorTexto(theta[i]), x, y);
+  }
+  rot(I_W, RX + 9, (RPIX_Y + RPIX + RNY - RNR) / 2 + 4, 'left');
+  rot(I_U, RX - 80, RNY + 4, 'right');
+  rot(I_B, RX, RVAL_Y, 'center');
+  rot(I_V, (RX + ROX) / 2 + 4, RNY + 20, 'center');
+  rot(I_C, ROX, RVAL_Y, 'center');
+}
+
 function dibujarDiagrama(vista, lectura, lecturas) {
   var ctx = vista.ctx, an = ancla(), T = tira.length, t, n;
   ctx.clearRect(0, 0, vista.w, vista.h);
@@ -595,6 +761,9 @@ function dibujarDiagrama(vista, lectura, lecturas) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText('x', 8, PIX_Y + PIX / 2);
   ctx.fillText('h', 8, NODO_Y);
+  ctx.font = '600 13px system-ui, sans-serif'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Lo que hizo en cada momento: la red de arriba, una columna por píxel', 4, 14);
+  ctx.textBaseline = 'middle';
 
   /* Los halos van DEBAJO de todas las líneas, y en TODAS las copias del
      parámetro: señalar una es señalar el número. */
@@ -666,12 +835,12 @@ function dibujarDiagrama(vista, lectura, lecturas) {
 }
 
 /* El panel: cada línea es una tira, a la altura de lo que diría la red si
-   terminara en ese paso. Escala fija [0, 1]. */
+   terminara en ese momento. Escala fija [0, 1]. */
 function dibujarPanel(ctx, lectura, lecturas) {
   var t, i, k = iTarea;
   ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
   ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-  ctx.fillText('lo que diría la red si la tira terminara en ese paso', PAN_X0, PAN_Y1 - 6);
+  ctx.fillText('lo que diría la red si la tira terminara en ese momento', PAN_X0, PAN_Y1 - 6);
 
   ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
   ctx.strokeRect(PAN_X0 + 0.5, PAN_Y1 + 0.5, PAN_X1 - PAN_X0 - 1, PAN_Y0 - PAN_Y1 - 1);
@@ -733,7 +902,7 @@ function dibujarPanel(ctx, lectura, lecturas) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (t = 0; t < T_TE; t++) ctx.fillText(String(t + 1), xPaso(t), PAN_Y0 + 6);
   ctx.textAlign = 'left';
-  ctx.fillText('paso', 4, PAN_Y0 + 6);
+  ctx.fillText('momento', PAN_X1 + 6, PAN_Y0 + 6);
 }
 
 /* ── La galería ────────────────────────────────────────────────────────────
@@ -827,8 +996,31 @@ function distanciasA(px, py) {
   r.sort(function (p, q) { return p.d - q.d; });
   return r;
 }
-function candidataEn(px, py) {
-  var d = distanciasA(px, py);
+/* Lo mismo en la red dibujada una vez. El lazo es una curva: su distancia se
+   mide contra 48 tramos rectos que la siguen. */
+function distanciasRed(px, py) {
+  var mejor = [Infinity, Infinity, Infinity, Infinity, Infinity];
+  RED.forEach(function (l) {
+    var d = Infinity;
+    if (l.lazo) {
+      var a = bezier(0);
+      for (var k = 1; k <= 48; k++) {
+        var b = bezier(k / 48);
+        d = Math.min(d, distanciaPuntoSegmento(px, py, a.x, a.y, b.x, b.y));
+        a = b;
+      }
+    } else d = distanciaPuntoSegmento(px, py, l.ax, l.ay, l.bx, l.by);
+    if (d < mejor[l.idx]) mejor[l.idx] = d;
+  });
+  var r = [];
+  for (var k = 0; k < NPARAM; k++) r.push({ idx: k, d: mejor[k] });
+  r.sort(function (p, q) { return p.d - q.d; });
+  return r;
+}
+function candidataEnRed(px, py) { return elegir(distanciasRed(px, py)); }
+function candidataEn(px, py) { return elegir(distanciasA(px, py)); }
+/* La regla de la página 2: ante la duda no se selecciona nada. */
+function elegir(d) {
   if (d[0].d > TOL_CAPTURA) return null;
   if (d[1].d < 2 * d[0].d) return null;
   if (d[1].d - d[0].d < MARGEN_SEPARACION) return null;
@@ -836,7 +1028,7 @@ function candidataEn(px, py) {
 }
 
 /* ── Montaje ───────────────────────────────────────────────────────────────*/
-var vistaDiag = null, vistaGal = null, nodos = {}, mando = {};
+var vistaRed = null, vistaDiag = null, vistaGal = null, nodos = {}, mando = {};
 
 function leerTodo() {
   var a = act();
@@ -853,7 +1045,9 @@ function redibujar() {
     mal.test.push((lecturas.test[i].yhat >= 0.5 ? 1 : 0) !== TAREAS[k].correcta(DATOS.test[i]));
     if (mal.test[i]) eTe++;
   }
-  dibujarDiagrama(vistaDiag, leer(theta, act(), tira), lecturas);
+  var lectura = leer(theta, act(), tira);
+  dibujarRed(vistaRed, lectura);
+  dibujarDiagrama(vistaDiag, lectura, lecturas);
   dibujarGaleria(vistaGal, mal);
   nodos.cTrain.textContent = String(eTr);
   nodos.cTrain.className = 'cifra ' + (eTr === 0 ? 'cero' : 'noCero');
@@ -879,7 +1073,7 @@ function actualizarLectura() {
   if (seleccionado === null) return;
   mando.val.textContent = theta[seleccionado].toFixed(2);
   var n = copiasEsperadas(seleccionado, tira.length);
-  mando.copias.textContent = n > 1 ? n + ' líneas, un solo número' : '';
+  mando.copias.textContent = n > 1 ? 'una línea arriba y ' + n + ' copias abajo: un solo número' : 'una línea arriba y una abajo';
 }
 /* Se llama cuando cambia la SELECCIÓN, no en cada movimiento: escribir
    slider.value mientras el alumno arrastra pelearía con el arrastre. */
@@ -889,7 +1083,7 @@ function sincronizarMando() {
     mando.slider.disabled = true;
     mando.slider.value = 0;
     mando.rot.className = 'mando-rot vacio';
-    mando.rot.textContent = 'ningún parámetro seleccionado — haz clic en una línea del diagrama';
+    mando.rot.textContent = 'ningún parámetro seleccionado — haz clic en una línea de cualquiera de los dos dibujos';
     mando.copias.textContent = '';
     mando.val.className = 'mando-val nada';
     mando.val.textContent = '—';
@@ -1006,18 +1200,23 @@ function montar() {
     '</div>' +
     '<div class="pista-pie" style="width:' + PISTA_W + 'px">' +
       '<span>' + RANGO_MIN + '</span><span class="der">+' + RANGO_MAX + '</span></div>';
-  cajaDiag.appendChild(cajaMando);
+  var filaRed = document.createElement('div');
+  filaRed.className = 'fila-red';
+  vistaRed = lienzo(RED_W, RED_H);
+  filaRed.appendChild(vistaRed.el);
+  filaRed.appendChild(cajaMando);
+  cajaDiag.appendChild(filaRed);
   vistaDiag = lienzo(DIAG_W, DIAG_H);
   cajaDiag.appendChild(vistaDiag.el);
   var legD = document.createElement('div');
   legD.className = 'leyenda';
   legD.innerHTML =
-    '<span class="it">un clic en un píxel lo enciende o lo apaga; un clic en una línea la selecciona; ESC la suelta</span>' +
+    '<span class="it">un clic en un píxel lo enciende o lo apaga; un clic en una línea, arriba o abajo, la selecciona; ESC la suelta</span>' +
     '<span class="it"><span class="marca" style="background:#3c64d2"></span>positivo</span>' +
     '<span class="it"><span class="marca" style="background:#d23c3c"></span>negativo</span>' +
     '<span class="it">grosor = |θ| contra un tope fijo de ' + RANGO_MAX + '</span>' +
     '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
-    '<span class="it">las líneas repetidas son copias: cada letra es un solo número</span>' +
+    '<span class="it">abajo, las líneas repetidas son copias de la única línea de arriba: un solo número</span>' +
     '<span class="it"><span class="llave" style="background:rgba(140,90,200,0.55)"></span>seleccionado</span>' +
     '<span class="it"><span class="llave" style="background:rgba(90,105,120,0.32)"></span>bajo el ratón</span>' +
     '<span class="it">● entrenamiento, 7 píxeles · ✚ prueba, 9 píxeles · negra: la tira de arriba</span>';
@@ -1087,6 +1286,23 @@ function montar() {
     vistaDiag.el.style.cursor = (px !== null || c !== null) ? 'pointer' : 'default';
     if (c !== resaltado) { resaltado = c; redibujar(); }
   });
+  vistaRed.el.addEventListener('mousemove', function (ev) {
+    var q = posRaton(vistaRed, ev), c = candidataEnRed(q.x, q.y);
+    vistaRed.el.style.cursor = c !== null ? 'pointer' : 'default';
+    if (c !== resaltado) { resaltado = c; redibujar(); }
+  });
+  vistaRed.el.addEventListener('mouseleave', function () {
+    vistaRed.el.style.cursor = 'default';
+    if (resaltado !== null) { resaltado = null; redibujar(); }
+  });
+  /* Arriba no hay píxeles que pintar: el clic sólo selecciona, con la misma
+     regla, y sin candidata no hace nada. */
+  vistaRed.el.addEventListener('click', function (ev) {
+    var q = posRaton(vistaRed, ev), c = candidataEnRed(q.x, q.y);
+    if (c === null) return;
+    resaltado = c;
+    seleccionar(c);
+  });
   vistaDiag.el.addEventListener('mouseleave', function () {
     vistaDiag.el.style.cursor = 'default';
     if (resaltado !== null) { resaltado = null; redibujar(); }
@@ -1131,6 +1347,7 @@ try {
   ANCLAS = {};
   ANCLAS[T_TR] = verificarAncla(construirAncla(T_TR), T_TR);
   ANCLAS[T_TE] = verificarAncla(construirAncla(T_TE), T_TE);
+  RED = verificarRed(construirRed());
   verificarSoluciones();
   DIFERENCIA_HORNER = verificarHorner([THETA_INICIAL].concat(SOLUCIONES.lineal, SOLUCIONES.tanh));
   montar();
@@ -1147,7 +1364,8 @@ window.EXPL = {
   TOL_CAPTURA: TOL_CAPTURA, MARGEN_SEPARACION: MARGEN_SEPARACION, UMBRAL_RANURA: UMBRAL_RANURA,
   RANGO: { min: RANGO_MIN, max: RANGO_MAX, paso: PASO }, DIFERENCIA_HORNER: DIFERENCIA_HORNER,
   leer: leer, malClasificadas: malClasificadas, xPaso: xPaso,
-  candidataEn: candidataEn, distanciasA: distanciasA, pixelEn: pixelEn, miniaturaEn: miniaturaEn,
+  candidataEn: candidataEn, distanciasA: distanciasA, RED: RED, candidataEnRed: candidataEnRed, distanciasRed: distanciasRed,
+  bezierLazo: bezier, pixelEn: pixelEn, miniaturaEn: miniaturaEn,
   theta: function () { return theta.slice(); },
   fijarTheta: function (v) { theta = v.slice(); sincronizarMando(); redibujar(); },
   tira: function () { return tira.slice(); },
@@ -1163,7 +1381,7 @@ window.EXPL = {
     return { train: malClasificadas(theta, act(), iTarea, DATOS.train).length,
              test: malClasificadas(theta, act(), iTarea, DATOS.test).length };
   },
-  lienzoDiag: function () { return vistaDiag; }, lienzoGal: function () { return vistaGal; }
+  lienzoRed: function () { return vistaRed; }, lienzoDiag: function () { return vistaDiag; }, lienzoGal: function () { return vistaGal; }
 };
 
 })();

@@ -356,11 +356,12 @@ página construida.
 
 **Lo que sigue abierto.**
 
-a. Rehacer la octava con el diagrama plegado arriba, donde viva el gesto de mover
-a mano: una línea por parámetro, con el ancla de las páginas 1 a 3. El
-desenrollado queda abajo, como consecuencia del plegado y no como la figura
-principal, y señalar el lazo ilumina sus copias. La novena heredaría el plegado.
-Cómo se adaptan las dos se decide después.
+a. Adaptar la novena. La octava ya está rehecha: lleva la red dibujada una vez
+arriba a la izquierda, junto al deslizador, y el desenrollado abajo (D4). La
+novena conserva la figura que la octava tenía antes, así que las dos páginas
+recurrentes que entrenan y que se mueven a mano ya no comparten dibujo. Qué
+hereda la novena —la red dibujada una vez, y si sobre ella se escribe algo del
+regreso del error— se decide después.
 
 b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
 lo escribe sobre cada flecha; qué se hace al respecto se discute después.

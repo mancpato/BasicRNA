@@ -20,3 +20,15 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   pinta los píxeles y elige la longitud, 7 o 9; y la página lleva neurona de
   salida, que con recuerda pregunta por la mayoría y con olvida por el último
   píxel. Las propuso Claude y Miguel las aprobó al revisar la página construida.
+- **D4**, los dos dibujos de la octava (2026-10-05). La octava conserva el
+  desenrollado, porque es lo que enseña que todas las copias de un peso son el
+  mismo número, y la red dibujada una vez va arriba a la izquierda, en el mismo
+  renglón que el deslizador, que es donde vive el gesto de mover a mano.
+- **D5**, la selección y los rótulos de la octava (2026-10-05). Un peso se
+  selecciona desde cualquiera de los dos dibujos y el resaltado cubre su línea
+  de arriba y todas sus copias de abajo; junto a cada línea de arriba va escrito
+  el valor de su peso, para leer los cinco sin moverlos; y la página dice
+  «momento» donde decía «paso», como la séptima.
+- **D6**, lo que se encogió para que cupiera (2026-10-05). El deslizador pasó de
+  640 a 380 px de largo y el panel de 266 a 198 px de alto, para hacerle sitio a
+  la red dibujada una vez sin salirse de 1196 × 940.
