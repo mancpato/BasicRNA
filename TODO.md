@@ -314,6 +314,71 @@ Especificada en `ESPEC-9-Atencion.md` y todavía sin construir. Sus decisiones
 abiertas están en la sección 13 de ese archivo, «Pendiente de decidir», y el
 número 9 es una de ellas.
 
+## 7. Páginas recurrentes: una neurona en el tiempo
+
+Lo decidido aquí lo decidió Miguel en el chat, y nada de esto lleva cifras
+medidas todavía. La séptima página ya está construida: lo que sigue es un hueco
+didáctico suyo, no un defecto de su código.
+
+**El hueco.** La séptima dibuja la red desenrollada, una copia de la celda por
+píxel. El alumno llega de las páginas 2 a 6, donde cada círculo es una neurona
+distinta y el eje horizontal son las capas. Aquí los círculos son la MISMA
+neurona en momentos distintos y el eje horizontal es el tiempo, y el dibujo no
+lo dice en ninguna parte. A eso se suman los subíndices: en la segunda página
+h1 a h4 nombran cuatro neuronas distintas, así que si las copias se rotularan
+h1 a h7 el alumno leería siete neuronas.
+
+**Una página nueva, antes de la séptima.** Sólo de conceptos: una neurona, y su
+trabajo vive en el tiempo. Sin tareas, sin contadores, sin deslizadores y sin
+entrenamiento. Su único gesto es avanzar un momento a la vez. Su número es
+provisional; la numeración se decide al final, y lo que arrastra está en el
+punto e de lo abierto.
+
+**Arriba, la neurona plegada.** Rotulada como UNA neurona, con la forma del
+perceptrón de la primera página. Sus tres entradas son el píxel del momento, su
+propia salida anterior —el lazo— y el 1 del sesgo.
+
+**Abajo, la tira y un botón para avanzar.** En cada pulsación la neurona lee el
+siguiente píxel, abajo se agrega una columna, que es el registro de ese momento,
+y el valor que viaja por el lazo aparece viajando por la flecha horizontal hacia
+la columna siguiente: el lazo de arriba y esa flecha son la misma flecha. Bajo
+cada columna va «momento t». Ninguna neurona lleva subíndice. Y se muestran
+números: el estado se escribe.
+
+**Recuerda y olvida.** Ese contraste es el centro de la página, con pesos fijos
+y sin deslizador. En «recuerda» la activación es lineal, cada 1 suma 1, cada 0
+resta 1 y lo anterior se conserva completo: w = 2, b = −1 y u = 1, que es la
+solución lineal de la mayoría de la séptima, y el estado es un contador entero.
+En «olvida» es lo mismo con el lazo cortado, u = 0: el estado vale +1 o −1 y no
+dice más que el último píxel.
+
+**La séptima se rehace.** Arriba va el diagrama plegado, y ahí vive el gesto de
+mover a mano: una línea por parámetro, con el ancla de las páginas 1 a 3. Abajo
+queda el desenrollado, como consecuencia del plegado y no como la figura
+principal; señalar el lazo ilumina sus copias. La octava hereda el plegado.
+
+**Lo abierto.** Seis puntos, ninguno decidido.
+
+a. La disposición de la página nueva. Una posibilidad es la neurona fija arriba
+y el registro creciendo abajo; la otra, la neurona avanzando por la tira y
+dejando copias detrás. Claude propuso la primera en el chat, y no está decidido.
+
+b. La orientación del plegado. Vertical, con la entrada arriba, igual que cada
+columna del desenrollado, que es lo que propuso Claude; o de izquierda a
+derecha, como las páginas 1 a 6.
+
+c. Si el alumno puede pintar los píxeles y alargar la tira a nueve, para mostrar
+que la misma neurona sirve para cualquier longitud.
+
+d. Si la página nueva lleva neurona de salida, y qué pregunta contesta.
+
+e. La numeración. Insertar la página recorre la séptima, la octava y la atención
+planeada como novena, y eso toca `index.html`, los nombres de archivo y la
+especificación de la atención.
+
+f. Qué hacer contra el desvanecimiento de la señal de error. La octava lo mide y
+lo escribe sobre cada flecha; qué se hace al respecto se discute después.
+
 ## Lo que no está pendiente
 
 Que la tercera página se preste a un estudio más profundo —activaciones
