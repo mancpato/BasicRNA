@@ -61,16 +61,13 @@
   .tasa input[type=range] { width: 84px; }
   .tasa .val { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 34px; }
 
-  /* Los instrumentos van en una franja ANCHA sobre las dos columnas: las cifras
-     y la curva miden lo mismo a lo largo del tiempo y se leen juntas. */
-  .instrumentos {
-    display: flex; gap: 24px; align-items: center; max-width: 100%;
-    margin: 0 0 14px; padding: 11px 16px;
-    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
-  }
-  .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; width: 470px; flex: none; }
+  /* La red dibujada una vez y los instrumentos comparten el primer renglón de
+     la caja del dibujo: las cifras y la curva, a la derecha de la red. */
+  .fila-red { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 8px; }
+  .instrumentos { flex: none; }
+  .cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 8px; }
   .cifras .par { display: flex; align-items: baseline; gap: 9px; }
-  .cifras .cifra { font-size: 26px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cifras .cifra { font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
   .cifras .cero { color: #2e8b57; }
   .cifras .noCero { color: var(--negativo); }
   .cifras .neutra { color: var(--tinta); }
@@ -130,9 +127,10 @@ Retropropagación en el tiempo — la neurona recurrente aprende, o no
 
 Es la NOVENA página de BasicRNA y la tercera sobre una red recurrente. La
 octava deja mover a mano los cinco parámetros; ésta los deja al algoritmo. La
-figura es la que la octava tenía ANTES de rehacerse: el desenrollado solo, sin
-la red dibujada una vez arriba, y adaptarla a la octava de ahora está pendiente.
-Los controles son los de la cuarta y la sexta: la tarea, la activación, la tasa
+figura es la de la octava rehecha: la red dibujada una vez arriba y el
+desenrollado abajo, con las mismas coordenadas. Arriba, la red es aquí el lugar
+donde cae la suma de lo que piden las copias. Los controles son los de la
+cuarta y la sexta: la tarea, la activación, la tasa
 η, «Un paso» animado y tandas de épocas. Sobre la figura no hay ningún gesto.
 
 LA LECCIÓN
@@ -167,7 +165,10 @@ LOS OCHO TIEMPOS DE UN PASO
      de w pide δ_t·x_t (nada si el píxel está apagado), la de b pide δ_t y la
      de u que une el estado t con el t+1 pide δ_(t+1)·h_t. Es la idea del filtro
      de la sexta, en el tiempo en vez del espacio: un parámetro que se usa en
-     muchos lugares cambia por la suma de lo que pide cada lugar.
+     muchos lugares cambia por la suma de lo que pide cada lugar. Se ve en
+     tres tramos: las copias piden, punteadas; lo que piden sube, como un
+     punto por copia, hacia la única línea de su peso en la red de arriba; y
+     ahí cae la suma, punteada sobre esa línea.
 Los pesos se aplican AL FINAL del paso; durante la animación el diagrama y el
 panel muestran los de antes, que son los que produjeron ese ŷ y esas δ.
 
@@ -194,9 +195,24 @@ las flechas, la escalera se lee sola. Es la única excepción a la regla de la
 octava de que ningún dato aparece dos veces, y es deliberada. El panel da δ_T,
 δ_1 y su cociente con dos cifras.
 El pulso de lo que pide cada copia NO usa esa escala: es el de la cuarta y la
-sexta, contra la mayor petición de ESTE paso, con raíz. Mide cuánto se mueve
-cada peso, y las copias de u de la izquierda salen vacías porque piden casi
-nada, que es la lección vista del otro lado.
+sexta, con raíz, contra el mayor de ESTE paso. Ese mayor se toma entre lo que
+pide cada copia Y las cinco sumas que caen arriba, en una sola escala, para que
+lo que pidió cada copia se pueda comparar con lo que recibió su peso. Mide
+cuánto se mueve cada peso, y las copias de u de la izquierda salen vacías porque
+piden casi nada, que es la lección vista del otro lado.
+
+LA RED, DIBUJADA UNA VEZ: DONDE CAE LA SUMA
+La de la octava rehecha, con su forma y su ancla: una línea por parámetro. En
+la octava es donde se mueve un peso y se ve moverse todas sus copias; aquí es
+al revés: todas las copias empujan juntas el único peso de arriba. Por eso va
+en la misma columna que sus copias, justo encima: la suma SUBE. Aquí no se
+selecciona nada. No lleva δ, ni factores, ni órdenes de magnitud: no es ningún
+momento en particular, y la cadena ocurre abajo. Junto a cada línea va el valor
+del peso, con tres decimales o con su potencia de diez; durante la animación
+son los de antes del paso, y cambian al aplicarse. La salida va gris hasta que
+decide, como su copia de abajo. Los títulos y el panel dicen «momento» donde
+decían «paso» en el sentido de un punto de la tira; «Un paso» sigue siendo un
+paso de entrenamiento, una tira completa.
 
 LAS TRES TAREAS, Y POR QUÉ SE QUEDA LA MAYORÍA
 Medido con el código de esta página, 20 arranques (semillas 1001 a 1020), η =
@@ -306,10 +322,20 @@ LO QUE SE VERIFICA ANTES DE MONTAR
    δ_(t+1) por el factor que se escribe sobre la flecha, y δ_1/δ_T coincide con
    el producto de los factores (medido: 3.4e−16). Si el número de la flecha no
    fuera el que multiplica, la página no montaría.
+5. La red dibujada una vez: sus cinco índices son una permutación, cada línea
+   une lo que tiene que unir y los dos extremos del lazo caen sobre la neurona.
+   Comprobado por Claude al construirla: si la línea de w lee el índice de b,
+   la página no monta y lo dice.
 
 DÓNDE VA CADA COSA
-Entra en una ventana de 1196 × 940 sin desplazamiento: medido en Chromium, el
-contenido mide 905 px de alto. La barra va en UN renglón, y para eso los
+Entra en una ventana de 1196 × 940 sin desplazamiento: medido por Claude en
+Chromium sin ventana, el contenido mide 904 px de alto (antes de rehacerse,
+905). Ya no hay franja de instrumentos a todo lo ancho: las cifras y la curva
+van en el primer renglón de la caja del dibujo, a la derecha de la red dibujada
+una vez, y la curva se angostó a 396 px. El panel bajó de 266 a 198 px de alto,
+como en la octava, y la pérdida media dice «−log verosimilitud» sin «en las
+128», que no cabía. El ancho con una barra de desplazamiento que ocupa espacio
+queda para la homogeneización de la serie. La barra va en UN renglón, y para eso los
 radios van ocultos: con cinco opciones y cuatro botones no cabía de otra
 forma. La opción puesta se lee por su borde y su negrita, y sigue siendo un
 radio que se enfoca y se elige con el teclado. Es de lo que habrá que
@@ -513,6 +539,12 @@ function conAjuste(s, etaPaso) {
   for (t = 0; t < s.T; t++) M = Math.max(M, Math.abs(s.pide.w[t]), Math.abs(s.pide.b[t]));
   for (t = 0; t < s.T - 1; t++) M = Math.max(M, Math.abs(s.pide.u[t]));
   s.maxPide = M;
+  /* LA ESCALA DEL PULSO: copias y sumas contra el mayor de los dos, para que
+     lo que pidió cada copia se pueda comparar con lo que recibió su peso. */
+  var Ms = 0;
+  for (q = 0; q < NPARAM; q++) Ms = Math.max(Ms, Math.abs(s.d[q]));
+  s.maxSuma = Ms;
+  s.escala = Math.max(M, Ms);
   s.mayor = 0;
   for (q = 1; q < NPARAM; q++) if (Math.abs(s.d[q]) > Math.abs(s.d[s.mayor])) s.mayor = q;
   return s;
@@ -621,17 +653,71 @@ function verificarCadena() {
   return peor;
 }
 
-/* ── Geometría del diagrama: la de la 8, sin cambiar un número ─────────────*/
-var DIAG_W = 708, DIAG_H = 516;
+/* ── Geometría del diagrama: la de la 8 rehecha, sin cambiar un número ─────*/
+var DIAG_W = 708, DIAG_H = 452;
 var X0 = 46, PASO_T = 58;
 function xPaso(t) { return X0 + t * PASO_T; }
-var PIX = 34, PIX_Y = 20;
-var NODO_Y = 110, NODO_R = 15;
-var TB = 10, B_Y = 162;
+var PIX = 34, PIX_Y = 30;
+var NODO_Y = 120, NODO_R = 15;
+var TB = 10, B_Y = 172;
 var SAL_X = 580, SAL_Y = NODO_Y, SAL_R = 18, C_Y = B_Y, TEXTO_X = 606;
-var PAN_X0 = xPaso(0) - 18, PAN_X1 = xPaso(T_TE - 1) + 18, PAN_Y1 = 216, PAN_Y0 = 482;
+var PAN_X0 = xPaso(0) - 18, PAN_X1 = xPaso(T_TE - 1) + 18, PAN_Y1 = 222, PAN_Y0 = 420;
 function yPanel(v) { return PAN_Y0 - v * (PAN_Y0 - PAN_Y1); }
 var COL_W = 372, TOTAL_W = DIAG_W + 38 + 22 + COL_W;
+/* ── La red, dibujada una vez: la de la 8 ─────────────────────────────────
+   Su propio lienzo, arriba a la izquierda. Aquí no se selecciona nada: es el
+   lugar donde cae la suma de lo que piden las copias. */
+var RED_W = 296, RED_H = 190;
+var RX = 150, RPIX = 28, RPIX_Y = 30, RNY = 100, RNR = 17, RB_Y = 156;
+var ROX = 250, ROR = 15, RC_Y = 156, RVAL_Y = 184;
+var LAZO = (function () {
+  var a = Math.PI / 6;
+  return { p0: { x: RX - RNR * Math.cos(a), y: RNY + RNR * Math.sin(a) },   /* sale */
+           c1: { x: RX - 92, y: RNY + 62 },
+           c2: { x: RX - 92, y: RNY - 62 },
+           p3: { x: RX - RNR * Math.cos(a), y: RNY - RNR * Math.sin(a) } }; /* regresa */
+})();
+function bezier(s) {
+  var r = 1 - s, p0 = LAZO.p0, c1 = LAZO.c1, c2 = LAZO.c2, p3 = LAZO.p3;
+  return { x: r * r * r * p0.x + 3 * r * r * s * c1.x + 3 * r * s * s * c2.x + s * s * s * p3.x,
+           y: r * r * r * p0.y + 3 * r * r * s * c1.y + 3 * r * s * s * c2.y + s * s * s * p3.y };
+}
+function construirRed() {
+  return [
+    { idx: I_W, papel: 'w', ax: RX, ay: RPIX_Y + RPIX, bx: RX, by: RNY },
+    { idx: I_U, papel: 'u', lazo: true },
+    { idx: I_B, papel: 'b', ax: RX, ay: RB_Y - TB, bx: RX, by: RNY },
+    { idx: I_V, papel: 'v', ax: RX, ay: RNY, bx: ROX, by: RNY },
+    { idx: I_C, papel: 'c', ax: ROX, ay: RC_Y - TB, bx: ROX, by: RNY }
+  ];
+}
+/* El punto de la línea de arriba donde cae la suma: su punto medio. */
+function medioRed(l) { return l.lazo ? bezier(0.5) : { x: (l.ax + l.bx) / 2, y: (l.ay + l.by) / 2 }; }
+function verificarRed(red) {
+  var visto = [0, 0, 0, 0, 0], k;
+  red.forEach(function (l, n) {
+    if (!Number.isInteger(l.idx) || l.idx < 0 || l.idx >= NPARAM)
+      throw new Error('la red dibujada una vez: la línea ' + n + ' apunta al índice ' + l.idx);
+    if (LETRA[l.idx] !== l.papel)
+      throw new Error('la red dibujada una vez: la línea ' + n + ' dice ser ' + l.papel + ' y lee θ[' + l.idx + '], que es ' + LETRA[l.idx]);
+    visto[l.idx]++;
+    var ok;
+    if (l.papel === 'w') ok = l.ax === RX && l.ay === RPIX_Y + RPIX && l.bx === RX && l.by === RNY;
+    else if (l.papel === 'b') ok = l.ax === RX && l.bx === RX && l.by === RNY;
+    else if (l.papel === 'v') ok = l.ax === RX && l.ay === RNY && l.bx === ROX && l.by === RNY;
+    else if (l.papel === 'c') ok = l.ax === ROX && l.bx === ROX && l.by === RNY;
+    else ok = l.lazo === true;
+    if (!ok) throw new Error('la red dibujada una vez: la línea de ' + l.papel + ' no une lo que tiene que unir');
+  });
+  for (k = 0; k < NPARAM; k++)
+    if (visto[k] !== 1) throw new Error('la red dibujada una vez: ' + LETRA[k] + ' tiene ' + visto[k] + ' líneas y tiene que tener una');
+  [LAZO.p0, LAZO.p3].forEach(function (p, j) {
+    if (Math.abs(Math.hypot(p.x - RX, p.y - RNY) - RNR) > 1e-9)
+      throw new Error('la red dibujada una vez: el ' + (j ? 'regreso' : 'arranque') + ' del lazo no está sobre la neurona');
+  });
+  return red;
+}
+var RED = null;
 var FACTOR_Y = NODO_Y - 24;       /* la altura del factor escrito sobre cada flecha */
 var ORDEN_Y = NODO_Y + 38;        /* la del orden de magnitud de δ, bajo cada estado */
 
@@ -791,7 +877,7 @@ var FASES = [
   { ms: 450, rot: 'el error en la salida: δ = ŷ − y' },
   { ms: 700, rot: 'δ regresa al último estado, multiplicado por v·φ′' },
   { ms: 0,   rot: 'δ regresa de estado en estado; en cada flecha se multiplica por u·φ′' },
-  { ms: 1100, rot: 'cada copia pide su parte, y cada parámetro cambia por la suma de lo que piden sus copias' }
+  { ms: 2200, rot: 'cada copia pide su parte; lo que piden sube a la red de arriba, y cada parámetro cambia por la suma' }
 ];
 var MS_POR_LECTURA = 240, MS_POR_REGRESO = 460;
 function duraciones(s) {
@@ -930,7 +1016,7 @@ function glifoActivacion(ctx, cx, cy, cual) {
    hasta el paso siguiente: al final se tiene que poder leer todo lo que pasó. */
 function momento() {
   var m = { hay: paso !== null, leido: -1, enTurno: null, verDecision: false, verDeltaY: false,
-            anillos: [], factores: [], factorV: false, pulso: 0, ida: null, vuelta: null };
+            anillos: [], factores: [], factorV: false, pulso: 0, subida: null, suma: 0, ida: null, vuelta: null };
   if (!m.hay) return m;
   var T = paso.T, t;
   if (fase === 1 && animando) {
@@ -961,7 +1047,13 @@ function momento() {
     m.factorV = true;
     for (t = 0; t < T; t++) m.anillos.push(t);
     for (t = 0; t < T - 1; t++) m.factores.push(t);
-    m.pulso = animando ? Math.sin(Math.PI * u) : 0;
+    /* Tres tramos: las copias piden (0 a 0.55), lo que piden sube (0.4 a 0.72)
+       y la suma cae en la línea de arriba (desde 0.64 hasta el final). */
+    if (animando) {
+      m.pulso = u < 0.1 ? u / 0.1 : (u < 0.4 ? 1 : Math.max(0, (0.55 - u) / 0.15));
+      m.subida = (u >= 0.4 && u <= 0.72) ? (u - 0.4) / 0.32 : null;
+      m.suma = u < 0.64 ? 0 : Math.min(1, (u - 0.64) / 0.1);
+    }
   }
   return m;
 }
@@ -976,6 +1068,9 @@ function dibujarDiagrama(vista) {
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText('x', 8, PIX_Y + PIX / 2);
   ctx.fillText('h', 8, NODO_Y);
+  ctx.font = '600 13px system-ui, sans-serif'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('Lo que hizo en cada momento: la red de arriba, una columna por píxel', 4, 14);
+  ctx.textBaseline = 'middle';
 
   /* Las copias: el grosor y el color leen θ[idx], el mismo número en todas. */
   ctx.lineCap = 'round';
@@ -988,13 +1083,13 @@ function dibujarDiagrama(vista) {
 
   /* LO QUE PIDE CADA COPIA, punteado sobre ella. Lee pideCopia(paso, l): la
      misma copia, el mismo índice. Contra la mayor petición de ESTE paso. */
-  if (m.pulso > 0 && paso.maxPide > 0) {
+  if (m.pulso > 0 && paso.escala > 0) {
     ctx.save();
     ctx.setLineDash([7, 5]); ctx.lineCap = 'butt';
     an.lineas.forEach(function (l) {
       var dd = pideCopia(paso, l);
       if (dd === 0) return;
-      var rel = Math.sqrt(Math.abs(dd) / paso.maxPide);
+      var rel = Math.sqrt(Math.abs(dd) / paso.escala);
       if (rel < 0.02) return;
       ctx.lineWidth = 1.5 + rel * 8;
       ctx.strokeStyle = 'rgba(' + (dd > 0 ? C_SUBE : C_BAJA) + ',' + (m.pulso * 0.85).toFixed(3) + ')';
@@ -1132,7 +1227,118 @@ function dibujarDiagrama(vista) {
     ctx.fillText('…', TEXTO_X, SAL_Y + 12);
   }
 
+  dibujarSubida(ctx, m, 0);
   dibujarPanel(ctx, r, m);
+}
+
+/* LO QUE SUBE. Cada copia manda lo que pide, como un punto del color de su
+   signo y del tamaño de su petición en la escala del paso, hacia el punto medio
+   de la única línea de su peso en la red de arriba. El punto cruza de un lienzo
+   al otro: los dos lo dibujan con el desplazamiento entre ellos, medido en
+   pantalla, y cada uno recorta lo que le queda fuera. */
+function desplazamientoRed() {
+  if (!vistaRed || !vistaDiag) return { x: 0, y: 0 };
+  var a = vistaRed.el.getBoundingClientRect(), b = vistaDiag.el.getBoundingClientRect();
+  return { x: b.left - a.left, y: b.top - a.top };
+}
+function dibujarSubida(ctx, m, enRed) {
+  if (m.subida === null || !paso || !(paso.escala > 0)) return;
+  var dz = desplazamientoRed(), an = ancla(), s = m.subida;
+  var e = s * s * (3 - 2 * s);                      /* sale despacio y llega despacio */
+  an.lineas.forEach(function (l) {
+    var dd = pideCopia(paso, l);
+    if (dd === 0) return;
+    var rel = Math.sqrt(Math.abs(dd) / paso.escala);
+    if (rel < 0.02) return;
+    var dest = medioRed(RED[l.idx]);
+    var A = { x: (l.ax + l.bx) / 2 + dz.x, y: (l.ay + l.by) / 2 + dz.y };   /* en coordenadas de la red */
+    var q = { x: A.x + (dest.x - A.x) * e, y: A.y + (dest.y - A.y) * e };
+    if (!enRed) { q.x -= dz.x; q.y -= dz.y; }
+    ctx.fillStyle = 'rgba(' + (dd > 0 ? C_SUBE : C_BAJA) + ',' + (0.85 * (1 - 0.6 * e)).toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(q.x, q.y, 2 + 3.5 * rel, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+/* ── LA RED, DIBUJADA UNA VEZ ──────────────────────────────────────────────
+   La forma de la octava. Aquí no se selecciona nada: es donde cae la suma. Los
+   valores escritos son los de la red en este momento: durante la animación,
+   los de antes del paso, que son los que produjeron ese ŷ y esas δ. */
+function trazoLazo(ctx) {
+  ctx.beginPath(); ctx.moveTo(LAZO.p0.x, LAZO.p0.y);
+  ctx.bezierCurveTo(LAZO.c1.x, LAZO.c1.y, LAZO.c2.x, LAZO.c2.y, LAZO.p3.x, LAZO.p3.y);
+  ctx.stroke();
+}
+function trazoRecta(ctx, l) { ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by); ctx.stroke(); }
+function dibujarRed(vista) {
+  var r = red(), th = r.theta, ctx = vista.ctx, m = momento();
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#3a434b'; ctx.font = '600 13px system-ui, sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('La red, dibujada una vez', 4, 14);
+
+  ctx.lineCap = 'round';
+  RED.forEach(function (l) {
+    var w = th[l.idx], op = 0.28 + fuerza(w) * 0.7;
+    ctx.lineWidth = grosorDe(w);
+    ctx.strokeStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + op.toFixed(3) + ')';
+    if (l.lazo) {
+      trazoLazo(ctx);
+      var dx = LAZO.p3.x - LAZO.c2.x, dy = LAZO.p3.y - LAZO.c2.y, n = Math.hypot(dx, dy), P = 9;
+      dx /= n; dy /= n;
+      ctx.fillStyle = (w >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + Math.max(op, 0.6).toFixed(3) + ')';
+      ctx.beginPath(); ctx.moveTo(LAZO.p3.x, LAZO.p3.y);
+      ctx.lineTo(LAZO.p3.x - P * dx + P * 0.55 * dy, LAZO.p3.y - P * dy - P * 0.55 * dx);
+      ctx.lineTo(LAZO.p3.x - P * dx - P * 0.55 * dy, LAZO.p3.y - P * dy + P * 0.55 * dx);
+      ctx.closePath(); ctx.fill();
+    } else trazoRecta(ctx, l);
+  });
+
+  /* LA SUMA, punteada sobre la única línea de cada peso: lo que cambia el peso,
+     −η por la suma de lo que pidieron sus copias, en la misma escala. */
+  if (m.suma > 0 && paso && paso.escala > 0) {
+    ctx.save(); ctx.setLineDash([7, 5]); ctx.lineCap = 'butt';
+    RED.forEach(function (l) {
+      var dd = paso.d[l.idx];
+      if (dd === 0) return;
+      var rel = Math.sqrt(Math.abs(dd) / paso.escala);
+      if (rel < 0.02) return;
+      ctx.lineWidth = 1.5 + rel * 8;
+      ctx.strokeStyle = 'rgba(' + (dd > 0 ? C_SUBE : C_BAJA) + ',' + (m.suma * 0.85).toFixed(3) + ')';
+      if (l.lazo) trazoLazo(ctx); else trazoRecta(ctx, l);
+    });
+    ctx.restore(); ctx.lineCap = 'round';
+  }
+
+  ctx.fillStyle = '#eef1f4'; ctx.fillRect(RX - RPIX / 2, RPIX_Y, RPIX, RPIX);
+  ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1;
+  ctx.strokeRect(RX - RPIX / 2 + 0.5, RPIX_Y + 0.5, RPIX - 1, RPIX - 1);
+  ctx.fillStyle = '#3a434b'; ctx.font = '14px system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('x', RX, RPIX_Y + RPIX / 2);
+
+  ctx.fillStyle = 'rgb(80,130,200)'; ctx.strokeStyle = 'rgb(48,78,120)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(RX, RNY, RNR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  glifoActivacion(ctx, RX, RNY, act());
+  triangulo(ctx, RX, RB_Y);
+
+  /* La salida, como su copia de abajo: gris hasta que decide. */
+  var dice = m.verDecision ? (paso.yhat >= 0.5 ? 1 : 0) : 0;
+  ctx.beginPath(); ctx.arc(ROX, RNY, ROR, 0, Math.PI * 2);
+  ctx.fillStyle = m.verDecision ? COLOR_CLASE[dice] : '#e3e7eb'; ctx.fill();
+  ctx.strokeStyle = m.verDecision ? BORDE_CLASE[dice] : '#9aa4ac'; ctx.lineWidth = 2; ctx.stroke();
+  glifoActivacion(ctx, ROX, RNY, 'sigmoide');
+  triangulo(ctx, ROX, RC_Y);
+
+  ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#3a434b'; ctx.font = '12px system-ui, sans-serif';
+  function rot(i, x, y, al) { ctx.textAlign = al; ctx.fillText(LETRA[i] + ' = ' + num(th[i], 3), x, y); }
+  rot(I_W, RX + 9, (RPIX_Y + RPIX + RNY - RNR) / 2 + 4, 'left');
+  rot(I_U, RX - 80, RNY + 4, 'right');
+  rot(I_B, RX, RVAL_Y, 'center');
+  rot(I_V, (RX + ROX) / 2 + 4, RNY + 20, 'center');
+  rot(I_C, ROX, RVAL_Y, 'center');
+
+  dibujarSubida(ctx, m, 1);
 }
 
 /* El panel de la 8: cada línea es una tira, a la altura de lo que diría la red
@@ -1143,7 +1349,7 @@ function dibujarPanel(ctx, r, m) {
   var t, i, k = iTarea, lect = r.cache.lecturas;
   ctx.fillStyle = '#6d777f'; ctx.font = '12px system-ui, sans-serif';
   ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
-  ctx.fillText('lo que diría la red si la tira terminara en ese paso', PAN_X0, PAN_Y1 - 6);
+  ctx.fillText('lo que diría la red si la tira terminara en ese momento', PAN_X0, PAN_Y1 - 6);
 
   ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
   ctx.strokeRect(PAN_X0 + 0.5, PAN_Y1 + 0.5, PAN_X1 - PAN_X0 - 1, PAN_Y0 - PAN_Y1 - 1);
@@ -1209,7 +1415,7 @@ function dibujarPanel(ctx, r, m) {
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (t = 0; t < T_TE; t++) ctx.fillText(String(t + 1), xPaso(t), PAN_Y0 + 6);
   ctx.textAlign = 'left';
-  ctx.fillText('paso', 4, PAN_Y0 + 6);
+  ctx.fillText('momento', PAN_X1 + 6, PAN_Y0 + 6);
 }
 
 /* ── La curva de la pérdida ────────────────────────────────────────────────
@@ -1217,7 +1423,7 @@ function dibujarPanel(ctx, r, m) {
    red se desborda la pérdida salta a unos 13.8, y un eje que se estirara hasta
    ahí aplastaría la raya de ln 2, que es el ancla de lectura. Lo que pasa de 1
    se corta arriba y se dice con una marca. */
-var CURVA_W = TOTAL_W - 2 - 32 - 470 - 24, CURVA_H = 94;
+var INSTR_W = DIAG_W - RED_W - 16, CURVA_W = INSTR_W, CURVA_H = 94;
 var LN2 = Math.log(2), CURVA_TOPE = 1;
 function dibujarCurva(vista, r) {
   var ctx = vista.ctx, k;
@@ -1257,12 +1463,14 @@ function dibujarCurva(vista, r) {
   ctx.fillText('0', IZQ - 6, Y(0));
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillText('0', IZQ, ARR + H + 5);
-  ctx.fillText('iteraciones (una tira cada una) · una raya fina = una época', IZQ + W / 2, ARR + H + 5);
+  ctx.fillText('tiras vistas · una raya fina = una época', IZQ + W / 2, ARR + H + 5);
   ctx.textAlign = 'right';
   ctx.fillText(String(xmax), IZQ + W, ARR + H + 5);
   if (mayor > ymax) {
+    /* Encima del marco y antes de su esquina derecha: ahí termina la curva
+       cuando se sale, y el aviso no puede tapar su último punto. */
     ctx.fillStyle = 'rgb(210,60,60)'; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
-    ctx.fillText('↑ llegó a ' + mayor.toFixed(2) + ', fuera de la escala', IZQ + W, ARR);
+    ctx.fillText('↑ llegó a ' + mayor.toFixed(2) + ', fuera de la escala', IZQ + W - 10, 0);
   }
 
   ctx.strokeStyle = 'rgb(' + C_SENAL + ')'; ctx.lineWidth = 1.7;
@@ -1367,11 +1575,12 @@ function textoPie(r) {
 }
 
 /* ── Montaje ───────────────────────────────────────────────────────────────*/
-var vistaDiag = null, vistaCurva = null, nodos = {};
+var vistaRed = null, vistaDiag = null, vistaCurva = null, nodos = {};
 
 function redibujar() {
   var r = red(), c = r.cache;
   dibujarDiagrama(vistaDiag);
+  dibujarRed(vistaRed);
   dibujarCurva(vistaCurva, r);
   nodos.cTrain.textContent = c.eTrain;
   nodos.cTest.textContent = c.eTest;
@@ -1535,7 +1744,7 @@ function montar() {
   /* ── la franja de instrumentos ── */
   var instr = document.createElement('div');
   instr.className = 'instrumentos';
-  instr.style.width = TOTAL_W + 'px';
+  instr.style.width = INSTR_W + 'px';
   var cifras = document.createElement('div');
   cifras.className = 'cifras';
   function par(clase, rotulo, detalle) {
@@ -1555,21 +1764,26 @@ function montar() {
   }
   nodos.cTrain = par('noCero', 'mal clasificadas', 'de ' + NTRAIN + ' entren.').cifra;
   nodos.cTest = par('noCero', 'mal clasificadas', 'de ' + NTEST + ' prueba').cifra;
-  nodos.cPerdida = par('neutra', 'pérdida media', '−log verosimilitud, en las ' + NTRAIN).cifra;
+  nodos.cPerdida = par('neutra', 'pérdida media', '−log verosimilitud').cifra;
   var pIter = par('neutra', 'tiras vistas', '');
   nodos.cIter = pIter.cifra; nodos.deIter = pIter.de;
   instr.appendChild(cifras);
   vistaCurva = lienzo(CURVA_W, CURVA_H);
   instr.appendChild(vistaCurva.el);
-  raiz.appendChild(instr);
 
   var tablero = document.createElement('div');
   tablero.className = 'tablero';
 
-  /* ── el diagrama, que es el de la 8 ── */
+  /* ── el diagrama, que es el de la 8 rehecha: la red arriba, con los instrumentos ── */
   var cajaDiag = document.createElement('div');
   cajaDiag.className = 'caja';
   cajaDiag.style.width = (DIAG_W + 38) + 'px';
+  var filaRed = document.createElement('div');
+  filaRed.className = 'fila-red';
+  vistaRed = lienzo(RED_W, RED_H);
+  filaRed.appendChild(vistaRed.el);
+  filaRed.appendChild(instr);
+  cajaDiag.appendChild(filaRed);
   vistaDiag = lienzo(DIAG_W, DIAG_H);
   cajaDiag.appendChild(vistaDiag.el);
   var leyD = document.createElement('div');
@@ -1579,7 +1793,7 @@ function montar() {
     '<span class="it"><span class="marca" style="background:#d23c3c"></span>negativo</span>' +
     '<span class="it">grosor = |θ| contra un tope fijo de ' + ESCALA_GROSOR + '</span>' +
     '<span class="it">▲ = el sesgo</span>' +
-    '<span class="it">las líneas repetidas son copias de un solo número</span>' +
+    '<span class="it">abajo, las líneas repetidas son copias de la única línea de arriba: un solo número</span>' +
     '<span class="it">● entrenamiento, 7 píxeles · ✚ prueba, 9 píxeles · negra: la tira en curso</span>';
   cajaDiag.appendChild(leyD);
   tablero.appendChild(cajaDiag);
@@ -1607,7 +1821,7 @@ function montar() {
       'sobre la flecha: el factor u·φ′ por el que se multiplica δ al regresar</span>' +
     '<span class="it"><span class="marca" style="background:#7a4fb5"></span>' +
       '<span class="marca" style="background:#b07d2b"></span>punteado sobre la copia: lo que pide, violeta si ' +
-      'sube y ocre si baja, contra la mayor petición de ESTE paso</span>' +
+      'sube y ocre si baja; sobre la línea de arriba, la suma. Copias y sumas contra el mayor de ESTE paso</span>' +
     '<span class="it"><span class="llave" style="border:2px solid rgb(' + VERDE + ')"></span>el paso en turno</span>';
   cajaCol.appendChild(leyC);
   nodos.pie = document.createElement('div');
@@ -1634,6 +1848,7 @@ try {
   ANCLAS = {};
   ANCLAS[T_TR] = verificarAncla(construirAncla(T_TR), T_TR);
   ANCLAS[T_TE] = verificarAncla(construirAncla(T_TE), T_TE);
+  RED = verificarRed(construirRed());
   verificarDatos();
   VERIF = verificarGradiente();
   VERIF.cadena = verificarCadena();
@@ -1661,6 +1876,7 @@ window.EXPL = {
   generarDatos: generarDatos, nuevaRed: nuevaRed, refrescar: refrescar, aplicar: aplicar,
   pasoCompleto: pasoCompleto, hastaFrontera: hastaFrontera, proximaTira: proximaTira,
   compararGradiente: compararGradiente, verificarCadena: verificarCadena,
+  RED: RED, medioRed: medioRed, desplazamientoRed: desplazamientoRed, lienzoRed: function () { return vistaRed; },
   duraciones: duraciones, faseEn: faseEn, fracLog: fracLog, textoFactor: textoFactor, num: num,
   unPaso: unPaso, tandaEpocas: tandaEpocas, reiniciar: reiniciar, redibujar: redibujar,
   ponerPaso: function (s) { paso = s; },

@@ -51,10 +51,10 @@ TODO.md               pendientes con su razonamiento, para quien revise
 
 ## Conductas verificadas
 
-- Bajo ~1185 px de ancho el tablero envuelve: la 5, 6, 8 y 9 saltan a 1228–1533 px.
+- Bajo ~1185 px el tablero envuelve y salta a 1228–1533 px; la 9 ya bajo 1196.
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- La 8 se rehizo: la red dibujada una vez arriba, el desenrollado abajo (D4).
-- Sigue: adaptar la 9, que conserva la figura que la 8 tenía antes.
+- La 9 se rehizo: arriba cae la suma de lo que piden las copias (D7).
+- Sigue: homogeneizar la 8 y la 9 por fuera del dibujo, y rehacer las miniaturas.
 - Abierto: el desvanecimiento que mide la 9; está en `TODO.md`, sección 7.

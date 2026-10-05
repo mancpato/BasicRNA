@@ -32,3 +32,18 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
 - **D6**, lo que se encogió para que cupiera (2026-10-05). El deslizador pasó de
   640 a 380 px de largo y el panel de 266 a 198 px de alto, para hacerle sitio a
   la red dibujada una vez sin salirse de 1196 × 940.
+- **D7**, dónde cae la suma en la novena (2026-10-05). La red dibujada una vez
+  es el lugar donde cae la suma: en el último tiempo de «Un paso» las copias
+  piden, lo que piden sube hacia la única línea de su peso, y ahí cae la suma.
+  No lleva δ, ni factores, ni gesto, porque la cadena ocurre abajo. Es el camino
+  inverso del de la octava (D4): allá un peso mueve sus copias, aquí las copias
+  empujan al peso.
+- **D8**, el primer renglón de la novena (2026-10-05). La red dibujada una vez
+  va arriba a la izquierda de la caja del dibujo, y los contadores y la curva de
+  pérdida a su derecha; desaparece la franja de instrumentos a todo lo ancho y
+  la curva se angosta a 396 px.
+- **D9**, la escala común del pulso (2026-10-05). Lo que pide cada copia y las
+  cinco sumas se miden contra una sola escala, el mayor de los dos en ese paso,
+  para que lo pedido y lo recibido se puedan comparar a la vista.
+- **D10**, momento y paso (2026-10-05). «Momento» nombra un punto de la tira, y
+  «Un paso» sigue nombrando un paso de entrenamiento, que es una tira completa.

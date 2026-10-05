@@ -356,12 +356,14 @@ página construida.
 
 **Lo que sigue abierto.**
 
-a. Adaptar la novena. La octava ya está rehecha: lleva la red dibujada una vez
-arriba a la izquierda, junto al deslizador, y el desenrollado abajo (D4). La
-novena conserva la figura que la octava tenía antes, así que las dos páginas
-recurrentes que entrenan y que se mueven a mano ya no comparten dibujo. Qué
-hereda la novena —la red dibujada una vez, y si sobre ella se escribe algo del
-regreso del error— se decide después.
+a. Homogeneizar las tres. La octava y la novena ya comparten la red dibujada una
+vez, con el mismo dibujo y la misma ancla: en la octava es donde se mueve un peso
+y se ven moverse sus copias (D4), y en la novena es donde cae la suma de lo que
+las copias piden (D7). Lo que falta es lo de fuera del dibujo: la novena oculta
+los círculos de los radios para que la barra quepa en un renglón y la octava no;
+las dos caben en 1196 px de ancho pero no si una barra de desplazamiento ocupa
+espacio, y la novena por sólo dos píxeles; y las miniaturas de `img/` siguen
+siendo las de antes de rehacerlas, así que se rehacen todas juntas.
 
 b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
 lo escribe sobre cada flecha; qué se hace al respecto se discute después.
