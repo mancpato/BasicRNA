@@ -55,6 +55,6 @@ TODO.md               pendientes con su razonamiento, para quien revise
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- La 9 se rehizo: arriba cae la suma de lo que piden las copias (D7).
+- Las nueve están; la 10, atención, especificada y sin construir; no entrena (D11).
 - Sigue: homogeneizar la 8 y la 9 por fuera del dibujo, y rehacer las miniaturas.
-- Abierto: el desvanecimiento que mide la 9; está en `TODO.md`, sección 7.
+- Abierto: en la espec de la 10, el mapa, φ, β y la muestra de prueba.

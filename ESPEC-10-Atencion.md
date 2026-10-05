@@ -211,7 +211,9 @@ Si alguna falla, no se crea ningún lienzo:
 ## 11. Guion de clase, en corto
 
 1. **Desde la página 8:** la red recurrente guarda todo en un número. ¿Y si
-   pudiera volver a mirar lo anterior?
+   pudiera volver a mirar lo anterior? Y desde la 9, dicho y no mostrado: allá
+   la señal de error llega al primer elemento por una cadena de
+   multiplicaciones, y aquí llegaría por un solo peso.
 2. **El promedio:** φ = 0 y β = 0. Falla, y se ve por qué con una tira donde la
    buscada y su opuesta se cancelan.
 3. **Afilar:** subir β. Las líneas de atención se concentran, o salta hacia el
@@ -234,9 +236,12 @@ un centro de masa dentro del círculo. Cada pieza se ve y se puede mover a mano.
 
 - Decidido: el número de la página y el nombre del archivo son el 10 y
   `10-Atencion.html`.
+- Decidido: no habrá una página que entrene esta red. Con cuatro parámetros a
+  mano la página se sostiene sola, y el contraste del camino del error —en la
+  recurrente la señal que llega al primer elemento pasa por una cadena de
+  multiplicaciones, y en la atención por un solo peso— se dice en clase y no se
+  muestra en ninguna página.
 - Mapa, galería o ambos (sección 7).
 - Cómo se mueve φ, y las unidades de su deslizador (sección 8).
 - El recorrido de β y su sorteo inicial (sección 8).
 - La semilla y el muestreo de las 40 de prueba (sección 4).
-- Si habrá una página que entrene esta red. Propuesta: no; con cuatro
-  parámetros a mano la página se sostiene sola.

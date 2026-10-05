@@ -47,3 +47,10 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   para que lo pedido y lo recibido se puedan comparar a la vista.
 - **D10**, momento y paso (2026-10-05). «Momento» nombra un punto de la tira, y
   «Un paso» sigue nombrando un paso de entrenamiento, que es una tira completa.
+- **D11**, sin página que entrene la atención (2026-10-05). No habrá una página
+  que entrene la red de atención: con cuatro parámetros a mano la décima se
+  sostiene sola. Por eso el contraste del camino del error —en la recurrente la
+  señal que llega al primer elemento pasa por una cadena de multiplicaciones, y
+  en la atención por un solo peso— se dice en clase y no se muestra en ninguna
+  página, y el gozne que la novena anuncia pasa a ser el de la memoria: resumir
+  en un número contra buscar entre todo lo anterior.

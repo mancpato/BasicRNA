@@ -366,7 +366,10 @@ espacio, y la novena por sólo dos píxeles; y las miniaturas de `img/` siguen
 siendo las de antes de rehacerlas, así que se rehacen todas juntas.
 
 b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
-lo escribe sobre cada flecha; qué se hace al respecto se discute después.
+lo escribe sobre cada flecha. Una vía quedó cerrada: no será mostrarlo en la
+décima, porque no habrá página que entrene la atención (D11), y el contraste de
+los dos caminos se dice en clase. Lo que sí se haga —LSTM y GRU existen por
+esto— se discute después, y hoy no es de BasicRNA.
 
 ## Lo que no está pendiente
 
