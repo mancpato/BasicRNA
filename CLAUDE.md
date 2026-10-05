@@ -25,9 +25,13 @@ index.html            portal con las miniaturas de img/
 4-Backprop.html       SGD de a un punto sobre la red de la 2; expone η
 5-Convolucion.html    CNN 6×6 ya entrenada: se pinta la entrada, el filtro gira
 6-BackpropCNN.html    SGD de a una imagen sobre la CNN de la 5; expone η
-7-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
-8-BackpropTiempo.html BPTT de a una tira sobre la red de la 7; expone η
+7-NeuronaEnElTiempo.html  una neurona en el tiempo: recuerda u olvida
+8-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
+9-BackpropTiempo.html BPTT de a una tira sobre la red de la 8; expone η
 img/                  miniaturas 900×600 y portada; originales/ intactos
+ESPEC-n-*.md          spec previa; se borra al construir, la sustituye su cabecera
+Explica.md            arquitecturas, fórmulas, datos y cifras medidas
+TODO.md               pendientes con su razonamiento, para quien revise
 ```
 
 ## Fronteras
@@ -42,19 +46,15 @@ img/                  miniaturas 900×600 y portada; originales/ intactos
 - Grosor contra el tope del deslizador, con raíz; nunca contra el máximo.
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
-- La 4, la 6 y la 8 comparan su gradiente con diferencias centradas al montar.
-- Se proyecta: 1 a 8 caben en 1196×940 sin desplazamiento, aun con barra; index no.
+- La 4, la 6 y la 9 comparan su gradiente con diferencias centradas al montar.
+- Se proyecta: 1 a 9 caben en 1196×940 sin desplazamiento, aun con barra; index no.
 
 ## Conductas verificadas
 
 Ninguna registrada todavía.
 
-## Documentos
+## Dónde estamos (tres líneas; se reescribe entera)
 
-`ESPEC-n-*.md`: spec previa; se borra al construir, su cabecera la sustituye.
-Además, `Explica.md`: arquitecturas, fórmulas, datos y cifras medidas.
-Además, `TODO.md`: pendientes con su razonamiento, para quien revise.
-
-## Dónde estamos (máximo 6 líneas; se reescribe entera)
-
-- RNN (7 y 8) cerrada; sigue la 9, atención.
+- La serie se recorrió: la neurona en el tiempo es la 7 (D1); las nueve montan.
+- Sigue: rehacer la 8 con el diagrama plegado arriba, que la 9 heredaría.
+- Abierto: el desvanecimiento que mide la 9; está en `TODO.md`, sección 7.

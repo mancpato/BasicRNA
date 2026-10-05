@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Una neurona en el tiempo — recuerda u olvida</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --verde: #22a050;   /* el momento en turno, como en la novena */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 20px 22px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.2px; }
+
+  .barra {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin: 0 0 14px; padding: 9px 14px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .barra .titulo { font-weight: 600; font-size: 14px; }
+  .barra label {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 9px; border: 1px solid var(--linea); border-radius: 6px;
+    cursor: pointer; background: #fbfcfd; font-size: 14px;
+  }
+  .barra label:hover { border-color: #aab4bd; }
+  .barra label.puesto { border-color: var(--tinta); background: #eef2f6; font-weight: 600; }
+  .barra .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 2px; }
+  .barra button {
+    font: inherit; font-size: 13.5px; padding: 6px 10px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .barra button:hover { background: #eef2f6; border-color: #8f9aa3; }
+  .barra button:active { background: #e2e8ee; }
+  .barra button.principal { border-color: var(--tinta); font-weight: 600; }
+  .barra .consigna { font-size: 13.5px; color: var(--tinta-suave); margin-left: 4px; }
+
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 14px 18px 12px; display: inline-block;
+  }
+  canvas { display: block; border-radius: 4px; max-width: 100%; }
+  .leyenda { margin-top: 8px; font-size: 12.5px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 6px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .llave { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>Una neurona en el tiempo — recuerda u olvida</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+/*
+Una neurona en el tiempo — recuerda u olvida
+
+Es la SÉPTIMA página de BasicRNA, la de entrada a la red recurrente, y va
+ANTES de la octava, que deja mover sus parámetros a mano.
+
+POR QUÉ EXISTE
+El alumno viene de páginas donde cada círculo del diagrama es una neurona
+distinta y el eje horizontal son las capas. La red recurrente se suele dibujar
+desenrollada: una copia de la neurona por momento, en fila. Ahí los círculos
+son la MISMA neurona en momentos distintos y el eje horizontal es el tiempo, y
+si nadie lo dice el alumno lee siete neuronas. Esta página dice las dos cosas
+con dibujo antes que con texto: arriba la red dibujada UNA vez, y abajo el
+registro de lo que hizo, que crece una columna cada vez que la neurona lee un
+píxel. Aquí no se entrena, no hay tareas, ni contadores, ni deslizadores: el
+único gesto es avanzar un momento.
+
+LA RED
+Una neurona que lee la tira, un píxel por momento, y una que contesta al
+final. La que lee tiene tres entradas, como el perceptrón de la primera
+página: el píxel del momento, su propia salida del momento anterior y el 1 del
+sesgo. La segunda es lo único nuevo, y es el lazo del dibujo.
+  lo que guarda = 2 × píxel + u × lo de antes − 1,   y al empezar lo de antes vale 0
+  la respuesta  = σ(4 × lo que guarda al final)
+La que lee es lineal, a propósito: así lo que guarda es un entero que se lee
+sin fórmula. La tanh aparece en la página siguiente. El sesgo de la neurona que
+contesta vale 0 y no se dibuja.
+
+RECUERDA Y OLVIDA
+Los dos modos son la misma neurona y sólo difieren en el peso del lazo, u.
+  Recuerda, u = 1: lo de antes pasa completo y cada 1 suma uno y cada 0 resta
+  uno. Lo que guarda es la cuenta de unos menos ceros leídos hasta ahí, y la
+  neurona que contesta pregunta «¿hay más unos que ceros?».
+  Olvida, u = 0: el lazo está cortado. Lo que guarda es +1 si el píxel es 1 y
+  −1 si es 0, sin importar lo anterior, y la pregunta es «¿el último píxel
+  es 1?».
+Son las soluciones lineales de la mayoría y del último de la página
+siguiente (w = 2, b = −1, v = 4, c = 0, con u = 1 y u = 0), así que el alumno
+llega a ella conociendo dos de sus tres tareas y sabiendo que la diferencia
+entre ellas es sólo lo que pasa por el lazo.
+
+LAS DOS LONGITUDES, 7 Y 9
+La misma neurona, con los mismos pesos, lee una tira de 7 o de 9: ésa es la
+razón de ser de la red recurrente, y una que leyera los píxeles de golpe
+tendría que cambiar de forma. Las dos longitudes son impares a propósito: con
+recuerda, unos menos ceros nunca da 0, y la respuesta nunca queda empatada. Se
+verifica antes de montar.
+
+EL DIBUJO
+Arriba la red dibujada una vez, vertical: el píxel llega desde arriba, el
+sesgo desde abajo, el lazo sale de la neurona por la izquierda y regresa a
+ella, y la que contesta está a la derecha. Es la misma forma que cada columna
+del registro de abajo, para que se vea que el registro es este dibujo
+repetido. Junto a ella, la cuenta del momento escrita con números.
+Abajo el registro: una columna por momento, con «momento t» debajo y ningún
+subíndice en las neuronas. La caja del 0 «al empezar» es lo que recibe el lazo
+en el primer momento. Las columnas que faltan por leer tienen su píxel, que se
+puede pintar, y la neurona punteada; con 7 píxeles las columnas 8 y 9 quedan
+punteadas, como en la página siguiente.
+Lo que guarda la neurona en el momento en turno aparece DOS veces, dentro de
+la neurona de arriba y en su columna de abajo. Es deliberado: que sea el mismo
+número en los dos lugares es la lección.
+Colores y grosores son los de toda la serie: azul positivo, rojo negativo,
+grosor contra el tope fijo 6 con raíz. El peso 0 del lazo cortado no tiene
+color: se dibuja delgado, partido y con «×0».
+
+UN MOMENTO, EN TRES TIEMPOS
+  1. lo de antes viaja a la vez por el lazo de arriba y por la flecha que
+     llega a la columna en turno: son la misma flecha. Con olvida se apaga en
+     el corte;
+  2. el píxel del momento entra, en verde arriba y en su columna;
+  3. aparece lo que guarda ahora, arriba y abajo, y la cuenta se completa.
+Al leer el último píxel contesta la de salida. Pintar un píxel o cambiar de
+modo NO regresa la lectura: el registro se recalcula hasta donde va. Con
+movimiento reducido el paso es inmediato.
+
+LO QUE SE VERIFICA ANTES DE MONTAR
+1. El ancla de arriba: cada peso dibujado tiene UNA línea, los índices son una
+   permutación, cada línea une lo que tiene que unir y los dos extremos del
+   lazo caen sobre la neurona.
+2. El ancla de abajo, para 7 y 9: el píxel y el sesgo tienen una copia por
+   columna, el lazo una por columna contando la que sale del 0 inicial, y la
+   copia t del lazo llega a la columna t desde la anterior.
+3. La cuenta, por dos caminos: en las 128 tiras de 7 y las 512 de 9, en cada
+   momento, la neurona que se dibuja da EXACTAMENTE unos menos ceros (recuerda)
+   o 2 × píxel − 1 (olvida); la respuesta coincide con la mayoría o con el
+   último píxel; y con recuerda el final nunca vale 0.
+4. El control: la neurona de olvida comparada contra la cuenta de recuerda
+   TIENE que fallar; si no falla, la verificación no distingue nada.
+
+DÓNDE VA CADA COSA
+Entra en una ventana de 1196 × 940 sin desplazamiento, como las demás. Medido
+por Claude en Chromium sin ventana: el contenido mide 836 px de alto y 1158 de
+ancho, igual con una ventana de 1181 px, que es lo que deja una barra de
+desplazamiento. La leyenda va bajo el dibujo.
+Comprobado por Claude al construirla: con la neurona alterada en un solo caso,
+con una copia del lazo corrida un píxel y con el control anulado, la página no
+monta y dice por qué.
+
+Aritmética nativa de JavaScript, binary64; aquí todos los valores son enteros
+exactos. Un solo archivo, sin dependencias, sin build; se abre con doble clic
+y dibuja con canvas 2D.
+
+¡Feliz lectura! :-)
+
+Prof. Miguel Ángel Norzagaray Cosío
+*/
+
+(function () {
+
+/* ── La red ────────────────────────────────────────────────────────────────
+   Los pesos son fijos. Sólo u cambia con el modo. */
+var W = 2, B = -1, V = 4;
+var MODOS = [
+  { clave: 'recuerda', etiqueta: 'Recuerda', u: 1,
+    pregunta: ['¿Hay más unos', 'que ceros?'],
+    frase: ['Recuerda: el lazo pasa completo lo de antes (peso 1).',
+            'Lleva la cuenta: cada 1 suma uno y cada 0 resta uno.'],
+    correcta: function (x) { var s = 0; for (var i = 0; i < x.length; i++) s += x[i]; return 2 * s > x.length ? 1 : 0; } },
+  { clave: 'olvida', etiqueta: 'Olvida', u: 0,
+    pregunta: ['¿El último', 'píxel es 1?'],
+    frase: ['Olvida: el lazo está cortado (peso 0), lo de antes no pasa.',
+            'Sólo sabe el último píxel: +1 si es 1, −1 si es 0.'],
+    correcta: function (x) { return x[x.length - 1]; } }
+];
+var LONGITUDES = [{ etiqueta: '7 píxeles', T: 7 }, { etiqueta: '9 píxeles', T: 9 }];
+var T_MAX = 9, TOPE = 6;
+/* La tira con que abre, y los dos píxeles que se agregan con la longitud 9.
+   Con 1110100: recuerda contesta Sí (+1) y olvida No; con 111010010, igual. */
+var TIRA_INICIAL = [1, 1, 1, 0, 1, 0, 0, 1, 0];
+
+/* Lo que calcula la neurona que lee en un momento. Es la ÚNICA función que
+   produce lo que se dibuja. */
+function neurona(pixel, antes, u) { return W * pixel + u * antes + B; }
+function recorrer(x, u) {
+  var h = [], antes = 0;
+  for (var t = 0; t < x.length; t++) { antes = neurona(x[t], antes, u); h.push(antes); }
+  return h;
+}
+function sigmoide(s) { var c = Math.min(100, Math.max(-100, s)); return 1 / (1 + Math.exp(-c)); }
+
+/* ── Geometría ─────────────────────────────────────────────────────────────*/
+var DIAG_W = 1080, DIAG_H = 590;
+/* Arriba: la red dibujada una vez. */
+var FX = 236, FPIX_Y = 44, PIX = 40, FNY = 152, NR = 24, FB_Y = 226, TB = 10;
+var FOX = 404, OR = 20;
+var LAZO = { p0: null, c1: null, c2: null, p3: null };
+(function () {
+  var a = Math.PI / 6;
+  LAZO.p0 = { x: FX - NR * Math.cos(a), y: FNY + NR * Math.sin(a) };   /* sale */
+  LAZO.c1 = { x: FX - 118, y: FNY + 78 };
+  LAZO.c2 = { x: FX - 118, y: FNY - 78 };
+  LAZO.p3 = { x: FX - NR * Math.cos(a), y: FNY - NR * Math.sin(a) };   /* entra */
+})();
+var CUENTA_X = 520;
+/* Abajo: el registro. */
+var SEP_Y = 272;
+var X0 = 168, PASO_T = 86;
+function xCol(t) { return X0 + t * PASO_T; }
+var RPIX_Y = 316, RNY = 428, RB_Y = 498, MOM_Y = 538, STUB_X = 76;
+var ROX = xCol(T_MAX - 1) + 128, ROY = RNY;
+
+/* ── El ancla ──────────────────────────────────────────────────────────────
+   Cada línea dice qué peso es y qué une. Arriba hay una por peso; abajo,
+   copias. Se verifica antes de crear ningún lienzo. */
+var PESOS = ['w', 'u', 'b', 'v'];
+var I_W = 0, I_U = 1, I_B = 2, I_V = 3;
+function anclaArriba() {
+  return [
+    { idx: I_W, papel: 'w', ax: FX, ay: FPIX_Y + PIX, bx: FX, by: FNY - NR },
+    { idx: I_U, papel: 'u', lazo: true },
+    { idx: I_B, papel: 'b', ax: FX, ay: FB_Y - TB, bx: FX, by: FNY + NR },
+    { idx: I_V, papel: 'v', ax: FX + NR, ay: FNY, bx: FOX - OR, by: FNY }
+  ];
+}
+function anclaAbajo(T) {
+  var l = [], t;
+  for (t = 0; t < T; t++) {
+    l.push({ idx: I_W, papel: 'w', t: t, ax: xCol(t), ay: RPIX_Y + PIX, bx: xCol(t), by: RNY - NR });
+    l.push({ idx: I_B, papel: 'b', t: t, ax: xCol(t), ay: RB_Y - TB, bx: xCol(t), by: RNY + NR });
+    l.push({ idx: I_U, papel: 'u', t: t, ax: t === 0 ? STUB_X + 14 : xCol(t - 1) + NR, ay: RNY,
+             bx: xCol(t) - NR, by: RNY });
+  }
+  l.push({ idx: I_V, papel: 'v', t: T - 1, ax: xCol(T - 1) + NR, ay: RNY, bx: ROX - OR, by: ROY });
+  return l;
+}
+function verificarAncla() {
+  var arriba = anclaArriba(), visto = [0, 0, 0, 0], k;
+  arriba.forEach(function (l, n) {
+    if (PESOS[l.idx] !== l.papel) throw new Error('ancla de arriba: la línea ' + n + ' dice ser ' + l.papel + ' y lee el peso ' + PESOS[l.idx]);
+    visto[l.idx]++;
+  });
+  for (k = 0; k < PESOS.length; k++)
+    if (visto[k] !== 1) throw new Error('ancla de arriba: el peso ' + PESOS[k] + ' tiene ' + visto[k] + ' líneas y tiene que tener una');
+  var w = arriba[0], b = arriba[2], v = arriba[3];
+  if (!(w.ax === FX && w.ay === FPIX_Y + PIX && w.by === FNY - NR)) throw new Error('ancla de arriba: w no une el píxel con la neurona');
+  if (!(b.ax === FX && b.by === FNY + NR)) throw new Error('ancla de arriba: el sesgo no llega a la neurona');
+  if (!(v.ax === FX + NR && v.bx === FOX - OR)) throw new Error('ancla de arriba: v no une la neurona con la salida');
+  [LAZO.p0, LAZO.p3].forEach(function (p, j) {
+    var d = Math.hypot(p.x - FX, p.y - FNY);
+    if (Math.abs(d - NR) > 1e-9) throw new Error('ancla de arriba: el ' + (j ? 'regreso' : 'arranque') + ' del lazo no está sobre la neurona');
+  });
+  LONGITUDES.forEach(function (L) {
+    var T = L.T, cuenta = [0, 0, 0, 0], vistoT = {};
+    anclaAbajo(T).forEach(function (l) {
+      var clave = l.papel + l.t;
+      if (vistoT[clave]) throw new Error('ancla de ' + T + ': dos copias de ' + l.papel + ' en el momento ' + (l.t + 1));
+      vistoT[clave] = true;
+      cuenta[l.idx]++;
+      var ok;
+      if (l.papel === 'w') ok = l.ax === xCol(l.t) && l.bx === xCol(l.t) && l.by === RNY - NR;
+      else if (l.papel === 'b') ok = l.ax === xCol(l.t) && l.bx === xCol(l.t) && l.by === RNY + NR;
+      else if (l.papel === 'u') ok = l.bx === xCol(l.t) - NR && l.ax === (l.t === 0 ? STUB_X + 14 : xCol(l.t - 1) + NR);
+      else ok = l.t === T - 1 && l.ax === xCol(T - 1) + NR && l.bx === ROX - OR;
+      if (!ok) throw new Error('ancla de ' + T + ': la copia de ' + l.papel + ' del momento ' + (l.t + 1) + ' no une lo que tiene que unir');
+    });
+    var esperadas = [T, T, T, 1];
+    for (var q = 0; q < 4; q++)
+      if (cuenta[q] !== esperadas[q]) throw new Error('ancla de ' + T + ': ' + PESOS[q] + ' tiene ' + cuenta[q] + ' copias y tiene que tener ' + esperadas[q]);
+  });
+  return true;
+}
+
+/* ── La cuenta, por dos caminos ────────────────────────────────────────────
+   Un camino es la neurona que se dibuja (recorrer). El otro cuenta
+   directamente sobre la tira, sin la neurona. */
+function directo(x, t, clave) {
+  if (clave === 'olvida') return 2 * x[t] - 1;
+  var unos = 0;
+  for (var i = 0; i <= t; i++) unos += x[i];
+  return unos - (t + 1 - unos);
+}
+function tiras(T) {
+  var r = [];
+  for (var m = 0; m < (1 << T); m++) { var x = []; for (var i = T - 1; i >= 0; i--) x.push((m >> i) & 1); r.push(x); }
+  return r;
+}
+/* Compara la neurona de un modo contra la cuenta directa de otro. Devuelve el
+   primer desacuerdo, o null. */
+function comparar(uNeurona, claveDirecta) {
+  var Ls = [7, 9];
+  for (var a = 0; a < Ls.length; a++) {
+    var todas = tiras(Ls[a]);
+    for (var i = 0; i < todas.length; i++) {
+      var x = todas[i], h = recorrer(x, uNeurona);
+      for (var t = 0; t < x.length; t++)
+        if (h[t] !== directo(x, t, claveDirecta)) return { x: x.join(''), t: t, neurona: h[t], directo: directo(x, t, claveDirecta) };
+    }
+  }
+  return null;
+}
+function verificarCuenta() {
+  var comparadas = 0;
+  MODOS.forEach(function (M) {
+    var d = comparar(M.u, M.clave);
+    if (d) throw new Error('la cuenta: con ' + M.clave + ', en la tira ' + d.x + ' y el momento ' + (d.t + 1) +
+                           ' la neurona guarda ' + d.neurona + ' y la cuenta directa da ' + d.directo);
+    [7, 9].forEach(function (T) {
+      tiras(T).forEach(function (x) {
+        var h = recorrer(x, M.u), fin = h[T - 1];
+        if (M.clave === 'recuerda' && fin === 0) throw new Error('la cuenta: con recuerda, la tira ' + x.join('') + ' termina en 0, empatada');
+        var dice = sigmoide(V * fin) >= 0.5 ? 1 : 0;
+        if (dice !== M.correcta(x)) throw new Error('la respuesta: con ' + M.clave + ', la tira ' + x.join('') + ' recibe ' + dice);
+        comparadas++;
+      });
+    });
+  });
+  /* El control: la neurona de olvida contra la cuenta de recuerda TIENE que fallar. */
+  if (comparar(MODOS[1].u, MODOS[0].clave) === null)
+    throw new Error('el control falló: la neurona de olvida pasó contra la cuenta de recuerda, así que la verificación no distingue nada');
+  return comparadas;
+}
+
+/* ── El estado de la página ────────────────────────────────────────────────*/
+var iModo = 0, iLong = 0;
+var tira = TIRA_INICIAL.slice();
+var leidos = 0;           /* cuántos momentos están completos */
+var anim = null;          /* { t, ini, dur, cadena } mientras se anima uno */
+var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var DUR_UNO = 1300, DUR_CADENA = 800;
+function T() { return LONGITUDES[iLong].T; }
+function modo() { return MODOS[iModo]; }
+function x() { return tira.slice(0, T()); }
+
+/* ── Dibujo ────────────────────────────────────────────────────────────────*/
+var COLOR_CLASE = ['#4b8bbe', '#e8825a'];
+var BORDE_CLASE = ['#2f6590', '#b35a36'];
+var NODO_RELLENO = 'rgb(80,130,200)', NODO_BORDE = 'rgb(48,78,120)';
+var VERDE = '#22a050';
+var vista = null;
+
+function lienzo(ancho, alto) {
+  var c = document.createElement('canvas');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  c.width = Math.round(ancho * dpr); c.height = Math.round(alto * dpr);
+  c.style.width = ancho + 'px'; c.style.height = alto + 'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { el: c, ctx: ctx, w: ancho, h: alto };
+}
+/* El grosor contra el tope fijo, con raíz, como en toda la serie. */
+function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / TOPE, 1)); }
+function grosorDe(v) { return 1 + fuerza(v) * 9; }
+function colorDe(v, op) { return (v >= 0 ? 'rgba(60,100,210,' : 'rgba(210,60,60,') + op + ')'; }
+function valorPeso(idx) { return [W, modo().u, B, V][idx]; }
+function fmt(v) { return v > 0 ? '+' + v : (v < 0 ? '−' + (-v) : '0'); }
+
+function triangulo(ctx, cx, y, op) {
+  ctx.save(); ctx.globalAlpha = op === undefined ? 1 : op;
+  ctx.fillStyle = 'rgb(255,220,50)'; ctx.strokeStyle = 'rgb(180,150,0)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, y - TB); ctx.lineTo(cx - TB, y + TB); ctx.lineTo(cx + TB, y + TB);
+  ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+}
+function glifoSigmoide(ctx, cx, cy) {
+  var A = 10, Bm = A / 2;
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - A, cy + Bm); ctx.lineTo(cx + A, cy + Bm); ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.beginPath();
+  for (var k = 0; k < 15; k++) {
+    var t = -5.2 + 10.4 * k / 14, px = cx + (t / 5.2) * A, py = (cy + Bm) - sigmoide(t) * 2 * Bm;
+    if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function flecha(ctx, x, y, dx, dy, tam, color) {
+  var n = Math.hypot(dx, dy); dx /= n; dy /= n;
+  ctx.fillStyle = color; ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - tam * dx + tam * 0.55 * dy, y - tam * dy - tam * 0.55 * dx);
+  ctx.lineTo(x - tam * dx - tam * 0.55 * dy, y - tam * dy + tam * 0.55 * dx);
+  ctx.closePath(); ctx.fill();
+}
+/* Una línea de peso, recta. Con peso 0 se dibuja delgada, gris y partida. */
+function lineaPeso(ctx, l, op) {
+  var v = valorPeso(l.idx);
+  ctx.lineCap = 'round';
+  if (v === 0) {
+    ctx.save(); ctx.strokeStyle = 'rgba(120,130,140,' + (0.8 * op) + ')'; ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 4]);
+    var mx = (l.ax + l.bx) / 2, my = (l.ay + l.by) / 2;
+    ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(mx - 7, my); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(mx + 7, my); ctx.lineTo(l.bx, l.by); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  ctx.strokeStyle = colorDe(v, (op * (0.3 + fuerza(v) * 0.65)).toFixed(3));
+  ctx.lineWidth = grosorDe(v);
+  ctx.beginPath(); ctx.moveTo(l.ax, l.ay); ctx.lineTo(l.bx, l.by); ctx.stroke();
+}
+function bezier(p0, c1, c2, p3, s) {
+  var r = 1 - s;
+  return { x: r * r * r * p0.x + 3 * r * r * s * c1.x + 3 * r * s * s * c2.x + s * s * s * p3.x,
+           y: r * r * r * p0.y + 3 * r * r * s * c1.y + 3 * r * s * s * c2.y + s * s * s * p3.y };
+}
+function dibujarLazo(ctx) {
+  var u = modo().u;
+  ctx.save(); ctx.lineCap = 'round';
+  if (u === 0) {
+    /* Cortado: delgado, gris, punteado y con un hueco a la mitad del camino. */
+    ctx.strokeStyle = 'rgba(120,130,140,0.55)'; ctx.lineWidth = 1.2; ctx.setLineDash([4, 4]);
+    [[0, 0.44], [0.56, 1]].forEach(function (tramo) {
+      ctx.beginPath();
+      for (var k = 0; k <= 30; k++) {
+        var p = bezier(LAZO.p0, LAZO.c1, LAZO.c2, LAZO.p3, tramo[0] + (tramo[1] - tramo[0]) * k / 30);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+    flecha(ctx, LAZO.p3.x, LAZO.p3.y, LAZO.p3.x - LAZO.c2.x, LAZO.p3.y - LAZO.c2.y, 8, 'rgba(120,130,140,0.7)');
+  } else {
+    var col = colorDe(u, (0.3 + fuerza(u) * 0.65).toFixed(3));
+    ctx.strokeStyle = col; ctx.lineWidth = grosorDe(u);
+    ctx.beginPath(); ctx.moveTo(LAZO.p0.x, LAZO.p0.y);
+    ctx.bezierCurveTo(LAZO.c1.x, LAZO.c1.y, LAZO.c2.x, LAZO.c2.y, LAZO.p3.x, LAZO.p3.y);
+    ctx.stroke();
+    flecha(ctx, LAZO.p3.x, LAZO.p3.y, LAZO.p3.x - LAZO.c2.x, LAZO.p3.y - LAZO.c2.y, 11, colorDe(u, 0.9));
+  }
+  ctx.restore();
+}
+function burbuja(ctx, cx, cy, texto, op) {
+  ctx.save(); ctx.globalAlpha = op;
+  ctx.font = '700 13px system-ui, sans-serif';
+  var w = Math.max(24, ctx.measureText(texto).width + 12);
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = VERDE; ctx.lineWidth = 2;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(cx - w / 2, cy - 11, w, 22, 11); else ctx.rect(cx - w / 2, cy - 11, w, 22);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#1b6e3a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(texto, cx, cy + 0.5);
+  ctx.restore();
+}
+function nodo(ctx, cx, cy, r, texto, opciones) {
+  opciones = opciones || {};
+  if (opciones.vacio) {
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#b9c2ca'; ctx.lineWidth = 1.2;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+    return;
+  }
+  ctx.fillStyle = NODO_RELLENO; ctx.strokeStyle = NODO_BORDE; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  if (opciones.turno) {
+    ctx.strokeStyle = VERDE; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (texto !== null) {
+    ctx.fillStyle = '#ffffff'; ctx.font = '700 15px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(texto, cx, cy + 0.5);
+  }
+}
+function pixel(ctx, cx, y, valor, opciones) {
+  opciones = opciones || {};
+  if (opciones.hueco) {
+    ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1;
+    ctx.strokeRect(cx - PIX / 2 + 0.5, y + 0.5, PIX - 1, PIX - 1); ctx.restore();
+    return;
+  }
+  ctx.fillStyle = valor ? '#000000' : '#ffffff';
+  ctx.fillRect(cx - PIX / 2, y, PIX, PIX);
+  ctx.strokeStyle = opciones.turno ? VERDE : '#9aa4ac'; ctx.lineWidth = opciones.turno ? 3 : 1;
+  ctx.strokeRect(cx - PIX / 2 + 0.5, y + 0.5, PIX - 1, PIX - 1);
+}
+function salida(ctx, cx, cy, dice) {
+  if (dice === null) {
+    ctx.fillStyle = '#e3e7eb'; ctx.strokeStyle = '#a7b0b8';
+  } else {
+    ctx.fillStyle = COLOR_CLASE[dice]; ctx.strokeStyle = BORDE_CLASE[dice];
+  }
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, OR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  glifoSigmoide(ctx, cx, cy);
+}
+function texto(ctx, s, xx, yy, opciones) {
+  opciones = opciones || {};
+  ctx.fillStyle = opciones.color || '#5c666f';
+  ctx.font = opciones.font || '12.5px system-ui, sans-serif';
+  ctx.textAlign = opciones.align || 'left'; ctx.textBaseline = opciones.base || 'alphabetic';
+  ctx.fillText(s, xx, yy);
+}
+
+/* La cuenta del momento, escrita con números y cada término rotulado. */
+function dibujarCuenta(ctx, t, h, fase) {
+  var M = modo(), xs = x(), y0 = 66;
+  texto(ctx, t === null ? 'Antes de empezar' : 'Momento ' + (t + 1) + ' de ' + T(),
+        CUENTA_X, y0, { color: '#23282e', font: '600 15px system-ui, sans-serif' });
+  if (t === null) {
+    texto(ctx, 'La neurona todavía no lee nada y vale 0.', CUENTA_X, y0 + 44,
+          { color: '#3a434b', font: '17px system-ui, sans-serif' });
+    texto(ctx, 'Ese 0 es lo que le llega por el lazo en el primer momento.', CUENTA_X, y0 + 68);
+  } else {
+    var antes = t === 0 ? 0 : h[t - 1];
+    var conPixel = fase >= 2, conTotal = fase >= 3;
+    var piezas = [
+      { s: W + ' × ' + (conPixel ? xs[t] : '?'), r: ['peso del píxel', '× el píxel'] },
+      { s: '+' },
+      { s: M.u + ' × (' + fmt(antes) + ')', r: ['peso del lazo', '× lo de antes'] },
+      { s: '−' },
+      { s: '1', r: ['el sesgo'] },
+      { s: '=' },
+      { s: conTotal ? fmt(h[t]) : '?', r: ['lo que guarda', 'ahora'], fuerte: true }
+    ];
+    var xx = CUENTA_X, yc = y0 + 46;
+    piezas.forEach(function (p) {
+      ctx.font = (p.fuerte ? '700 ' : '') + '22px system-ui, sans-serif';
+      var tw = ctx.measureText(p.s).width, lw = 0;
+      if (p.r) { ctx.font = '12px system-ui, sans-serif'; p.r.forEach(function (s) { lw = Math.max(lw, ctx.measureText(s).width); }); }
+      var ancho = Math.max(tw, lw), cx = xx + ancho / 2;
+      texto(ctx, p.s, cx, yc, { color: p.fuerte && conTotal ? '#1b6e3a' : '#23282e',
+                                font: (p.fuerte ? '700 ' : '') + '22px system-ui, sans-serif', align: 'center' });
+      if (p.r) p.r.forEach(function (s, j) { texto(ctx, s, cx, yc + 20 + 14 * j, { align: 'center', font: '12px system-ui, sans-serif' }); });
+      xx += ancho + (p.r ? 14 : 12);
+    });
+  }
+  texto(ctx, M.frase[0], CUENTA_X, 196, { color: '#3a434b', font: '13.5px system-ui, sans-serif' });
+  texto(ctx, M.frase[1], CUENTA_X, 216, { color: '#3a434b', font: '13.5px system-ui, sans-serif' });
+}
+
+function dibujar(ahora) {
+  var ctx = vista.ctx, M = modo(), xs = x(), TT = T(), h = recorrer(xs, M.u), t, l;
+  ctx.clearRect(0, 0, vista.w, vista.h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, vista.w, vista.h);
+
+  /* En qué va la lectura: columnas completas, la que se anima y su fase. */
+  var enCurso = null, f = 0, fase = 3;
+  if (anim) {
+    enCurso = anim.t; f = Math.min(1, (ahora - anim.ini) / anim.dur);
+    fase = f < 0.45 ? 1 : (f < 0.7 ? 2 : 3);
+  }
+  var turno = enCurso !== null ? enCurso : (leidos > 0 ? leidos - 1 : null);
+  function visto(tt) { return tt < leidos || (tt === enCurso && fase >= 3); }
+  function pixelVisto(tt) { return tt < leidos || (tt === enCurso && fase >= 2); }
+
+  /* ── ARRIBA: la red, dibujada una vez ── */
+  texto(ctx, 'La red, dibujada una vez: una neurona que lee la tira, un píxel por momento, y una que contesta al final',
+        16, 20, { color: '#3a434b', font: '600 13.5px system-ui, sans-serif' });
+  var arriba = anclaArriba();
+  lineaPeso(ctx, arriba[0], 1); lineaPeso(ctx, arriba[2], 1); lineaPeso(ctx, arriba[3], 1);
+  dibujarLazo(ctx);
+  var pxArriba = turno !== null && pixelVisto(turno);
+  if (pxArriba) pixel(ctx, FX, FPIX_Y, xs[turno], { turno: true });
+  else pixel(ctx, FX, FPIX_Y, 0, { hueco: true });
+  texto(ctx, 'el píxel', FX + PIX / 2 + 10, FPIX_Y + 16, { color: '#3a434b' });
+  texto(ctx, 'del momento', FX + PIX / 2 + 10, FPIX_Y + 31, { color: '#3a434b' });
+  texto(ctx, '×' + W, FX + 9, FNY - NR - 14, { color: '#2f4f9a', font: '600 12.5px system-ui, sans-serif' });
+  var valArriba = turno === null ? 0 : (visto(turno) ? h[turno] : (turno === 0 ? 0 : h[turno - 1]));
+  nodo(ctx, FX, FNY, NR, fmt(valArriba), { turno: turno !== null });
+  triangulo(ctx, FX, FB_Y);
+  texto(ctx, '−1', FX + 10, FB_Y - 22, { color: '#a83232', font: '600 12.5px system-ui, sans-serif' });
+  texto(ctx, '1', FX, FB_Y + 26, { align: 'center', font: '12px system-ui, sans-serif' });
+  texto(ctx, '×' + M.u, FX - 64, FNY + 5, { color: M.u ? '#2f4f9a' : '#7a848d', font: '600 12.5px system-ui, sans-serif', align: 'center' });
+  texto(ctx, 'su salida', 20, FNY - 6, { color: '#3a434b' });
+  texto(ctx, 'de antes', 20, FNY + 10, { color: '#3a434b' });
+  texto(ctx, '×' + V, (FX + FOX) / 2, FNY - 10, { color: '#2f4f9a', font: '600 12.5px system-ui, sans-serif', align: 'center' });
+  var completo = leidos === TT && !anim;
+  var diceFin = completo ? (sigmoide(V * h[TT - 1]) >= 0.5 ? 1 : 0) : null;
+  salida(ctx, FOX, FNY, diceFin);
+  texto(ctx, 'la que lee', FX + NR + 8, FNY + 36, { color: '#3a434b' });
+  texto(ctx, 'la que', FOX, FNY + 38, { color: '#3a434b', align: 'center' });
+  texto(ctx, 'contesta', FOX, FNY + 53, { color: '#3a434b', align: 'center' });
+
+  dibujarCuenta(ctx, turno, h, fase);
+
+  /* ── ABAJO: el registro ── */
+  ctx.strokeStyle = '#e1e6eb'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(10, SEP_Y + 0.5); ctx.lineTo(vista.w - 10, SEP_Y + 0.5); ctx.stroke();
+  texto(ctx, 'Lo que hizo la neurona en cada momento: cada círculo de aquí abajo es la neurona de arriba, en otro momento',
+        16, SEP_Y + 22, { color: '#3a434b', font: '600 13.5px system-ui, sans-serif' });
+
+  var abajo = anclaAbajo(TT);
+  for (var n = 0; n < abajo.length; n++) {
+    l = abajo[n];
+    var hecho = l.papel === 'v' ? completo : visto(l.t);
+    if (l.papel === 'u' && l.t === enCurso && fase >= 1) hecho = true;
+    if (l.papel === 'w' && pixelVisto(l.t)) hecho = true;
+    if (l.papel === 'u') {
+      lineaPeso(ctx, l, hecho ? 1 : 0.3);
+      if (M.u !== 0) flecha(ctx, l.bx, l.by, 1, 0, 9, colorDe(M.u, hecho ? 0.9 : 0.3));
+    } else lineaPeso(ctx, l, hecho ? 1 : 0.3);
+  }
+  /* El 0 al empezar. */
+  ctx.save(); ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1.2;
+  ctx.strokeRect(STUB_X - 14 + 0.5, RNY - 12 + 0.5, 28, 24); ctx.restore();
+  texto(ctx, '0', STUB_X, RNY + 1, { color: '#23282e', font: '700 14px system-ui, sans-serif', align: 'center', base: 'middle' });
+  texto(ctx, 'al', STUB_X, RNY + 34, { align: 'center', font: '12px system-ui, sans-serif' });
+  texto(ctx, 'empezar', STUB_X, RNY + 48, { align: 'center', font: '12px system-ui, sans-serif' });
+
+  for (t = 0; t < T_MAX; t++) {
+    if (t >= TT) {
+      pixel(ctx, xCol(t), RPIX_Y, 0, { hueco: true });
+      nodo(ctx, xCol(t), RNY, NR, null, { vacio: true });
+      continue;
+    }
+    var esTurno = (t === turno);
+    pixel(ctx, xCol(t), RPIX_Y, xs[t], { turno: esTurno && pixelVisto(t) });
+    if (visto(t)) nodo(ctx, xCol(t), RNY, NR, fmt(h[t]), { turno: esTurno });
+    else nodo(ctx, xCol(t), RNY, NR, null, { vacio: true });
+    triangulo(ctx, xCol(t), RB_Y, visto(t) ? 1 : 0.35);
+    texto(ctx, 'momento ' + (t + 1), xCol(t), MOM_Y, { align: 'center',
+          color: esTurno ? '#1b6e3a' : '#5c666f', font: (esTurno ? '600 ' : '') + '12.5px system-ui, sans-serif' });
+  }
+
+  /* La que contesta, al final del registro. */
+  salida(ctx, ROX, ROY, diceFin);
+  var preg = M.pregunta;
+  texto(ctx, preg[0], ROX, ROY + 44, { color: '#3a434b', align: 'center' });
+  texto(ctx, preg[1], ROX, ROY + 59, { color: '#3a434b', align: 'center' });
+  if (completo) {
+    texto(ctx, diceFin ? 'Sí' : 'No', ROX, ROY + 86, { color: BORDE_CLASE[diceFin], font: '700 22px system-ui, sans-serif', align: 'center' });
+    texto(ctx, 'ŷ = ' + sigmoide(V * h[TT - 1]).toFixed(2), ROX, ROY + 105, { align: 'center' });
+  } else {
+    texto(ctx, 'contesta al leer', ROX, ROY + 82, { align: 'center', font: '12px system-ui, sans-serif' });
+    texto(ctx, 'el último píxel', ROX, ROY + 96, { align: 'center', font: '12px system-ui, sans-serif' });
+  }
+
+  /* Lo de antes, viajando a la vez por el lazo y por la flecha de abajo. */
+  if (anim && fase === 1) {
+    var s = f / 0.45, antes = enCurso === 0 ? 0 : h[enCurso - 1];
+    var lu = abajo.filter(function (q) { return q.papel === 'u' && q.t === enCurso; })[0];
+    var op = 1;
+    if (M.u === 0) { s = Math.min(s, 0.5); op = Math.max(0, 1 - Math.max(0, f / 0.45 - 0.35) / 0.15); }
+    var pA = bezier(LAZO.p0, LAZO.c1, LAZO.c2, LAZO.p3, s);
+    burbuja(ctx, pA.x, pA.y, fmt(antes), op);
+    burbuja(ctx, lu.ax + (lu.bx - lu.ax) * s, RNY - 2, fmt(antes), op);
+  }
+}
+
+/* ── La lectura ────────────────────────────────────────────────────────────*/
+function cuadro(ahora) {
+  if (!anim) return;
+  if (ahora - anim.ini >= anim.dur) {
+    leidos = anim.t + 1;
+    var seguir = anim.cadena && leidos < T();
+    anim = null;
+    if (seguir) { empezar(true); return; }
+    dibujar(ahora); refrescarBarra();
+    return;
+  }
+  dibujar(ahora);
+  requestAnimationFrame(cuadro);
+}
+function empezar(cadena) {
+  if (leidos >= T()) return;
+  anim = { t: leidos, ini: performance.now(), dur: reducido ? 0 : (cadena ? DUR_CADENA : DUR_UNO), cadena: cadena };
+  refrescarBarra();
+  requestAnimationFrame(cuadro);
+}
+function terminarAnim() { if (anim) { leidos = anim.t + 1; anim = null; } }
+function unMomento() { terminarAnim(); empezar(false); }
+function todaLaTira() { terminarAnim(); if (leidos >= T()) leidos = 0; empezar(true); }
+function desdeElPrincipio() { anim = null; leidos = 0; redibujar(); }
+
+/* ── La barra ──────────────────────────────────────────────────────────────*/
+var nodos = {};
+function refrescarBarra() {
+  nodos.modos.forEach(function (lab, j) { lab.classList.toggle('puesto', j === iModo); });
+  nodos.longs.forEach(function (lab, j) { lab.classList.toggle('puesto', j === iLong); });
+  var TT = T(), c;
+  if (anim) c = 'Leyendo el momento ' + (anim.t + 1) + ' de ' + TT + '.';
+  else if (leidos === 0) c = 'Pulsa «Un momento»: la neurona lee el primer píxel.';
+  else if (leidos < TT) c = 'Leídos ' + leidos + ' de ' + TT + ' píxeles.';
+  else c = 'Leyó toda la tira y la de salida contestó.';
+  nodos.consigna.textContent = c;
+}
+function redibujar() { dibujar(performance.now()); refrescarBarra(); }
+
+function montar() {
+  var raiz = document.getElementById('raiz');
+  var barra = document.createElement('div');
+  barra.className = 'barra';
+  function grupo(titulo, lista, nombre, alElegir) {
+    var tit = document.createElement('span');
+    tit.className = 'titulo'; tit.textContent = titulo;
+    barra.appendChild(tit);
+    return lista.map(function (item, j) {
+      var lab = document.createElement('label');
+      var r = document.createElement('input');
+      r.type = 'radio'; r.name = nombre; r.checked = (j === 0);
+      r.addEventListener('change', function () { alElegir(j); redibujar(); });
+      lab.appendChild(r);
+      lab.appendChild(document.createTextNode(item.etiqueta));
+      barra.appendChild(lab);
+      return lab;
+    });
+  }
+  function divisor() { var d = document.createElement('span'); d.className = 'divisor'; barra.appendChild(d); }
+  nodos.modos = grupo('Modo:', MODOS, 'modo', function (j) { iModo = j; });
+  divisor();
+  nodos.longs = grupo('Longitud:', LONGITUDES, 'longitud', function (j) {
+    terminarAnim(); iLong = j; leidos = Math.min(leidos, T());
+  });
+  divisor();
+  [['Un momento', unMomento, true], ['Toda la tira', todaLaTira], ['Desde el principio', desdeElPrincipio]].forEach(function (d) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = d[0];
+    if (d[2]) b.className = 'principal';
+    b.addEventListener('click', d[1]);
+    barra.appendChild(b);
+  });
+  nodos.consigna = document.createElement('span');
+  nodos.consigna.className = 'consigna';
+  barra.appendChild(nodos.consigna);
+  raiz.appendChild(barra);
+
+  var caja = document.createElement('div');
+  caja.className = 'caja';
+  caja.style.width = (DIAG_W + 38) + 'px';
+  vista = lienzo(DIAG_W, DIAG_H);
+  caja.appendChild(vista.el);
+  var ley = document.createElement('div');
+  ley.className = 'leyenda';
+  ley.innerHTML =
+    '<span class="it">un clic en un píxel de abajo lo enciende o lo apaga</span>' +
+    '<span class="it"><span class="marca" style="background:#3c64d2"></span>peso positivo</span>' +
+    '<span class="it"><span class="marca" style="background:#d23c3c"></span>peso negativo</span>' +
+    '<span class="it">grosor = |peso| contra un tope fijo de ' + TOPE + '</span>' +
+    '<span class="it">▲ = entrada constante 1, el sesgo</span>' +
+    '<span class="it"><span class="llave" style="background:#22a050"></span>el momento en turno</span>' +
+    '<span class="it">el número dentro de la neurona es lo que guarda</span>';
+  caja.appendChild(ley);
+  raiz.appendChild(caja);
+
+  vista.el.addEventListener('click', function (ev) {
+    var r = vista.el.getBoundingClientRect();
+    var mx = (ev.clientX - r.left) * (vista.w / r.width), my = (ev.clientY - r.top) * (vista.h / r.height);
+    if (my < RPIX_Y || my > RPIX_Y + PIX) return;
+    for (var t = 0; t < T(); t++)
+      if (Math.abs(mx - xCol(t)) <= PIX / 2) { tira[t] = 1 - tira[t]; redibujar(); return; }
+  });
+  redibujar();
+}
+
+function mostrarFallo(e) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no se montó.\n\n' + (e && e.message ? e.message : String(e));
+  document.getElementById('raiz').appendChild(caja);
+}
+
+try {
+  verificarAncla();
+  verificarCuenta();
+  montar();
+} catch (e) {
+  mostrarFallo(e);
+}
+
+})();
+</script>
+</body>
+</html>

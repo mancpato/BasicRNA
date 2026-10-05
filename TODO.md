@@ -283,23 +283,23 @@ de margen en el lienzo de 708.
 **Lo que obliga a cambiar en el README.** La portada y el index.html necesitan
 dos miniaturas más.
 
-## 5. Páginas 7 y 8: una red recurrente mínima
+## 5. Páginas 8 y 9: una red recurrente mínima
 
-`7-Recurrente.html` ya está construida: una neurona recurrente escalar de
+`8-Recurrente.html` ya está construida: una neurona recurrente escalar de
 cinco parámetros que el alumno mueve a mano, sobre tiras de píxeles, con tres
 tareas (el último, la mayoría, el primero) y un interruptor entre lineal y
 tanh. Las razones de cada decisión suya viven en su comentario de cabecera.
 
-**Página 8, construida.** `8-BackpropTiempo.html` entrena la red de la 7 por
+**Página 9, construida.** `9-BackpropTiempo.html` entrena la red de la 8 por
 retropropagación en el tiempo, de a una tira. Las razones de cada decisión suya
 y lo que se midió viven en su comentario de cabecera.
 
-**Por homogeneizar con la 7.** La 8 oculta los círculos de los radios para que
+**Por homogeneizar con la 8.** La 9 oculta los círculos de los radios para que
 la barra quepa en un renglón. Y escribe bajo cada estado el orden de magnitud
-de |δ|, excepción deliberada a la regla de la 7 de que ningún dato aparece dos
+de |δ|, excepción deliberada a la regla de la 8 de que ningún dato aparece dos
 veces.
 
-**Respuesta parcial al punto 2.** La prueba de la 7 son 40 tiras de 9
+**Respuesta parcial al punto 2.** La prueba de la 8 son 40 tiras de 9
 píxeles, más largas que las 128 de 7 de entrenamiento, así que mide algo que
 el entrenamiento no mide: funcionar con otra longitud. En la mayoría sí
 distingue: la ventana de u sin errores es más angosta en la prueba, y con
@@ -308,75 +308,61 @@ el primero no: las ventanas salen iguales o más anchas y la prueba no añade
 nada. Las cifras son las de la sección LOS DATOS de la cabecera; no se
 volvieron a medir con Claude Code.
 
-## 6. Página 9: atención
+## 6. Página 10: atención
 
-Especificada en `ESPEC-9-Atencion.md` y todavía sin construir. Sus decisiones
-abiertas están en la sección 13 de ese archivo, «Pendiente de decidir», y el
-número 9 es una de ellas.
+Especificada en `ESPEC-10-Atencion.md` y todavía sin construir. Sus decisiones
+abiertas están en la sección 13 de ese archivo, «Pendiente de decidir». El
+número ya no: es el 10 desde que la página de la neurona en el tiempo entró
+como séptima y recorrió las que seguían.
 
 ## 7. Páginas recurrentes: una neurona en el tiempo
 
-Lo decidido aquí lo decidió Miguel en el chat, y nada de esto lleva cifras
-medidas todavía. La séptima página ya está construida: lo que sigue es un hueco
-didáctico suyo, no un defecto de su código.
+La página está construida y es la séptima, `7-NeuronaEnElTiempo.html`. Lo que
+sigue es por qué existe, qué quedó decidido al construirla y qué falta. Nada de
+esto lleva cifras medidas.
 
-**El hueco.** La séptima dibuja la red desenrollada, una copia de la celda por
-píxel. El alumno llega de las páginas 2 a 6, donde cada círculo es una neurona
-distinta y el eje horizontal son las capas. Aquí los círculos son la MISMA
-neurona en momentos distintos y el eje horizontal es el tiempo, y el dibujo no
-lo dice en ninguna parte. A eso se suman los subíndices: en la segunda página
-h1 a h4 nombran cuatro neuronas distintas, así que si las copias se rotularan
-h1 a h7 el alumno leería siete neuronas.
+**El hueco que llena.** La octava dibuja la red desenrollada, una copia de la
+celda por píxel. El alumno llega de las páginas 2 a 6, donde cada círculo es una
+neurona distinta y el eje horizontal son las capas. Ahí los círculos son la
+MISMA neurona en momentos distintos y el eje horizontal es el tiempo, y el
+dibujo no lo dice en ninguna parte. A eso se suman los subíndices: en la segunda
+página h1 a h4 nombran cuatro neuronas distintas, así que si las copias se
+rotularan h1 a h7 el alumno leería siete neuronas. La séptima lo dice antes, con
+dibujo: una neurona arriba, dibujada una sola vez, y abajo el registro de lo que
+hizo, que crece una columna por momento.
 
-**Una página nueva, antes de la séptima.** Sólo de conceptos: una neurona, y su
-trabajo vive en el tiempo. Sin tareas, sin contadores, sin deslizadores y sin
-entrenamiento. Su único gesto es avanzar un momento a la vez. Su número es
-provisional; la numeración se decide al final, y lo que arrastra está en el
-punto e de lo abierto.
+**Cómo quedó.** Sólo de conceptos: sin tareas, sin contadores, sin deslizadores
+y sin entrenamiento, y el único gesto es avanzar un momento. Arriba la neurona
+plegada, rotulada como UNA neurona, con las tres entradas del perceptrón de la
+primera página: el píxel del momento, su propia salida anterior —el lazo— y el 1
+del sesgo. Abajo la tira y el botón de avanzar; cada pulsación agrega una
+columna, y lo que viaja por el lazo viaja por la flecha que llega a la columna
+siguiente, porque son la misma flecha. Bajo cada columna, «momento t»; ninguna
+neurona lleva subíndice; el estado se escribe. El contraste recuerda / olvida es
+el centro, con pesos fijos y sin deslizador: recuerda es la solución lineal de la
+mayoría de la octava (w = 2, b = −1, u = 1) y el estado es un contador entero;
+olvida es la misma con el lazo cortado (u = 0), y el estado vale +1 o −1. Las
+razones de cada decisión suya viven en su comentario de cabecera.
 
-**Arriba, la neurona plegada.** Rotulada como UNA neurona, con la forma del
-perceptrón de la primera página. Sus tres entradas son el píxel del momento, su
-propia salida anterior —el lazo— y el 1 del sesgo.
+**Lo que se decidió al construirla.** Eran los cuatro puntos abiertos del plan,
+y quedaron como Claude los propuso. La disposición es la neurona fija arriba y el
+registro creciendo abajo, no la neurona avanzando por la tira y dejando copias
+detrás. El plegado es vertical, con la entrada arriba, igual que cada columna del
+desenrollado, y no de izquierda a derecha como las páginas 1 a 6. El alumno pinta
+los píxeles y elige la longitud, 7 o 9, para que se vea que la misma neurona
+sirve para cualquiera. Y la página lleva neurona de salida: con recuerda pregunta
+por la mayoría y con olvida por el último píxel. Miguel las aprobó al revisar la
+página construida.
 
-**Abajo, la tira y un botón para avanzar.** En cada pulsación la neurona lee el
-siguiente píxel, abajo se agrega una columna, que es el registro de ese momento,
-y el valor que viaja por el lazo aparece viajando por la flecha horizontal hacia
-la columna siguiente: el lazo de arriba y esa flecha son la misma flecha. Bajo
-cada columna va «momento t». Ninguna neurona lleva subíndice. Y se muestran
-números: el estado se escribe.
+**Lo que sigue abierto.**
 
-**Recuerda y olvida.** Ese contraste es el centro de la página, con pesos fijos
-y sin deslizador. En «recuerda» la activación es lineal, cada 1 suma 1, cada 0
-resta 1 y lo anterior se conserva completo: w = 2, b = −1 y u = 1, que es la
-solución lineal de la mayoría de la séptima, y el estado es un contador entero.
-En «olvida» es lo mismo con el lazo cortado, u = 0: el estado vale +1 o −1 y no
-dice más que el último píxel.
+a. Rehacer la octava con el diagrama plegado arriba, donde viva el gesto de mover
+a mano: una línea por parámetro, con el ancla de las páginas 1 a 3. El
+desenrollado queda abajo, como consecuencia del plegado y no como la figura
+principal, y señalar el lazo ilumina sus copias. La novena heredaría el plegado.
+Cómo se adaptan las dos se decide después.
 
-**La séptima se rehace.** Arriba va el diagrama plegado, y ahí vive el gesto de
-mover a mano: una línea por parámetro, con el ancla de las páginas 1 a 3. Abajo
-queda el desenrollado, como consecuencia del plegado y no como la figura
-principal; señalar el lazo ilumina sus copias. La octava hereda el plegado.
-
-**Lo abierto.** Seis puntos, ninguno decidido.
-
-a. La disposición de la página nueva. Una posibilidad es la neurona fija arriba
-y el registro creciendo abajo; la otra, la neurona avanzando por la tira y
-dejando copias detrás. Claude propuso la primera en el chat, y no está decidido.
-
-b. La orientación del plegado. Vertical, con la entrada arriba, igual que cada
-columna del desenrollado, que es lo que propuso Claude; o de izquierda a
-derecha, como las páginas 1 a 6.
-
-c. Si el alumno puede pintar los píxeles y alargar la tira a nueve, para mostrar
-que la misma neurona sirve para cualquier longitud.
-
-d. Si la página nueva lleva neurona de salida, y qué pregunta contesta.
-
-e. La numeración. Insertar la página recorre la séptima, la octava y la atención
-planeada como novena, y eso toca `index.html`, los nombres de archivo y la
-especificación de la atención.
-
-f. Qué hacer contra el desvanecimiento de la señal de error. La octava lo mide y
+b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
 lo escribe sobre cada flecha; qué se hace al respecto se discute después.
 
 ## Lo que no está pendiente

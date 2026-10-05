@@ -128,28 +128,28 @@
 /*
 Retropropagación en el tiempo — la neurona recurrente aprende, o no
 
-Es la OCTAVA página de BasicRNA y la segunda sobre una red recurrente. La
-séptima deja mover a mano los cinco parámetros; ésta los deja al algoritmo. La
-figura es la de la séptima —la misma red, el mismo dibujo, las mismas
+Es la NOVENA página de BasicRNA y la tercera sobre una red recurrente. La
+octava deja mover a mano los cinco parámetros; ésta los deja al algoritmo. La
+figura es la de la octava —la misma red, el mismo dibujo, las mismas
 coordenadas— y los controles son los de la cuarta y la sexta: la tarea, la
 activación, la tasa η, «Un paso» animado y tandas de épocas. Sobre la figura no
 hay ningún gesto.
 
 LA LECCIÓN
-La solución existe —la séptima la muestra a mano: con tanh, w = 2, u = 3 y
+La solución existe —la octava la muestra a mano: con tanh, w = 2, u = 3 y
 b = −1 contestan «¿el primer píxel es 1?» sin un error— y el descenso por
 gradiente no la encuentra. Para recordar el primer píxel u tendría que crecer,
 pero mientras u es chico la señal que se lo enseñaría no llega al primer píxel.
 Poder representar no es poder aprender.
-Es además el gozne con la novena: en la recurrente, el camino del primer
+Es además el gozne con la décima: en la recurrente, el camino del primer
 elemento a la salida es una cadena de multiplicaciones; en la atención es un
 solo peso.
 
-LA RED (la de la séptima, sin cambios)
+LA RED (la de la octava, sin cambios)
   h_0 = 0
   h_t = φ(w·x_t + u·h_(t−1) + b)      φ lineal o tanh
   ŷ   = σ(v·h_T + c)
-  θ = [w, u, b, v, c], en ese orden, con los mismos índices de la séptima.
+  θ = [w, u, b, v, c], en ese orden, con los mismos índices de la octava.
 
 LOS OCHO TIEMPOS DE UN PASO
   0  se toma la siguiente tira del orden de la época;
@@ -191,7 +191,7 @@ Aun así, cinco órdenes de magnitud son apenas 3 px: eso es una escala
 logarítmica, y en la pantalla la lección no se veía. Por eso bajo cada estado
 va además, escrita, la potencia de diez más cercana a |δ|: con los factores de
 las flechas, la escalera se lee sola. Es la única excepción a la regla de la
-séptima de que ningún dato aparece dos veces, y es deliberada. El panel da δ_T,
+octava de que ningún dato aparece dos veces, y es deliberada. El panel da δ_T,
 δ_1 y su cociente con dos cifras.
 El pulso de lo que pide cada copia NO usa esa escala: es el de la cuarta y la
 sexta, contra la mayor petición de ESTE paso, con raíz. Mide cuánto se mueve
@@ -214,7 +214,7 @@ sólo la rapidez: con lineal y η = 0.1 las 20 se desbordan; con η = 0.01 las 2
 llegan (mediana en la época 25) y ninguna se desborda; con η = 0.03 las 20
 llegan (mediana en la 17) y después las 20 se desbordan, entre las épocas 33 y
 129, porque la ventana de u sin errores es angosta —[0.925, 1.085] en la
-séptima— y el ruido del paso de a una tira la saca de ella. Sin la mayoría, la
+octava— y el ruido del paso de a una tira la saca de ella. Sin la mayoría, la
 tasa expuesta no enseñaría nada que la animación vuelva visible.
 La mayoría con tanh falla por OTRA razón, y puede confundir: la tanh sólo
 cuenta en su tramo casi recto, y el descenso saca a la neurona de él. Con el
@@ -260,7 +260,7 @@ vector con los mismos barajados, y cada una conserva SU entrenamiento: cambiar
 de tarea o de activación no reinicia nada; Reiniciar devuelve la puesta a su
 arranque. La semilla 1001 no es un caso raro: en el arnés, 18 de las 20
 semillas (todas menos 1009 y 1019) se portan igual en las seis combinaciones.
-No es el ±2 de la séptima: aquél es para explorar a mano; con él, en el arnés,
+No es el ±2 de la octava: aquél es para explorar a mano; con él, en el arnés,
 la lineal se desborda en «el último» en 8 de 20 y la lección se ensucia. ±0.5
 es el arranque con el que se midió el fenómeno.
 La tasa va de 0.01 a 0.30 y empieza en 0.10. La página abre en «el último» con
@@ -274,7 +274,7 @@ frontera y «+10 épocas» cruza diez. Las 40 de prueba no entrenan; sólo cuent
 Después de una tanda se APAGA el resalte.
 
 LOS DATOS
-Los de la séptima: las 128 tiras de 7 píxeles en orden binario y 40 tiras
+Los de la octava: las 128 tiras de 7 píxeles en orden binario y 40 tiras
 distintas de 9, sorteadas con splitmix32 y la semilla 20260929. La prueba es
 más larga a propósito: mide si la red funciona con otra longitud.
 
@@ -284,7 +284,7 @@ con ŷ recortado en [10⁻¹², 1 − 10⁻¹²]. Su derivada respecto del logit
 ŷ − y, que es la δ de la salida.
 
 EL ANCLA, CON COPIAS
-La de la séptima: las líneas que se dibujan juntas son el mismo número, y cada
+La de la octava: las líneas que se dibujan juntas son el mismo número, y cada
 copia une lo que tiene que unir; se verifica para las dos longitudes. Aquí la
 promesa crece otra vez: LA COPIA QUE PIDE ES LA QUE SE ILUMINA. El pulso de
 cada copia lee lo que pide esa copia en el mismo paso, y el parámetro cambia
@@ -313,9 +313,9 @@ contenido mide 905 px de alto. La barra va en UN renglón, y para eso los
 radios van ocultos: con cinco opciones y cuatro botones no cabía de otra
 forma. La opción puesta se lee por su borde y su negrita, y sigue siendo un
 radio que se enfoca y se elige con el teclado. Es de lo que habrá que
-homogeneizar con la séptima. La columna de la derecha lleva los dos paneles,
+homogeneizar con la octava. La columna de la derecha lleva los dos paneles,
 la leyenda del regreso y el pie; debajo del diagrama va la leyenda de la
-séptima.
+octava.
 
 Aritmética nativa de JavaScript, binary64. Un solo archivo, sin dependencias,
 sin build; se abre con doble clic y dibuja con canvas 2D.
@@ -331,7 +331,7 @@ Prof. Miguel Ángel Norzagaray Cosío
 var NPARAM = 5, I_W = 0, I_U = 1, I_B = 2, I_V = 3, I_C = 4;
 var LETRA = ['w', 'u', 'b', 'v', 'c'];
 var T_TR = 7, T_TE = 9, NTRAIN = 1 << T_TR, NTEST = 40;
-var SEMILLA_DATOS = 20260929;       /* la de la 7: las mismas 40 tiras de prueba */
+var SEMILLA_DATOS = 20260929;       /* la de la 8: las mismas 40 tiras de prueba */
 var SEMILLA_ARRANQUE = 1001;        /* ver EL ARRANQUE en la cabecera */
 var AMPLITUD_ARRANQUE = 0.5;
 var SEMILLA_VERIF = 20260930;
@@ -360,9 +360,9 @@ function barajar(arr, r) {
   return arr;
 }
 
-/* ── Los datos: los de la 7, con el mismo generador ────────────────────────
+/* ── Los datos: los de la 8, con el mismo generador ────────────────────────
    Entrenamiento: las 128 tiras de 7, en orden binario. Prueba: 40 tiras
-   DISTINTAS de 9, sorteadas con la semilla de la 7. */
+   DISTINTAS de 9, sorteadas con la semilla de la 8. */
 function aTira(m, T) {
   var x = [];
   for (var i = T - 1; i >= 0; i--) x.push((m >> i) & 1);
@@ -397,7 +397,7 @@ function verificarDatos() {
   return true;
 }
 
-/* ── Las tareas: las de la 7 ───────────────────────────────────────────────*/
+/* ── Las tareas: las de la 8 ───────────────────────────────────────────────*/
 var TAREAS = [
   { clave: 'ultimo', etiqueta: 'El último', pregunta: ['¿El último', 'píxel es 1?'],
     correcta: function (x) { return x[x.length - 1]; } },
@@ -418,7 +418,7 @@ var ACTS = {
 var CLAVES_ACT = ['lineal', 'tanh'];
 
 /* ── Evaluación ────────────────────────────────────────────────────────────
-   La de la 7: la salida es SIEMPRE sigmoide con el mismo recorte. */
+   La de la 8: la salida es SIEMPRE sigmoide con el mismo recorte. */
 function sigmoide(t) {
   var c = Math.min(100, Math.max(-100, t));
   return 1 / (1 + Math.exp(-c));
@@ -621,7 +621,7 @@ function verificarCadena() {
   return peor;
 }
 
-/* ── Geometría del diagrama: la de la 7, sin cambiar un número ─────────────*/
+/* ── Geometría del diagrama: la de la 8, sin cambiar un número ─────────────*/
 var DIAG_W = 708, DIAG_H = 516;
 var X0 = 46, PASO_T = 58;
 function xPaso(t) { return X0 + t * PASO_T; }
@@ -635,7 +635,7 @@ var COL_W = 372, TOTAL_W = DIAG_W + 38 + 22 + COL_W;
 var FACTOR_Y = NODO_Y - 24;       /* la altura del factor escrito sobre cada flecha */
 var ORDEN_Y = NODO_Y + 38;        /* la del orden de magnitud de δ, bajo cada estado */
 
-/* ── EL ANCLA, CON COPIAS: la de la 7 ──────────────────────────────────────*/
+/* ── EL ANCLA, CON COPIAS: la de la 8 ──────────────────────────────────────*/
 function construirAncla(T) {
   var pix = [], nod = [], lin = [], t;
   for (t = 0; t < T; t++) {
@@ -901,7 +901,7 @@ function triangulo(ctx, x, y) {
   ctx.moveTo(x, y - TB); ctx.lineTo(x - TB, y + TB); ctx.lineTo(x + TB, y + TB);
   ctx.closePath(); ctx.fill(); ctx.stroke();
 }
-/* La forma de la activación, en blanco dentro del nodo: la de la 7. */
+/* La forma de la activación, en blanco dentro del nodo: la de la 8. */
 function glifoActivacion(ctx, cx, cy, cual) {
   var A = 10, B = A / 2, k, t;
   ctx.save();
@@ -1135,7 +1135,7 @@ function dibujarDiagrama(vista) {
   dibujarPanel(ctx, r, m);
 }
 
-/* El panel de la 7: cada línea es una tira, a la altura de lo que diría la red
+/* El panel de la 8: cada línea es una tira, a la altura de lo que diría la red
    si terminara en ese paso, con los pesos de ANTES del paso en curso. La tira
    en curso va en negro y, mientras la neurona la lee, se dibuja hasta donde
    va. */
@@ -1348,7 +1348,7 @@ function textoPie(r) {
     var extra = '';
     if (clave === 'ultimo') extra = ' Aquí la salida no necesita recordar: la señal no tiene que viajar hacia atrás.';
     else if (clave === 'mayoria' && r.act === 'lineal')
-      extra = ' Mira u: ' + num(th[I_U], 3) + ', cerca de 1. En la 7 la ventana sin errores es [0.925, 1.085], ' +
+      extra = ' Mira u: ' + num(th[I_U], 3) + ', cerca de 1. En la 8 la ventana sin errores es [0.925, 1.085], ' +
               'y es angosta: con η = 0.03 los 20 arranques medidos llegan a cero y después se desbordan.';
     else if (clave === 'primero') extra = ' Esta vez sí la encontró; en el arnés pasa en a lo más 6 de cada 20 arranques.';
     return 'Cero errores en las ' + NTRAIN + ' y en las ' + NTEST + '.' + extra;
@@ -1358,7 +1358,7 @@ function textoPie(r) {
     return 'Con estos pesos, la señal de error que llega al primer píxel es, en la mediana de las ' + NTRAIN +
            ' tiras, ' + num(c.medCociente, 2) + ' de la que llega al último: cada flecha la multiplica por u·φ′, ' +
            'que aquí vale ' + num(c.medFactor, 2) + ' en la mediana. Para recordar el primer píxel u tendría que ' +
-           'crecer —la 7 lo resuelve con u = 3 y tanh—, pero la señal que se lo enseñaría es justo la que no llega.';
+           'crecer —la 8 lo resuelve con u = 3 y tanh—, pero la señal que se lo enseñaría es justo la que no llega.';
   if (clave === 'mayoria' && r.act === 'tanh' && c.medDeriv < 0.1)
     return 'Con tanh la mayoría falla por otra razón: la tanh sólo cuenta en su tramo casi recto, y el descenso ' +
            'sacó a la neurona de él. φ′ vale ' + num(c.medDeriv, 3) + ' en la mediana: las flechas multiplican ' +
@@ -1566,7 +1566,7 @@ function montar() {
   var tablero = document.createElement('div');
   tablero.className = 'tablero';
 
-  /* ── el diagrama, que es el de la 7 ── */
+  /* ── el diagrama, que es el de la 8 ── */
   var cajaDiag = document.createElement('div');
   cajaDiag.className = 'caja';
   cajaDiag.style.width = (DIAG_W + 38) + 'px';

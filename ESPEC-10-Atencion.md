@@ -1,8 +1,8 @@
 # Especificación: la página de atención
 
-Estado: **propuesta, antes de construir.** El número 9 es provisional; la 8 es
-la retropropagación en el tiempo de la red de la página 7. Archivo previsto:
-`9-Atencion.html`.
+Estado: **propuesta, antes de construir.** El número 10 está decidido; la 9 es
+la retropropagación en el tiempo de la red de la página 8. Archivo previsto:
+`10-Atencion.html`.
 
 Las cifras de este documento son mediciones hechas en JavaScript, binary64,
 sobre todas las tiras de 4 y de 6 flechas. Lo que todavía no se ha medido está
@@ -16,7 +16,7 @@ los pesos de las líneas **se calculan a partir de la entrada** y cambian con
 cada tira: la red decide a quién mirar según lo que ve. Ésa es la idea de la
 página, y por eso rompe a propósito la gramática visual de la serie.
 
-El contraste con la página 7 se dice en una frase: la red recurrente recuerda
+El contraste con la página 8 se dice en una frase: la red recurrente recuerda
 **resumiendo** todo en un número; la atención recuerda **buscando** entre todo
 lo anterior.
 
@@ -69,7 +69,7 @@ Cuatro parámetros, cada uno en una frase:
 
 ## 3. Las tres tareas
 
-Como en la página 7: tres preguntas, y un solo parámetro las distingue.
+Como en la página 8: tres preguntas, y un solo parámetro las distingue.
 
 | tarea | pregunta de la salida | φ de la solución |
 |---|---|---|
@@ -84,7 +84,7 @@ contador de entrenamiento es el error verdadero. Por simetría de giro, las tres
 tareas tienen el mismo balance: 148 de 256 tienen la flecha buscada (57.8 %).
 
 **Prueba:** 40 tiras **distintas** de 6 flechas, sorteadas con splitmix32. Son
-más largas por la misma razón que en la página 7: miden algo que el
+más largas por la misma razón que en la página 8: miden algo que el
 entrenamiento no mide. De las 4096 tiras de 6, 3124 tienen la buscada (76.3 %).
 **Abierto:** la semilla, y si se muestrea simple o estratificado. Una sola
 muestra no puede quedar balanceada en las tres tareas a la vez.
@@ -111,7 +111,7 @@ dos β mínimos tienen forma cerrada:
 
 Con β entre 0.90 y 1.38 el entrenamiento da cero y la prueba no: con β = 1.0
 hay 0 errores de 256 y 1620 de 4096. Como el 40 % de las tiras de 6 fallan,
-cualquier muestra de 40 lo detecta. Es la misma lección de la página 7 con otro
+cualquier muestra de 40 lo detecta. Es la misma lección de la página 8 con otro
 mecanismo.
 
 **φ elige la tarea.** Con β = 5 y tiras de 6, cada tarea tiene cero errores con
@@ -126,7 +126,7 @@ la pena mencionarlo.
 
 ## 6. Las soluciones
 
-Escritas, no entrenadas, como el seno de la página 3 y las de la página 7:
+Escritas, no entrenadas, como el seno de la página 3 y las de la página 8:
 β = 6, a = 6, c = −3, y φ = 0°, 90° o 180° según la tarea. Dan cero errores en
 todas las tiras de 4 y de 6, con confianza mínima 0.95 en la clase correcta.
 Antes de montar se verifica que dan cero y cero en las dos particiones.
@@ -154,7 +154,7 @@ Debe caber entera en 1196 × 940 sin desplazamiento, como las páginas 4, 5 y 7.
 - **Abierto:** mapa, galería o ambos. El mapa pondría el punto o de cada tira
   en el marco de su q, con la coordenada q·o y la perpendicular. La frontera
   quedaría como una recta vertical, y volvería el mapa de las páginas 1 a 4. La
-  galería de la página 7 sirve para cargar tiras y ver cuáles fallan.
+  galería de la página 8 sirve para cargar tiras y ver cuáles fallan.
 
 ## 8. Gestos y controles
 
@@ -169,7 +169,7 @@ Debe caber entera en 1196 × 940 sin desplazamiento, como las páginas 4, 5 y 7.
   dibuja algo más que su efecto en las líneas de atención.
 - **a y c**, como líneas a la salida con el grosor contra el tope 6, igual que
   en todas las páginas.
-- **Abierto:** el sorteo inicial. La página 7 midió que un sorteo en todo el
+- **Abierto:** el sorteo inicial. La página 8 midió que un sorteo en todo el
   recorrido abre con la salida pegada; aquí hay que medirlo otra vez.
 
 ## 9. Gramática visual y ancla
@@ -210,7 +210,7 @@ Si alguna falla, no se crea ningún lienzo:
 
 ## 11. Guion de clase, en corto
 
-1. **Desde la página 7:** la red recurrente guarda todo en un número. ¿Y si
+1. **Desde la página 8:** la red recurrente guarda todo en un número. ¿Y si
    pudiera volver a mirar lo anterior?
 2. **El promedio:** φ = 0 y β = 0. Falla, y se ve por qué con una tira donde la
    buscada y su opuesta se cancelan.
@@ -232,7 +232,8 @@ un centro de masa dentro del círculo. Cada pieza se ve y se puede mover a mano.
 
 ## 13. Pendiente de decidir
 
-- El número de la página y el nombre del archivo: 9 y `9-Atencion.html`.
+- Decidido: el número de la página y el nombre del archivo son el 10 y
+  `10-Atencion.html`.
 - Mapa, galería o ambos (sección 7).
 - Cómo se mueve φ, y las unidades de su deslizador (sección 8).
 - El recorrido de β y su sorteo inicial (sección 8).

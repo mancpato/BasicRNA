@@ -6,7 +6,7 @@ Antes de los dibujos va la pregunta que motiva todo, y conviene hacérsela al gr
 2. **La neurona con su salida de regreso.** Cambias x₂ por h₍ₜ₋₁₎ y queda z = w·xₜ + u·h₍ₜ₋₁₎ + b. Son los mismos tres parámetros con otros nombres, y el lazo es lo único nuevo. A la derecha hay otra neurona pequeña, v y c, que lee el estado al final: la salida de siempre.
 3. **La red desenrollada.** El lazo no se puede calcular de golpe, porque para tener hₜ primero hace falta h₍ₜ₋₁₎. Desenrollar es escribir el lazo a lo largo del tiempo. Queda algo que parece una red profunda con tantas capas como píxeles, pero todas las copias llevan los mismos números.
 
-Ése es el diagrama de la página 7, y así se explica por qué se ve distinto. En las páginas anteriores, izquierda a derecha era avanzar de capa en capa. Aquí es el tiempo, y cada columna es la misma red pequeña. Todo lo demás se conserva: azul y rojo para el signo, el grosor, los triángulos, el glifo dentro del nodo, la sigmoide de salida, ŷ ≥ 0.5 y el contador.
+Ése es el diagrama de la página 8, y así se explica por qué se ve distinto. En las páginas anteriores, izquierda a derecha era avanzar de capa en capa. Aquí es el tiempo, y cada columna es la misma red pequeña. Todo lo demás se conserva: azul y rojo para el signo, el grosor, los triángulos, el glifo dentro del nodo, la sigmoide de salida, ŷ ≥ 0.5 y el contador.
 
 **Una frase que ordena todo lo demás:** *todo lo que la red sabe del pasado cabe en un solo número, h.* Cada tarea exige guardar una cosa distinta en ese número. El último no pide guardar nada. La mayoría pide guardar una cuenta. El primero pide guardar un bit.
 
@@ -33,4 +33,4 @@ Con u = 0 sólo queda el último píxel. Con u = 1 el estado es la cuenta. Con u
 - **«u conecta dos neuronas distintas».** No: conecta la misma neurona en dos momentos seguidos.
 - **«La red ve la tira completa».** No: ve un píxel a la vez, y del pasado sólo tiene h.
 
-**Lo que no conviene prometer.** Las redes recurrentes de verdad guardan un vector, no un número. Muchas además dan una salida en cada paso; el panel ya lo insinúa, porque es justo eso. Y las LSTM y GRU existen por el problema que va a enseñar la página 8, que es un buen cierre para la clase: el mismo u que decide la memoria hacia adelante también decide qué tan lejos llega el error hacia atrás.
+**Lo que no conviene prometer.** Las redes recurrentes de verdad guardan un vector, no un número. Muchas además dan una salida en cada paso; el panel ya lo insinúa, porque es justo eso. Y las LSTM y GRU existen por el problema que va a enseñar la página 9, que es un buen cierre para la clase: el mismo u que decide la memoria hacia adelante también decide qué tan lejos llega el error hacia atrás.

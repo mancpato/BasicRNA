@@ -67,7 +67,7 @@ llega a cero errores, porque ninguna función lineal de los píxeles separa
 las clases. Una sola capa y un solo filtro, a propósito: lo que se enseña es
 que un kernel detecta un rasgo básico.
 
-**`7-Recurrente.html` — la red recurrente más chica, cinco parámetros a mano.**
+**`8-Recurrente.html` — la red recurrente más chica, cinco parámetros a mano.**
 La red usa el mismo parámetro en cada paso, y el estado es su memoria.
 
 ## Lo que comparten
