@@ -28,10 +28,10 @@ index.html            portal con las miniaturas de img/
 7-NeuronaEnElTiempo.html  una neurona en el tiempo: recuerda u olvida
 8-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
 9-BackpropTiempo.html BPTT de a una tira sobre la red de la 8; expone η
+10-VariasNeuronas.html  2 o 3 neuronas de estado: paridad y residuo entre tres
 img/                  miniaturas 900×600 y portada; originales/ intactos
 ESPEC-n-*.md          spec previa; se borra al construir, la sustituye su cabecera
-Explica.md            arquitecturas, fórmulas, datos y cifras medidas
-TODO.md               pendientes con su razonamiento, para quien revise
+Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 ```
 
 ## Fronteras
@@ -47,7 +47,7 @@ TODO.md               pendientes con su razonamiento, para quien revise
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
 - La 4, la 6 y la 9 comparan su gradiente con diferencias centradas al montar.
-- Se proyecta: 1 a 9 caben en 1196×940 sin desplazamiento; con barra, no (arriba).
+- Se proyecta: 1 a 10 caben en 1196×940 sin desplazamiento; con barra, no (arriba).
 
 ## Conductas verificadas
 
@@ -55,6 +55,6 @@ TODO.md               pendientes con su razonamiento, para quien revise
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- Las nueve están; la 10, atención, especificada y sin construir; no entrena (D11).
-- Sigue: homogeneizar la 8 y la 9 por fuera del dibujo, y rehacer las miniaturas.
-- Abierto: en la espec de la 10, el mapa, φ, β y la muestra de prueba.
+- Las diez están; la recurrente cierra con varias neuronas de estado (D12).
+- Sigue: la 11, atención, especificada y sin construir; no entrena (D11).
+- Abierto: homogeneizar el dibujo de la 10 con el de la 8 y la 9; `TODO.md`, 7.

@@ -1,8 +1,8 @@
 # Especificación: la página de atención
 
-Estado: **propuesta, antes de construir.** El número 10 está decidido; la 9 es
-la retropropagación en el tiempo de la red de la página 8. Archivo previsto:
-`10-Atencion.html`.
+Estado: **propuesta, antes de construir.** El número 11 está decidido; la 10 es
+la de varias neuronas recurrentes, que cierra la serie recurrente. Archivo
+previsto: `11-Atencion.html`.
 
 Las cifras de este documento son mediciones hechas en JavaScript, binary64,
 sobre todas las tiras de 4 y de 6 flechas. Lo que todavía no se ha medido está
@@ -16,9 +16,10 @@ los pesos de las líneas **se calculan a partir de la entrada** y cambian con
 cada tira: la red decide a quién mirar según lo que ve. Ésa es la idea de la
 página, y por eso rompe a propósito la gramática visual de la serie.
 
-El contraste con la página 8 se dice en una frase: la red recurrente recuerda
-**resumiendo** todo en un número; la atención recuerda **buscando** entre todo
-lo anterior.
+El contraste con las páginas recurrentes se dice en una frase: la red
+recurrente recuerda **resumiendo** —en un número hasta la página 9, y en un
+vector de tamaño fijo desde la 10—; la atención recuerda **buscando** entre
+todo lo anterior, sin resumir.
 
 Dos ideas, cada una con su gesto:
 
@@ -210,10 +211,12 @@ Si alguna falla, no se crea ningún lienzo:
 
 ## 11. Guion de clase, en corto
 
-1. **Desde la página 8:** la red recurrente guarda todo en un número. ¿Y si
-   pudiera volver a mirar lo anterior? Y desde la 9, dicho y no mostrado: allá
-   la señal de error llega al primer elemento por una cadena de
-   multiplicaciones, y aquí llegaría por un solo peso.
+1. **Desde la página 10:** la red recurrente guarda todo en un vector de
+   tamaño fijo, y en las páginas 7 a 9 en un solo número. Crezca lo que crezca
+   la tira, el resumen no crece. ¿Y si pudiera volver a mirar lo anterior? Y
+   desde la 9, dicho y no mostrado: allá la señal de error llega al primer
+   elemento por una cadena de multiplicaciones, y aquí llegaría por un solo
+   peso.
 2. **El promedio:** φ = 0 y β = 0. Falla, y se ve por qué con una tira donde la
    buscada y su opuesta se cancelan.
 3. **Afilar:** subir β. Las líneas de atención se concentran, o salta hacia el
@@ -234,8 +237,8 @@ un centro de masa dentro del círculo. Cada pieza se ve y se puede mover a mano.
 
 ## 13. Pendiente de decidir
 
-- Decidido: el número de la página y el nombre del archivo son el 10 y
-  `10-Atencion.html`.
+- Decidido: el número de la página y el nombre del archivo son el 11 y
+  `11-Atencion.html`.
 - Decidido: no habrá una página que entrene esta red. Con cuatro parámetros a
   mano la página se sostiene sola, y el contraste del camino del error —en la
   recurrente la señal que llega al primer elemento pasa por una cadena de

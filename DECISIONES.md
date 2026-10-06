@@ -7,8 +7,8 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
 - **D1**, el orden de la serie (2026-10-05). La página de la neurona en el
   tiempo entra como séptima y recorre a las que seguían: la recurrente a mano
   pasa a octava, la retropropagación en el tiempo a novena, y la atención, que
-  estaba planeada como novena, a décima, con su especificación renombrada a
-  `ESPEC-10-Atencion.md`.
+  estaba planeada como novena, a décima, con su especificación renombrada en
+  consecuencia. (El número de la atención volvió a correrse en D12.)
 - **D2**, los nombres de archivo (2026-10-05). El archivo nuevo se llama
   `7-NeuronaEnElTiempo.html`; los demás conservan su nombre con el número nuevo,
   `8-Recurrente.html` y `9-BackpropTiempo.html`, y los cambios se hacen con
@@ -54,3 +54,24 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   en la atención por un solo peso— se dice en clase y no se muestra en ninguna
   página, y el gozne que la novena anuncia pasa a ser el de la memoria: resumir
   en un número contra buscar entre todo lo anterior.
+- **D12**, la serie recurrente se cierra con varias neuronas (2026-10-06). La
+  página de varias neuronas recurrentes es la décima, con las dos tareas —la
+  paridad y el residuo entre tres— en una sola página y un selector; la atención
+  pasa a ser la undécima, con `ESPEC-11-Atencion.md` y `11-Atencion.html`. Con
+  ella la memoria deja de ser un número y pasa a ser un vector, que es el mismo
+  paso que de la primera página a la segunda.
+- **D13**, el dibujo por capas (2026-10-06). Con varias neuronas la red se
+  dibuja a la manera de Elman: una columna «de antes» con una copia de cada
+  neurona, de la que salen las líneas de regreso. Rompe con el lazo de la
+  séptima a la novena a propósito, porque con tres neuronas las n² flechas de
+  regreso dibujadas como lazos son una maraña.
+- **D14**, el interruptor del panel (2026-10-06). Un interruptor muestra en el
+  mismo lugar el desenrollado o el estado como un punto, un cuadrado con dos
+  neuronas y un cubo con tres. En el desenrollado no se dibujan los sesgos de
+  estado; en el estado, los nombres de los sitios sólo aparecen con la solución
+  cargada.
+- **D15**, qué solución carga cada tarea (2026-10-06). La del residuo entre tres
+  es la red hallada por búsqueda y redondeada a múltiplos de 0.5, porque cabe en
+  el tope 6 de la serie mientras que la versión tanh exacta de la máquina de
+  umbral pide un peso de 7; en clase se explica con esa máquina de umbral, que
+  la red realiza. La de la paridad sí es la escrita.
