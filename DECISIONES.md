@@ -75,3 +75,10 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   el tope 6 de la serie mientras que la versión tanh exacta de la máquina de
   umbral pide un peso de 7; en clase se explica con esa máquina de umbral, que
   la red realiza. La de la paridad sí es la escrita.
+- **D16**, la copia va de capa a capa (2026-10-06). En la décima, la copia de un
+  momento al siguiente une las dos columnas enteras: un marco punteado rodea la
+  columna de estado, otro la columna «de antes», y una sola flecha los une.
+  Antes salía de h1 sola y parecía que sólo h1 se copiaba. Al pie del dibujo, un
+  rótulo dice que con una sola neurona la casilla «de antes» y su línea son el
+  lazo de la octava, con lo que las dos gramáticas de dibujo de la serie
+  recurrente quedan unidas en pantalla y no sólo en clase.

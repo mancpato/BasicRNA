@@ -356,19 +356,15 @@ página construida.
 
 **Lo que sigue abierto.**
 
-a. Homogeneizar las cuatro. La octava y la novena ya comparten la red dibujada
-una vez, con el mismo dibujo y la misma ancla: en la octava es donde se mueve un
-peso y se ven moverse sus copias (D4), y en la novena es donde cae la suma de lo
-que las copias piden (D7). La décima no: dibuja por capas, al estilo de Elman,
-porque con tres neuronas los lazos son una maraña (D13). Es una ruptura
-deliberada, pero deja la serie recurrente con dos gramáticas de dibujo, y
-conviene decidir si la décima menciona en pantalla que es la misma red de antes
-dibujada de otro modo. Lo demás es de fuera del dibujo: la novena oculta los
-círculos de los radios para que la barra quepa en un renglón y la octava no; las
-páginas caben en 1196 px de ancho pero no si una barra de desplazamiento ocupa
-espacio, y la novena por sólo dos píxeles; y las miniaturas de `img/` de la
-octava y la novena siguen siendo las de antes de rehacerlas, así que se rehacen
-todas juntas.
+a. Homogeneizar las cuatro, por fuera del dibujo. Las dos gramáticas ya no son
+un pendiente: la octava y la novena dibujan la red con un lazo, la décima por
+capas (D13), y la décima lo dice en pantalla, con la copia yendo de capa a capa
+y un rótulo al pie que nombra el lazo de la octava (D16). Lo que queda es de
+fuera del dibujo: la novena oculta los círculos de los radios para que la barra
+quepa en un renglón y la octava no; las páginas caben en 1196 px de ancho pero
+no si una barra de desplazamiento ocupa espacio, y la novena por sólo dos
+píxeles; y las miniaturas de `img/` de la octava y la novena siguen siendo las
+de antes de rehacerlas, así que se rehacen todas juntas.
 
 b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
 lo escribe sobre cada flecha. Una vía quedó cerrada: no será mostrarlo en la

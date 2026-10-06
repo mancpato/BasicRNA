@@ -57,4 +57,4 @@ Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 
 - Las diez están; la recurrente cierra con varias neuronas de estado (D12).
 - Sigue: la 11, atención, especificada y sin construir; no entrena (D11).
-- Abierto: homogeneizar el dibujo de la 10 con el de la 8 y la 9; `TODO.md`, 7.
+- Abierto: homogeneizar por fuera del dibujo y rehacer miniaturas; `TODO.md`, 7.
