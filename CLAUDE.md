@@ -55,6 +55,6 @@ doc/                  apoyo didáctico: teoría, notas, PDF; no es de desarrollo
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- Las once están; la serie recurrente va de la 7 a la 11 y cierra con el lazo como matriz (D17, D19).
-- Sigue: la 12, atención, especificada en `ESPEC-12-Atencion.md` y sin construir (D24).
-- Abierto: homogeneizar por fuera del dibujo y rehacer miniaturas; `TODO.md`, 7.
+- La serie recurrente está completa, de la 7 a la 11; la teoría de la 11 está en `doc/LazoComoMatriz.md` (D19, D23).
+- Sigue la 12: una red recurrente pequeña a la que se agrega un mecanismo de atención básico (D24).
+- Antes, decidir qué se hace con `ESPEC-12-Atencion.md`: describe otra cosa, cuatro flechas en el círculo unitario y ninguna red recurrente (`TODO.md`, 6).

@@ -122,3 +122,8 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   exista, `12-Atencion.html`. Reemplaza a D18, que la dejaba sin número. Será
   una red recurrente pequeña a la que se agrega un mecanismo de atención
   básico, y va después del lazo como matriz.
+- **D25**, el tope del `README.md` son 40 líneas (2026-10-09). No es una
+  decisión nueva: venía de antes y vivía en los pendientes de mantenimiento de
+  `TODO.md`, que se borraron al reescribirlo, así que quedó sin registro en el
+  disco. El `~/.claude/CLAUDE.md` no fija tope al README; éste es el del
+  proyecto.
