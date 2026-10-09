@@ -32,7 +32,7 @@ La serie recurrente, de la 7 a la 11:
 11. **`11-LazoComoMatriz.html` — El lazo como matriz: la señal de gradiente con dos neuronas.** Con dos neuronas el factor de regreso ya no es un número sino una matriz: la red avanza con U y la señal regresa con U traspuesta.
 
 `Explica.md` reúne las arquitecturas, las fórmulas, los datos y las cifras medidas.
-
+`doc/` guarda el apoyo didáctico: documentos teóricos con los vectores y las matrices escritos como arreglos; hoy tiene `doc/LazoComoMatriz.md`, la teoría de la página 11.
 `CLAUDE.md`, `DECISIONES.md`, `TODO.md` y los `ESPEC-*.md` son del proceso de trabajo.
 
 ## Autoría y licencia
