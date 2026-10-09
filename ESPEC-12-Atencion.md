@@ -1,8 +1,8 @@
 # Especificación: la página de atención
 
-Estado: **propuesta, antes de construir.** El número 11 está decidido; la 10 es
-la de varias neuronas recurrentes, que cierra la serie recurrente. Archivo
-previsto: `11-Atencion.html`.
+Estado: **propuesta, antes de construir.** El número 12 está decidido; la 11 es
+la del lazo como matriz, que cierra la serie recurrente. Archivo
+previsto: `12-Atencion.html`.
 
 Las cifras de este documento son mediciones hechas en JavaScript, binary64,
 sobre todas las tiras de 4 y de 6 flechas. Lo que todavía no se ha medido está
@@ -237,8 +237,8 @@ un centro de masa dentro del círculo. Cada pieza se ve y se puede mover a mano.
 
 ## 13. Pendiente de decidir
 
-- Decidido: el número de la página y el nombre del archivo son el 11 y
-  `11-Atencion.html`.
+- Decidido: el número de la página y el nombre del archivo son el 12 y
+  `12-Atencion.html`.
 - Decidido: no habrá una página que entrene esta red. Con cuatro parámetros a
   mano la página se sostiene sola, y el contraste del camino del error —en la
   recurrente la señal que llega al primer elemento pasa por una cadena de

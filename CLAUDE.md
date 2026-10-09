@@ -1,14 +1,13 @@
 # CLAUDE.md — BasicRNA
 
-Tope de este archivo: 60 líneas. La forma de trabajar y la lista cerrada
-de documentos están en `~/.claude/CLAUDE.md` y valen aquí. Este archivo
-apunta, no explica: lo que dicen los comentarios del código no se repite.
+Tope de este archivo: 60 líneas. La forma de trabajar y la lista cerrada de documentos están
+en `~/.claude/CLAUDE.md` y valen aquí, con dos excepciones declaradas: `Explica.md` y `doc/`.
+Este archivo apunta, no explica: lo que dicen los comentarios del código no se repite.
 
 ## Qué es
 
-Páginas sueltas para las primeras clases de redes neuronales. El alumno
-mueve los parámetros a mano y ve qué le pasa a la frontera, o ve cómo los
-mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
+Páginas sueltas para las primeras clases de redes neuronales. El alumno mueve los parámetros a mano
+y ve qué le pasa a la frontera, o ve cómo los mueve el algoritmo, un punto a la vez. El orden importa.
 
 ## Pila y cómo se ejecuta
 
@@ -32,6 +31,7 @@ mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
 index.html e img/     el portal; miniaturas 900×600, portada, originales/ intactos
 ESPEC-n-*.md          spec previa; se borra al construir, la sustituye su cabecera
 Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
+doc/                  apoyo didáctico: teoría, notas, PDF; no es de desarrollo
 ```
 
 ## Fronteras
@@ -56,5 +56,5 @@ Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 ## Dónde estamos (tres líneas; se reescribe entera)
 
 - Las once están; la serie recurrente va de la 7 a la 11 y cierra con el lazo como matriz (D17, D19).
-- Sigue: la atención, especificada en `ESPEC-11-Atencion.md` y todavía sin número (D18).
+- Sigue: la 12, atención, especificada en `ESPEC-12-Atencion.md` y sin construir (D24).
 - Abierto: homogeneizar por fuera del dibujo y rehacer miniaturas; `TODO.md`, 7.

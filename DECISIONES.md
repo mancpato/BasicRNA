@@ -107,3 +107,18 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   trabajo: ni decisiones, ni pendientes, ni cifras, ni planes. `CLAUDE.md`,
   `DECISIONES.md`, `TODO.md` y los `ESPEC-*.md` quedan nombrados en una línea
   como lo que son, documentos del proceso.
+- **D22**, `doc/` guarda el apoyo didáctico (2026-10-09). La carpeta `doc/` es
+  para los documentos con que Miguel estudia: teoría explícita, notas y PDF.
+  Es, junto con `Explica.md`, una excepción declarada a la lista cerrada de
+  documentos del `~/.claude/CLAUDE.md`, y así queda dicho en el `CLAUDE.md` del
+  proyecto. Lo de desarrollo —`README.md`, `CLAUDE.md`, `DECISIONES.md`,
+  `TODO.md`, `Explica.md` y los `ESPEC-*.md`— se queda en la raíz.
+- **D23**, la teoría de la undécima vive en `doc/LazoComoMatriz.md` (2026-10-09).
+  Reemplaza la parte de D20 que la mandaba a `Explica.md`: ahí queda una línea
+  que apunta a `doc/`. El documento es la especificación previa sin su sección
+  «Lo que muestra la página», que es desarrollo y vive en la cabecera de la
+  página, y con las correcciones que ya traía la sección de `Explica.md`.
+- **D24**, la atención es la 12 (2026-10-09). `ESPEC-12-Atencion.md` y, cuando
+  exista, `12-Atencion.html`. Reemplaza a D18, que la dejaba sin número. Será
+  una red recurrente pequeña a la que se agrega un mecanismo de atención
+  básico, y va después del lazo como matriz.

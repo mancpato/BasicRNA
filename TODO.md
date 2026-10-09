@@ -308,13 +308,13 @@ el primero no: las ventanas salen iguales o más anchas y la prueba no añade
 nada. Las cifras son las de la sección LOS DATOS de la cabecera; no se
 volvieron a medir con Claude Code.
 
-## 6. La página de atención
+## 6. Página 12: atención
 
-Especificada en `ESPEC-11-Atencion.md` y todavía sin construir. Sus decisiones
-abiertas están en la sección 13 de ese archivo, «Pendiente de decidir». Viene
-después de la serie recurrente, pero ya no tiene número: antes puede entrar otra
-página de recurrencia, y el número se le fija cuando le toque (D18). El archivo
-conserva su nombre.
+Especificada en `ESPEC-12-Atencion.md` y todavía sin construir. Sus decisiones
+abiertas están en la sección 13 de ese archivo, «Pendiente de decidir». Es la 12
+y viene después del lazo como matriz (D24). Será una red recurrente pequeña a la
+que se agrega un mecanismo de atención básico; la especificación de hoy todavía
+no la describe así.
 
 ## 7. Páginas recurrentes: de una neurona a varias
 
@@ -371,7 +371,7 @@ b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide
 lo escribe sobre cada flecha, y la undécima, `11-LazoComoMatriz.html`, explica
 por qué pasa: con dos neuronas el factor de regreso es la matriz D_t·Uᵀ, y el
 radio espectral ρ y el mayor valor singular σ₁ dicen cosas distintas (D17, D19).
-Su teoría está en la sección 11 de `Explica.md` (D20). Una vía quedó cerrada: no
+Su teoría está en `doc/LazoComoMatriz.md` (D23). Una vía quedó cerrada: no
 será mostrarlo en la atención, porque no habrá página que la entrene (D11), y el
 contraste de los dos caminos se dice en clase. Lo que sí se haga —LSTM y GRU
 existen por esto— se discute después, y hoy no es de BasicRNA.

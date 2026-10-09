@@ -137,8 +137,8 @@ El lazo como matriz — la señal de gradiente con dos neuronas
 
 Es la UNDÉCIMA página de BasicRNA y va después de la de varias neuronas (la
 décima). Su teoría —el paso de un número a una matriz, ρ y σ₁, la desigualdad
-fundamental y las cinco matrices— está en Explica.md; lo que aquí se decidió al
-construir está en la última sección.
+fundamental y las cinco matrices— está en doc/LazoComoMatriz.md; lo que aquí se
+decidió al construir está en la última sección.
 
 POR QUÉ EXISTE
 En la novena la red tenía una sola neurona, y la señal de error regresaba
@@ -258,9 +258,10 @@ el ancho, 1130 más los márgenes, deja lugar a una barra de desplazamiento de
 15 px.
 
 DECIDIDO AL CONSTRUIR
-- El empuje va de 0 a 2 y empieza en 0.2, no de 0 a 3 empezando en 1 (la
-  razón está en «Las cinco matrices»).
-- k llega a 39, no a 40: con T = 40 momentos hay 39 pasos hacia atrás.
+- El empuje va de 0 a 2 y empieza en 0.2: con empujes mayores las cinco
+  matrices se apagan antes del paso 20 y se borra lo que la página muestra (la
+  razón, con cifras, está en «Las cinco matrices»).
+- k llega a 39, porque con T = 40 momentos hay 39 pasos hacia atrás.
 - No se dibujan la neurona de salida ni los sesgos: v y c no intervienen, y b
   está en la ecuación.
 
