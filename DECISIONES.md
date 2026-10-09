@@ -127,3 +127,5 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   `TODO.md`, que se borraron al reescribirlo, así que quedó sin registro en el
   disco. El `~/.claude/CLAUDE.md` no fija tope al README; éste es el del
   proyecto.
+- **D26**, el `README.md` no lleva tope de líneas (2026-10-09). Basta con que sea breve. Reemplaza a D25.
+- **D27**, `Explica.md` documenta el desarrollo de las páginas (2026-10-09). Las arquitecturas, los datos y las cifras medidas, no la teoría; la teoría va en `doc/`.

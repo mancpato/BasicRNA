@@ -376,6 +376,9 @@ será mostrarlo en la atención, porque no habrá página que la entrene (D11), 
 contraste de los dos caminos se dice en clase. Lo que sí se haga —LSTM y GRU
 existen por esto— se discute después, y hoy no es de BasicRNA.
 
+c. A `Explica.md` le faltan las secciones de la 7 a la 10, y la de la 11 apunta
+a la teoría de `doc/` en vez de documentar el desarrollo de la página (D27).
+
 ## Lo que no está pendiente
 
 Que la tercera página se preste a un estudio más profundo —activaciones
