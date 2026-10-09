@@ -263,3 +263,7 @@ Todo el problema de esta página viene de que la señal tiene que atravesar $k$ 
 2. $\rho$ dice qué pasa a la larga con la misma matriz repetida; $\sigma_1$ dice lo más que puede estirar un paso. Siempre $\rho \le \sigma_1$, y pueden ser muy distintos (matrices 4 y 5).
 3. $\sigma_1(U) < 1$ garantiza que la señal se apaga, pase lo que pase con los datos. Es un techo, no un piso.
 4. La saturación ($D_t$) sólo encoge: una memoria que se acomoda en un lugar estable apaga el gradiente.
+
+## Un video simple:
+
+https://www.youtube.com/watch?v=AsNTP8Kwu80
