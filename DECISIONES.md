@@ -102,3 +102,8 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   llega a 39 y no a 40, el empuje va de 0 a 2 y empieza en 0.2, y donde la
   especificación decía «verificar al construir» van las cifras medidas. El
   original se mueve a `../BasicRNA-trabajo/` y no entra al repositorio.
+- **D21**, el `README.md` es para colegas (2026-10-09). Dice la idea del
+  proyecto, cómo abrir las páginas y qué enseña cada una, y nada del proceso de
+  trabajo: ni decisiones, ni pendientes, ni cifras, ni planes. `CLAUDE.md`,
+  `DECISIONES.md`, `TODO.md` y los `ESPEC-*.md` quedan nombrados en una línea
+  como lo que son, documentos del proceso.

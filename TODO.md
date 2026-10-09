@@ -394,8 +394,5 @@ alcanza para eso.
 
 ## Pendientes de mantenimiento
 
-- `README.md` está sobre su tope de 40 líneas.
-- `README.md` dice «siete páginas», describe seis y de las recurrentes sólo
-  nombra la 8: le faltan la 7, la 9, la 10 y la 11.
 - `index.html` dice «cuatro páginas» en el título, la descripción y la entrada,
   aunque ya lleva once tarjetas.
