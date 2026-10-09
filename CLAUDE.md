@@ -18,7 +18,6 @@ mueve el algoritmo, un punto a la vez. El orden de las páginas importa.
 ## Archivos
 
 ```
-index.html            portal con las miniaturas de img/
 1-Perceptron.html     una neurona, tres parámetros a mano
 2-EditParam.html      red 2→4→1, diecisiete a mano, ReLU o tanh global
 3-EditActivFun.html   2→4→1 con activación elegida por neurona (seis)
@@ -29,7 +28,8 @@ index.html            portal con las miniaturas de img/
 8-Recurrente.html     red recurrente escalar, cinco a mano; lineal o tanh
 9-BackpropTiempo.html BPTT de a una tira sobre la red de la 8; expone η
 10-VariasNeuronas.html  2 o 3 neuronas de estado: paridad y residuo entre tres
-img/                  miniaturas 900×600 y portada; originales/ intactos
+11-LazoComoMatriz.html  el lazo como matriz: la señal de regreso con dos neuronas
+index.html e img/     el portal; miniaturas 900×600, portada, originales/ intactos
 ESPEC-n-*.md          spec previa; se borra al construir, la sustituye su cabecera
 Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 ```
@@ -46,8 +46,8 @@ Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 - Grosor contra el tope del deslizador, con raíz; nunca contra el máximo.
 - Azul y rojo son el signo del peso y no se reusan para nada más.
 - Todo sorteo sale de splitmix32 con semilla fija; nunca Math.random.
-- La 4, la 6 y la 9 comparan su gradiente con diferencias centradas al montar.
-- Se proyecta: 1 a 10 caben en 1196×940 sin desplazamiento; con barra, no (arriba).
+- La 4, la 6, la 9 y la 11 comparan su gradiente con diferencias centradas al montar.
+- Se proyecta: 1 a 11 caben en 1196×940 sin desplazamiento; con barra, no (arriba).
 
 ## Conductas verificadas
 
@@ -55,6 +55,6 @@ Explica.md y TODO.md  arquitecturas, fórmulas y cifras medidas; pendientes
 
 ## Dónde estamos (tres líneas; se reescribe entera)
 
-- Las diez están; la recurrente cierra con varias neuronas de estado (D12).
-- Sigue: la 11, atención, especificada y sin construir; no entrena (D11).
+- Las once están; la serie recurrente va de la 7 a la 11 y cierra con el lazo como matriz (D17, D19).
+- Sigue: la atención, especificada en `ESPEC-11-Atencion.md` y todavía sin número (D18).
 - Abierto: homogeneizar por fuera del dibujo y rehacer miniaturas; `TODO.md`, 7.

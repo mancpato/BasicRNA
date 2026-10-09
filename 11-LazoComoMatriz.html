@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El lazo como matriz — la señal de gradiente con dos neuronas</title>
+<style>
+  :root {
+    --tinta: #23282e;
+    --tinta-suave: #5c666f;
+    --linea: #d6dbe0;
+    --fondo: #f4f6f8;
+    --papel: #ffffff;
+    --verde: #22a050;   /* el paso en turno */
+    --delta: rgb(23,150,140);   /* la señal de gradiente, verde azulado */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 20px 22px;
+    background: var(--fondo); color: var(--tinta);
+    font: 15px/1.5 "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.2px; }
+
+  .barra {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin: 0 0 12px; padding: 9px 14px; max-width: 1130px;
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+  }
+  .barra .titulo { font-weight: 600; font-size: 14px; }
+  .barra label {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 9px; border: 1px solid var(--linea); border-radius: 6px;
+    cursor: pointer; background: #fbfcfd; font-size: 14px;
+  }
+  .barra label:hover { border-color: #aab4bd; }
+  .barra label.puesto { border-color: var(--tinta); background: #eef2f6; font-weight: 600; }
+  .barra .divisor { width: 1px; align-self: stretch; background: var(--linea); margin: -4px 2px; }
+  .barra .salto { flex-basis: 100%; height: 0; }
+  .barra button {
+    font: inherit; font-size: 13.5px; padding: 5px 10px; cursor: pointer;
+    background: #fbfcfd; color: var(--tinta);
+    border: 1px solid #bcc5cd; border-radius: 6px;
+  }
+  .barra button:hover { background: #eef2f6; border-color: #8f9aa3; }
+  .barra button:active { background: #e2e8ee; }
+  .barra button:disabled { color: #9aa4ac; cursor: default; background: #f4f6f8; border-color: var(--linea); }
+  .barra button.principal { border-color: var(--tinta); font-weight: 600; }
+  .barra button:focus-visible, .barra label:focus-within { outline: 2px solid var(--tinta); outline-offset: 2px; }
+  .barra .consigna { font-size: 13.5px; color: var(--tinta-suave); margin-left: 4px; }
+  .empuje { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+  .empuje .val { font-variant-numeric: tabular-nums; min-width: 2.6em; font-weight: 600; }
+  .empuje.mudo { color: #9aa4ac; }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 130px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px;
+    border-radius: 50%; background: #2f3a44; border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px #7aa7d8; }
+  input[type=range]::-moz-range-track {
+    height: 7px; background: #e1e6eb; border: 1px solid #ccd3da; border-radius: 4px; }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; background: #2f3a44;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px #8c97a0; cursor: grab; }
+
+  .tablero { display: grid; grid-template-columns: 610px 506px; gap: 14px; align-items: start; }
+  .columna { display: flex; flex-direction: column; gap: 12px; }
+  .caja {
+    background: var(--papel); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 10px 14px 10px;
+  }
+  .caja .tit { font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+  .fila { display: flex; gap: 14px; align-items: flex-start; }
+  canvas { display: block; border-radius: 4px; }
+  #plano:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+
+  /* Las ecuaciones se escriben con arreglos: cada vector y cada matriz entre
+     corchetes, con su nombre debajo. */
+  .ec { display: flex; align-items: center; gap: 6px; margin-top: 6px;
+        font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ec .op { color: var(--tinta-suave); padding: 0 1px; }
+  .ec .nota { font-size: 12.5px; color: var(--tinta-suave); white-space: normal; margin-left: 6px; }
+  .termino { display: inline-flex; flex-direction: column; align-items: center; }
+  .termino .nom { font-size: 11.5px; color: var(--tinta-suave); line-height: 1.2; margin-top: 1px; }
+  .mat { display: inline-grid; position: relative; padding: 1px 8px; column-gap: 10px; row-gap: 0; line-height: 1.35; }
+  .mat::before, .mat::after {
+    content: ''; position: absolute; top: 0; bottom: 0; width: 5px;
+    border: 1.5px solid var(--tinta); }
+  .mat::before { left: 0; border-right: none; }
+  .mat::after { right: 0; border-left: none; }
+  .mat span { text-align: right; min-width: 3.3em; }
+  .mat span.cero { color: #aab3bb; }
+  .escalar { padding: 0 2px; }
+  .delta { color: rgb(16,118,110); }
+
+  .cifras { font-size: 13px; font-variant-numeric: tabular-nums; border-collapse: collapse; margin-top: 4px; }
+  .cifras td { padding: 1px 8px 1px 0; vertical-align: baseline; white-space: nowrap; }
+  .cifras td.n { text-align: right; padding-right: 10px; }
+  .cifras td.f { color: var(--tinta-suave); }
+  .cifras-nota { font-size: 12.5px; color: var(--tinta-suave); margin-top: 6px; line-height: 1.4; max-width: 260px; }
+
+  .ficha { font-size: 13px; font-variant-numeric: tabular-nums; border-collapse: collapse; margin: 0 0 4px; }
+  .ficha th { font-weight: 400; color: var(--tinta-suave); text-align: left; padding: 0 14px 0 0; font-size: 12px; }
+  .ficha td { padding: 0 14px 0 0; }
+  .pista { font-size: 13px; line-height: 1.4; color: var(--tinta); border-left: 3px solid var(--linea);
+           padding: 1px 0 1px 9px; margin: 4px 0 6px; min-height: 37px; }
+  .pie { font-size: 12.5px; color: var(--tinta-suave); line-height: 1.4; margin-top: 6px; min-height: 35px; }
+
+  .nota-lineal { width: 262px; height: 150px; font-size: 12.5px; line-height: 1.45; color: var(--tinta-suave);
+                 border: 1px dashed var(--linea); border-radius: 6px; padding: 10px; }
+
+  .leyenda { margin-top: 6px; font-size: 12px; color: var(--tinta-suave); display: flex; flex-wrap: wrap; gap: 2px 14px; line-height: 1.4; }
+  .leyenda .it { display: inline-flex; align-items: center; gap: 5px; }
+  .marca { width: 15px; height: 3px; border-radius: 2px; display: inline-block; }
+  .marca.guion { background: none !important; border-top: 2px dashed; height: 0; }
+  .marca.punto { background: none !important; border-top: 2px dotted; height: 0; }
+
+  #fallo {
+    margin: 20px 0; padding: 16px 18px; border-radius: 8px;
+    background: #fdeceb; border: 1px solid #e8a9a3; color: #8f2b22;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+
+<h1>El lazo como matriz — la señal de gradiente con dos neuronas</h1>
+
+<div id="raiz"></div>
+
+<script>
+'use strict';
+/*
+El lazo como matriz — la señal de gradiente con dos neuronas
+
+Es la UNDÉCIMA página de BasicRNA y va después de la de varias neuronas (la
+décima). Su teoría —el paso de un número a una matriz, ρ y σ₁, la desigualdad
+fundamental y las cinco matrices— está en Explica.md; lo que aquí se decidió al
+construir está en la última sección.
+
+POR QUÉ EXISTE
+En la novena la red tenía una sola neurona, y la señal de error regresaba
+multiplicándose en cada paso por un número, u·tanh′. Con dos neuronas ese número
+se vuelve una matriz de 2×2, F_t = D_t·Uᵀ, y aparecen tres cosas que con un
+número no existen: la dirección (la señal es una flecha en el plano), dos
+medidas distintas del tamaño de la matriz (el radio espectral ρ, que dice qué
+pasa a la larga, y el mayor valor singular σ₁, que dice lo más que estira un
+paso), y un factor que cambia en cada momento, porque D_t depende del estado.
+La página enseña que la red avanza con U y la señal regresa con Uᵀ, que
+σ₁ < 1 garantiza que la señal se apaga y σ₁ > 1 sólo lo permite, y que la
+saturación de tanh encoge la señal.
+
+LA RED
+Dos neuronas de memoria, una entrada de un bit por momento, T = 40 momentos:
+  z_t = W·x_t + U·h_(t−1) + b,    h_t = φ(z_t),    h_0 = (0, 0).
+u_ij es el peso de la línea que va DE la neurona j A la neurona i; con esa
+convención se dibuja cada línea y se escribe cada matriz. La señal es
+δ_t = ∂L/∂z_t y regresa así:
+  δ_t = D_t · Uᵀ · δ_(t+1),   D_t = diag(φ′(z_t,1), φ′(z_t,2)).
+Con tanh, φ′(z) = 1 − h²; en lineal, φ(z) = z y D_t es la identidad.
+La página no entrena: v, c e y no intervienen. δ_T lo pone la matriz elegida
+(siempre de largo 1) y el alumno puede girarlo arrastrándolo en el plano.
+Con T = 40 momentos hay 39 pasos hacia atrás: k va de 0 a 39.
+W y b se escalan juntos con el deslizador «empuje» a:
+  W = a·(1, 0.5),    b = a·(0.3, −0.2).
+Con a = 0 nada empuja a las neuronas, la memoria se queda en cero y tanh da lo
+mismo que lineal. Las dos neuronas reciben entrada y sesgo distintos a
+propósito: los dos renglones de la matriz 5 son iguales, así que
+z_t,1 − z_t,2 = (w1 − w2)·x_t + (b1 − b2) no depende de la memoria, y si fuera
+cero las dos pendientes serían iguales y la matriz seguiría siendo nilpotente
+aun con tanh. Con a > 0 esa diferencia vale 0.5·a o a, nunca cero.
+La entrada son 40 bits sorteados una vez con splitmix32 y la semilla 20261007.
+
+LAS CINCO MATRICES
+  1 diagonal     [0.9 0; 0 0.5]          ρ 0.9   σ₁ 0.9     normal
+  2 simétrica    [0.8 0.4; 0.4 0.8]      ρ 1.2   σ₁ 1.2     normal
+  3 giro         0.9·(giro de 30°)       ρ 0.9   σ₁ 0.9     normal
+  4 joroba       [0.9 1; 0 0.9]          ρ 0.9   σ₁ 1.530   no normal
+  5 nilpotente   [2 −2; 2 −2]            ρ 0     σ₁ 4       no normal
+La 4 tiene el mismo ρ que la 1 y la 3. En lineal, desde δ_T = (1, 0), la señal
+sube hasta 3.893 en el paso 9 y no baja de 1 sino hasta el paso 35; la de giro,
+en el paso 9, vale 0.387. Medido por Claude con un arnés en Node, binary64,
+y verificado por la página al montar (sección siguiente).
+Lo que pasa en tanh con el empuje inicial a = 0.2, medido por Claude con el
+mismo arnés: la simétrica, que en lineal crece hasta 866 en el paso 39, cae a
+0.34 en el primer paso y a 7·10⁻⁷ en el 20, porque el eigenvalor 1.2 lleva la
+memoria a la saturación; la joroba sube sólo hasta 1.26 (contra 3.89); la
+nilpotente pasa de 3.53 a 0.91 en el segundo paso, en vez de a cero. Con a = 1
+las cinco quedan por debajo de 10⁻² hacia el paso 20 y se borra lo que la
+página quiere mostrar (la joroba, por ejemplo, ya no pasa de 1); por eso el
+empuje empieza en 0.2.
+
+LO QUE SE VERIFICA ANTES DE MONTAR
+Si algo falla no se crea ningún lienzo y la página lo dice.
+1. El ancla del dibujo: cuatro líneas de regreso, una por cada par (i, j); cada
+   una sale de la copia j y llega a la neurona i; su grosor y su color salen
+   de U[i][j]; y en la ecuación de regreso el número del renglón j, columna i,
+   es ese mismo U[i][j].
+2. El gradiente: para las cinco matrices, en lineal y en tanh, con a = 0.2 y
+   a = 1, en ocho momentos, la señal que calcula la página contra diferencias
+   centradas de la pérdida L = g·h_8 (g sorteado). Peor error relativo medido
+   por Claude: 4.2·10⁻¹⁰; tolerancia 10⁻⁶.
+3. El control: la misma cuenta con U en lugar de Uᵀ TIENE que fallar en las
+   tres matrices que no son simétricas (medido: 0.55, 2.08 y 2.30). Si no
+   falla, la verificación no distingue y la página no monta.
+4. Las cifras que la página afirma: ρ, σ₁ y σ₂ de cada matriz; cuáles son
+   normales; UᵀUᵀ = 0 exactamente en la 5; Uᵀ·(1, 0) = (0.779, −0.450) en la
+   3, que es girar en el sentido de las manecillas; y en la 4, en lineal,
+   3.893 en el paso 9 y la primera vez bajo 1 en el paso 35.
+Claude probó las dos mitades del criterio en Chromium sin ventana: una copia
+con la línea u₁₂ saliendo de la copia equivocada y otra que regresa la señal
+con U en vez de Uᵀ no montan, no crean ningún lienzo y dicen por qué.
+Los eigenvalores se sacan de la fórmula de 2×2. En la 4 y la 5 el
+discriminante es cero en exacto, pero en binary64 puede salir ±10⁻¹⁶; se toma
+como cero si su tamaño no pasa de 10⁻¹² veces la traza al cuadrado, porque si
+saliera negativo la página diría que la 4 tiene eigenvalores complejos.
+
+EL GESTO Y LOS BOTONES
+Arriba, la matriz, la activación y el empuje; abajo, «Un paso atrás» (animado),
+«Hasta el final», «Reiniciar» y «δ_T de la matriz». En k = 0 la flecha de δ_T
+se arrastra en el plano (o se gira con las flechas del teclado, de 5° en 5°);
+siempre mide 1. Cambiar la activación o el empuje recalcula todo y conserva k,
+para comparar lineal y tanh en el mismo paso; cambiar de matriz vuelve a k = 0
+con el δ_T de esa matriz. Si la señal se vuelve exactamente cero (la 5 en
+lineal, desde el paso 2) ya no hay paso atrás que dar.
+
+QUÉ SE ILUMINA Y CON QUÉ COLOR
+El presupuesto de la serie: azul y rojo son el signo del peso; verde, el paso
+en turno (en la tira de la entrada); verde azulado, la señal δ, como anillo en
+la neurona y como flecha en el plano; gris, todo lo demás. El grosor de una
+línea es |peso| contra el tope 6, con raíz, como en las demás páginas. El
+anillo de δ va en escala logarítmica de 10⁻⁹ a 10, como en la novena.
+
+LOS TRES NIVELES
+Hacia adelante (arriba a la izquierda): la red dibujada a la manera de Elman,
+como en la décima: a la izquierda la copia de la memoria del momento t, a la
+derecha las neuronas del momento t+1, y entre ellas las cuatro líneas u_ij.
+Hacia atrás (abajo a la izquierda): la MISMA figura, con las mismas líneas,
+recorrida al revés. Los dos niveles muestran siempre el mismo par de momentos:
+en k = 0, el que se va a recorrer primero (39 → 40).
+El plano (arriba a la derecha): un paso a la vez. La flecha de entrada se
+dibuja con largo 1 sobre el círculo de radio 1 y su largo verdadero se escribe
+abajo; la elipse es la imagen de ese círculo bajo Uᵀ (semiejes σ₁ y σ₂) y, en
+tanh, la de D_t·Uᵀ. Las líneas punteadas son las direcciones que Uᵀ no gira.
+La curva (abajo a la derecha) lleva la cuenta acumulada: el largo de la señal,
+el techo σ₁ᵏ y, sólo en lineal, ρᵏ.
+En tanh, junto a la red, el cuadrado de la décima con la memoria h_t como
+punto: cerca del borde, 1 − h² es chico.
+
+DÓNDE VA CADA COSA
+Arriba la barra, en dos renglones. Debajo, dos columnas de 610 y 506 px: a la
+izquierda, hacia adelante y hacia atrás; a la derecha, el plano y la curva.
+Medido por Claude en Chromium sin ventana a 1196 × 940: el contenido más alto,
+entre las cinco matrices, los dos modos y k en 0, 1 y el final, mide 924 px;
+el ancho, 1130 más los márgenes, deja lugar a una barra de desplazamiento de
+15 px.
+
+DECIDIDO AL CONSTRUIR
+- El empuje va de 0 a 2 y empieza en 0.2, no de 0 a 3 empezando en 1 (la
+  razón está en «Las cinco matrices»).
+- k llega a 39, no a 40: con T = 40 momentos hay 39 pasos hacia atrás.
+- No se dibujan la neurona de salida ni los sesgos: v y c no intervienen, y b
+  está en la ecuación.
+
+Aritmética nativa de JavaScript, binary64. Un solo archivo, sin dependencias,
+sin build; se abre con doble clic y dibuja con canvas 2D.
+*/
+
+/* ── Constantes ─────────────────────────────────────────────────────────── */
+var T = 40;
+var SEMILLA = 20261007;
+var TOPE = 6;
+var EMPUJE_MIN = 0, EMPUJE_MAX = 2, EMPUJE_PASO = 0.05, EMPUJE_INICIAL = 0.2;
+var C_DELTA = '23,150,140', VERDE = '34,160,80';
+var POSITIVO = '60,100,210', NEGATIVO = '210,60,60';
+var DUR_PASO = 950;   // ms de la animación de un paso atrás
+
+function Sorteador(semilla) { this.s = (semilla >>> 0) || 1; }
+Sorteador.prototype.next = function () {
+  this.s = (this.s + 0x9e3779b9) >>> 0;
+  var z = this.s;
+  z = Math.imul(z ^ (z >>> 16), 0x21f0aaad) >>> 0;
+  z = Math.imul(z ^ (z >>> 15), 0x735a2d97) >>> 0;
+  z = (z ^ (z >>> 15)) >>> 0;
+  return z / 4294967296;
+};
+
+var R2 = Math.SQRT1_2, C30 = Math.cos(Math.PI / 6), S30 = Math.sin(Math.PI / 6);
+
+/* Las cinco matrices. rho, s1, s2 y normal son lo que la página AFIRMA; se
+   comparan con lo que calcula antes de montar. */
+var MATRICES = [
+  { nombre: 'diagonal', U: [[0.9, 0], [0, 0.5]], dT: [R2, R2], simetrica: true,
+    rho: 0.9, s1: 0.9, s2: 0.5, normal: true,
+    pista: 'Las neuronas no se mezclan: cada componente se encoge por su propio número. La flecha no gira, pero termina sobre el eje de la neurona 1.' },
+  { nombre: 'simétrica', U: [[0.8, 0.4], [0.4, 0.8]], dT: [1, 0], simetrica: true,
+    rho: 1.2, s1: 1.2, s2: 0.4, normal: true,
+    pista: 'En lineal la flecha se alinea con (1, 1) y crece. Pasa a tanh: el eigenvalor 1.2 satura la memoria y la señal se apaga.' },
+  { nombre: 'giro', U: [[0.9 * C30, -0.9 * S30], [0.9 * S30, 0.9 * C30]], dT: [1, 0], simetrica: false,
+    rho: 0.9, s1: 0.9, s2: 0.9, normal: true,
+    pista: 'U gira 30° contra las manecillas; Uᵀ, con las manecillas: la memoria y la señal giran al revés. Una vuelta cada 12 pasos.' },
+  { nombre: 'joroba', U: [[0.9, 1], [0, 0.9]], dT: [1, 0], simetrica: false,
+    rho: 0.9, s1: 1.530, s2: 0.530, normal: false,
+    pista: 'El mismo ρ = 0.9 que la 1 y la 3, y aun así la señal crece hasta el paso 9. Prueba δ₄₀ en (0, 1): ahí no hay joroba.' },
+  { nombre: 'nilpotente', U: [[2, -2], [2, -2]], dT: [R2, R2], simetrica: false,
+    rho: 0, s1: 4, s2: 0, normal: false,
+    pista: 'Uᵀ manda todo a la línea de (1, −1), y esa misma línea la manda a cero. En tanh, D se mete entre los dos pasos y ya no se anula.' }
+];
+
+/* La entrada: 40 bits, sorteados una vez. X[0] no se usa. */
+var X = [0];
+(function () { var r = new Sorteador(SEMILLA); for (var t = 1; t <= T; t++) X.push(r.next() < 0.5 ? 0 : 1); })();
+
+/* ── Álgebra de 2×2 ─────────────────────────────────────────────────────── */
+function transpuesta(A) { return [[A[0][0], A[1][0]], [A[0][1], A[1][1]]]; }
+function porVector(A, v) { return [A[0][0] * v[0] + A[0][1] * v[1], A[1][0] * v[0] + A[1][1] * v[1]]; }
+function porMatriz(A, B) {
+  return [[A[0][0] * B[0][0] + A[0][1] * B[1][0], A[0][0] * B[0][1] + A[0][1] * B[1][1]],
+          [A[1][0] * B[0][0] + A[1][1] * B[1][0], A[1][0] * B[0][1] + A[1][1] * B[1][1]]];
+}
+function largo(v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1]); }
+
+/* Eigenvalores por la fórmula de 2×2, con el discriminante casi cero tomado
+   como cero (la razón está en la cabecera). */
+function espectro(A) {
+  var tr = A[0][0] + A[1][1], det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  var disc = tr * tr - 4 * det;
+  if (Math.abs(disc) <= 1e-12 * Math.max(1, tr * tr)) return { tipo: 'doble', l: [tr / 2], rho: Math.abs(tr / 2) };
+  if (disc > 0) {
+    var r = Math.sqrt(disc), l1 = (tr + r) / 2, l2 = (tr - r) / 2;
+    return { tipo: 'reales', l: [l1, l2], rho: Math.max(Math.abs(l1), Math.abs(l2)) };
+  }
+  var mod = Math.sqrt(det), ang = Math.atan2(Math.sqrt(-disc) / 2, tr / 2) * 180 / Math.PI;
+  return { tipo: 'complejos', mod: mod, ang: ang, rho: mod };
+}
+/* σ₁ y σ₂ de una 2×2: σ₁² + σ₂² es la suma de los cuadrados y σ₁·σ₂ = |det|. */
+function singulares(A) {
+  var S = A[0][0] * A[0][0] + A[0][1] * A[0][1] + A[1][0] * A[1][0] + A[1][1] * A[1][1];
+  var det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  var r = Math.sqrt(Math.max(0, S * S - 4 * det * det));
+  return [Math.sqrt((S + r) / 2), Math.sqrt(Math.max(0, (S - r) / 2))];
+}
+/* Las direcciones que A no gira (eigenvectores reales), de largo 1. */
+function direccionesFijas(A) {
+  var e = espectro(A);
+  if (e.tipo === 'complejos') return [];
+  return e.l.map(function (l) {
+    var a = A[0][0] - l, b = A[0][1], c = A[1][0], d = A[1][1] - l, v;
+    if (Math.abs(a) + Math.abs(b) > 1e-12) v = [-b, a];
+    else if (Math.abs(c) + Math.abs(d) > 1e-12) v = [-d, c];
+    else return null;
+    var n = largo(v); return [v[0] / n, v[1] / n];
+  }).filter(function (v) { return v; });
+}
+
+/* ── La red ─────────────────────────────────────────────────────────────── */
+/* Hacia adelante. pert = {t, i, e} suma e a z_t,i: sólo la usa la
+   verificación del gradiente. */
+function avance(U, tanh, a, Xs, Tn, pert) {
+  var W = [a, 0.5 * a], b = [0.3 * a, -0.2 * a];
+  var H = [[0, 0]], Z = [null], D = [null];
+  for (var t = 1; t <= Tn; t++) {
+    var uh = porVector(U, H[t - 1]);
+    var z = [W[0] * Xs[t] + uh[0] + b[0], W[1] * Xs[t] + uh[1] + b[1]];
+    if (pert && pert.t === t) z[pert.i] += pert.e;
+    var h = tanh ? [Math.tanh(z[0]), Math.tanh(z[1])] : [z[0], z[1]];
+    Z.push(z); H.push(h);
+    D.push(tanh ? [1 - h[0] * h[0], 1 - h[1] * h[1]] : [1, 1]);
+  }
+  return { W: W, b: b, H: H, Z: Z, D: D };
+}
+/* Hacia atrás. trasp es la función que da la matriz con la que regresa la
+   señal: transpuesta en la página; la identidad en el control que tiene que
+   fallar. G[t] = Uᵀ·δ_(t+1), lo que la memoria h_t recibe de regreso. */
+function retroceso(U, av, dT, Tn, trasp) {
+  var Ut = trasp(U), DEL = [], G = [];
+  DEL[Tn] = [dT[0], dT[1]];
+  for (var t = Tn - 1; t >= 1; t--) {
+    G[t] = porVector(Ut, DEL[t + 1]);
+    DEL[t] = [av.D[t][0] * G[t][0], av.D[t][1] * G[t][1]];
+  }
+  return { Ut: Ut, DEL: DEL, G: G };
+}
+
+/* ── El dibujo de la red: geometría y descriptores ─────────────────────── */
+var DG = { w: 300, h: 170, xIzq: 86, xDer: 214, y: [88, 142], xX: 150, yX: 36, R: 15, LX: 10 };
+function construirLineas() {
+  var L = [];
+  for (var i = 1; i <= 2; i++) for (var j = 1; j <= 2; j++)
+    L.push({ i: i, j: j, nombre: 'u' + SUB[i] + SUB[j],
+             ax: DG.xIzq, ay: DG.y[j - 1], bx: DG.xDer, by: DG.y[i - 1] });
+  return L;
+}
+var SUB = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+var SUP = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '-': '⁻' };
+function sub(n) { return String(n).split('').map(function (c) { return SUB[+c]; }).join(''); }
+function sup(n) { return String(n).split('').map(function (c) { return SUP[c]; }).join(''); }
+function pesoDeLinea(l, U) { return U[l.i - 1][l.j - 1]; }
+
+/* ── Verificaciones antes de montar ─────────────────────────────────────── */
+function verificarAncla(L) {
+  if (L.length !== 4) throw new Error('Ancla: hay ' + L.length + ' líneas de regreso; deben ser 4.');
+  var vistos = {};
+  L.forEach(function (l) {
+    var k = l.i + ',' + l.j;
+    if (vistos[k]) throw new Error('Ancla: el par (' + k + ') aparece dos veces.');
+    vistos[k] = true;
+    if (l.ax !== DG.xIzq || l.ay !== DG.y[l.j - 1])
+      throw new Error('Ancla: la línea ' + l.nombre + ' no sale de la copia ' + l.j + '.');
+    if (l.bx !== DG.xDer || l.by !== DG.y[l.i - 1])
+      throw new Error('Ancla: la línea ' + l.nombre + ' no llega a la neurona ' + l.i + '.');
+    if (l.nombre !== 'u' + SUB[l.i] + SUB[l.j]) throw new Error('Ancla: la línea (' + k + ') se llama ' + l.nombre + '.');
+    MATRICES.forEach(function (m) {
+      var Ut = transpuesta(m.U);
+      if (pesoDeLinea(l, m.U) !== m.U[l.i - 1][l.j - 1])
+        throw new Error('Ancla: la línea ' + l.nombre + ' no toma su grosor de U[' + l.i + '][' + l.j + '].');
+      if (Ut[l.j - 1][l.i - 1] !== m.U[l.i - 1][l.j - 1])
+        throw new Error('Ancla: en la ecuación de regreso, ' + l.nombre + ' no está en el renglón ' + l.j + ', columna ' + l.i + '.');
+    });
+  });
+  return L;
+}
+
+function verificarGradiente() {
+  var r = new Sorteador(SEMILLA ^ 0x5bd1e995), Tn = 8, Xv = [0], peor = 0, controles = [];
+  for (var t = 1; t <= Tn; t++) Xv.push(r.next() < 0.5 ? 0 : 1);
+  MATRICES.forEach(function (m) {
+    var peorControl = 0;
+    [false, true].forEach(function (tanh) {
+      [0.2, 1].forEach(function (a) {
+        var g = [r.next() * 2 - 1, r.next() * 2 - 1];
+        var av = avance(m.U, tanh, a, Xv, Tn, null);
+        var dT = [av.D[Tn][0] * g[0], av.D[Tn][1] * g[1]];
+        var bien = retroceso(m.U, av, dT, Tn, transpuesta);
+        var mal = retroceso(m.U, av, dT, Tn, function (A) { return A; });
+        var L = function (p) { var h = avance(m.U, tanh, a, Xv, Tn, p).H[Tn]; return g[0] * h[0] + g[1] * h[1]; };
+        var e = 1e-6;
+        for (var tt = 1; tt <= Tn; tt++) for (var i = 0; i < 2; i++) {
+          var fd = (L({ t: tt, i: i, e: e }) - L({ t: tt, i: i, e: -e })) / (2 * e);
+          peor = Math.max(peor, Math.abs(fd - bien.DEL[tt][i]) / (1 + Math.abs(fd)));
+          peorControl = Math.max(peorControl, Math.abs(fd - mal.DEL[tt][i]) / (1 + Math.abs(fd)));
+        }
+      });
+    });
+    controles.push(peorControl);
+    if (!m.simetrica && peorControl < 1e-2)
+      throw new Error('Control: con U en lugar de Uᵀ la matriz ' + m.nombre +
+                      ' no falla (error ' + peorControl.toExponential(2) + '). La verificación no distingue.');
+  });
+  if (!(peor <= 1e-6))
+    throw new Error('Gradiente: la señal de la página difiere de las diferencias centradas en ' + peor.toExponential(2) + '.');
+  return { peor: peor, controles: controles };
+}
+
+function verificarCifras() {
+  MATRICES.forEach(function (m) {
+    var e = espectro(m.U), sv = singulares(m.U);
+    if (Math.abs(e.rho - m.rho) > 1e-9) throw new Error('Cifras: ρ de la ' + m.nombre + ' es ' + e.rho + ', no ' + m.rho + '.');
+    if (Math.abs(sv[0] - m.s1) > 1e-3 || Math.abs(sv[1] - m.s2) > 1e-3)
+      throw new Error('Cifras: σ de la ' + m.nombre + ' son ' + sv[0] + ' y ' + sv[1] + '.');
+    var A = porMatriz(m.U, transpuesta(m.U)), B = porMatriz(transpuesta(m.U), m.U), dif = 0;
+    for (var i = 0; i < 2; i++) for (var j = 0; j < 2; j++) dif = Math.max(dif, Math.abs(A[i][j] - B[i][j]));
+    if ((dif < 1e-12) !== m.normal) throw new Error('Cifras: la ' + m.nombre + ' ' + (m.normal ? 'debería' : 'no debería') + ' ser normal.');
+  });
+  var Ut5 = transpuesta(MATRICES[4].U), C = porMatriz(Ut5, Ut5);
+  if (C[0][0] !== 0 || C[0][1] !== 0 || C[1][0] !== 0 || C[1][1] !== 0) throw new Error('Cifras: UᵀUᵀ de la nilpotente no es cero exacto.');
+  var g3 = porVector(transpuesta(MATRICES[2].U), [1, 0]);
+  if (Math.abs(g3[0] - 0.779) > 5e-4 || Math.abs(g3[1] + 0.45) > 5e-4) throw new Error('Cifras: Uᵀ·(1, 0) en la de giro no es (0.779, −0.450).');
+  var m4 = MATRICES[3], av = avance(m4.U, false, EMPUJE_INICIAL, X, T, null), re = retroceso(m4.U, av, m4.dT, T, transpuesta);
+  var l9 = largo(re.DEL[T - 9]), bajo = -1;
+  for (var k = 1; k < T; k++) if (largo(re.DEL[T - k]) < 1) { bajo = k; break; }
+  if (Math.abs(l9 - 3.893) > 1e-3 || bajo !== 35)
+    throw new Error('Cifras: en la joroba, el largo en el paso 9 es ' + l9.toFixed(4) + ' y baja de 1 en el paso ' + bajo + '.');
+}
+
+/* ── Estado ─────────────────────────────────────────────────────────────── */
+var est = { im: 0, tanh: false, a: EMPUJE_INICIAL, dT: MATRICES[0].dT.slice(), k: 0, rec: null, anim: null };
+var LINEAS = null, V = {}, N = {};
+
+function matriz() { return MATRICES[est.im]; }
+
+function recalcular() {
+  var m = matriz(), av = avance(m.U, est.tanh, est.a, X, T, null), re = retroceso(m.U, av, est.dT, T, transpuesta);
+  var largos = [], cero = null;
+  for (var k = 0; k < T; k++) {
+    largos.push(largo(re.DEL[T - k]));
+    if (cero === null && largos[k] === 0) cero = k;
+  }
+  est.rec = { av: av, re: re, largos: largos, cero: cero, sv: singulares(m.U), esp: espectro(m.U),
+              fijas: direccionesFijas(transpuesta(m.U)) };
+  if (est.k > kTope()) est.k = kTope();
+}
+function kTope() { return est.rec.cero !== null ? est.rec.cero : T - 1; }
+
+/* ── Formato de números ─────────────────────────────────────────────────── */
+function fmt(v) {
+  if (v === 0) return '0';
+  var a = Math.abs(v), s = v < 0 ? '−' : '';
+  if (a >= 0.001 && a < 10000) return s + a.toFixed(3);
+  var e = Math.floor(Math.log10(a)), mm = a / Math.pow(10, e);
+  if (mm >= 9.995) { mm /= 10; e += 1; }
+  return s + mm.toFixed(2) + '·10' + sup(e);
+}
+function fmtFicha(v) {
+  var r1 = Math.round(v * 10) / 10;
+  return Math.abs(v - r1) < 1e-9 ? fmtCorto(v) : v.toFixed(3).replace('-', '−');
+}
+function fmtCorto(v) { var s = String(parseFloat(v.toFixed(3))); return s === '-0' ? '0' : s.replace('-', '−'); }
+
+/* ── Lienzos ────────────────────────────────────────────────────────────── */
+function lienzo(w, h, id) {
+  var c = document.createElement('canvas'), r = window.devicePixelRatio || 1;
+  c.width = Math.round(w * r); c.height = Math.round(h * r);
+  c.style.width = w + 'px'; c.style.height = h + 'px';
+  if (id) c.id = id;
+  var ctx = c.getContext('2d'); ctx.setTransform(r, 0, 0, r, 0, 0);
+  return { c: c, ctx: ctx, w: w, h: h };
+}
+function limpiar(v) { v.ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0); v.ctx.fillStyle = '#ffffff'; v.ctx.fillRect(0, 0, v.w, v.h); }
+
+/* Texto con una «T» de transpuesta: partes = [['U'], ['T', 'sup'], ['δ₃₈']]. */
+function textoRico(ctx, partes, x, y, tam, alin) {
+  var anchos = partes.map(function (p) { ctx.font = (p[1] ? tam * 0.7 : tam) + 'px system-ui, sans-serif'; return ctx.measureText(p[0]).width; });
+  var total = anchos.reduce(function (s, a) { return s + a; }, 0);
+  var x0 = alin === 'center' ? x - total / 2 : (alin === 'right' ? x - total : x);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  partes.forEach(function (p, n) {
+    ctx.font = (p[1] ? tam * 0.7 : tam) + 'px system-ui, sans-serif';
+    ctx.fillText(p[0], x0, p[1] === 'sup' ? y - tam * 0.38 : (p[1] === 'sub' ? y + tam * 0.25 : y));
+    x0 += anchos[n];
+  });
+}
+
+/* Grosor contra el tope, con raíz, como en el resto de la serie. */
+function fuerza(v) { return Math.sqrt(Math.min(Math.abs(v) / TOPE, 1)); }
+function grosor(v) { return 1 + fuerza(v) * 9; }
+function colorPeso(v, alfa) { return 'rgba(' + (v >= 0 ? POSITIVO : NEGATIVO) + ',' + alfa.toFixed(3) + ')'; }
+
+/* El anillo de δ, en escala logarítmica de 10⁻⁹ a 10. */
+function anchoAnillo(v) {
+  if (v === 0) return 0;
+  var f = (Math.log10(Math.abs(v)) + 9) / 10;
+  return 1.2 + 6.3 * Math.max(0, Math.min(1, f));
+}
+
+function punta(ctx, x, y, ang, tam) {
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - tam * Math.cos(ang - 0.42), y - tam * Math.sin(ang - 0.42));
+  ctx.lineTo(x - tam * Math.cos(ang + 0.42), y - tam * Math.sin(ang + 0.42));
+  ctx.closePath(); ctx.fill();
+}
+/* Línea de A a B recortada por los nodos, con punta en B. */
+function flechaEntre(ctx, ax, ay, bx, by, rA, rB, ancho, color, conPunta) {
+  var ang = Math.atan2(by - ay, bx - ax), c = Math.cos(ang), s = Math.sin(ang);
+  var x1 = ax + c * rA, y1 = ay + s * rA, x2 = bx - c * rB, y2 = by - s * rB;
+  var tam = 7 + ancho * 0.8;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = ancho; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  ctx.lineTo(conPunta ? x2 - c * tam * 0.7 : x2, conPunta ? y2 - s * tam * 0.7 : y2); ctx.stroke();
+  if (conPunta) punta(ctx, x2, y2, ang, tam);
+}
+
+function glifo(ctx, cx, cy, tanh) {
+  var A = 9, B = A / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - A, cy); ctx.lineTo(cx + A, cy); ctx.stroke();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (tanh) {
+    for (var k = 0; k < 13; k++) {
+      var t = -2.6 + k * (5.2 / 12), x = cx + (t / 2.6) * A, y = cy - Math.tanh(t) * B;
+      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+  } else { ctx.moveTo(cx - A, cy + B); ctx.lineTo(cx + A, cy - B); }
+  ctx.stroke(); ctx.restore();
+}
+function nodo(ctx, x, y, tanh) {
+  ctx.fillStyle = 'rgb(80,130,200)'; ctx.strokeStyle = 'rgb(48,78,120)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(x, y, DG.R, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  glifo(ctx, x, y, tanh);
+}
+function anillo(ctx, x, y, v, alfa) {
+  var w = anchoAnillo(v); if (!w) return;
+  ctx.strokeStyle = 'rgba(' + C_DELTA + ',' + (alfa === undefined ? 0.95 : alfa) + ')'; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.arc(x, y, DG.R + 3 + w / 2, 0, Math.PI * 2); ctx.stroke();
+}
+
+/* ── Paso en turno ─────────────────────────────────────────────────────── */
+/* Los dos niveles muestran siempre el mismo par de momentos t → t+1. En k = 0
+   es el primero que se va a recorrer. */
+function momentoT() { return T - Math.max(est.k, 1); }
+
+function progreso() {
+  if (!est.anim) return 1;
+  return Math.min(1, (performance.now() - est.anim.t0) / DUR_PASO);
+}
+
+/* ── Nivel 1 y 2: la red ───────────────────────────────────────────────── */
+function dibujarRed(v, modo, p) {
+  var ctx = v.ctx, m = matriz(), U = m.U, rec = est.rec, t = momentoT(), av = rec.av, re = rec.re;
+  limpiar(v);
+  var ida = modo === 'ida', haySalida = !ida && est.k >= 1;
+  var p1 = Math.min(1, p / 0.55), p2 = Math.max(0, Math.min(1, (p - 0.55) / 0.45));
+
+  // cabeceras de columna
+  ctx.fillStyle = '#3a434b'; ctx.font = '13px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (ida) {
+    ctx.fillText('h' + sub(t) + '  (momento ' + t + ')', DG.xIzq, 10);
+    ctx.fillText('h' + sub(t + 1) + '  (momento ' + (t + 1) + ')', DG.xDer, 10);
+  } else {
+    ctx.fillStyle = 'rgb(16,118,110)';
+    ctx.fillText('δ' + sub(t) + '  (momento ' + t + ')', DG.xIzq, 10);
+    ctx.fillText('δ' + sub(t + 1) + '  (momento ' + (t + 1) + ')', DG.xDer, 10);
+  }
+
+  // la entrada x y sus dos líneas: en el regreso, tenues y sin punta
+  var W = av.W, xv = X[t + 1];
+  for (var i = 0; i < 2; i++) {
+    var col = ida ? colorPeso(W[i], 0.28 + fuerza(W[i]) * 0.7) : 'rgba(170,179,187,0.45)';
+    flechaEntre(ctx, DG.xX, DG.yX + DG.LX, DG.xDer, DG.y[i], 0, DG.R + 2, ida ? grosor(W[i]) : 1, col, ida);
+  }
+
+  // las cuatro líneas de regreso, del mismo grosor y color en los dos niveles
+  LINEAS.forEach(function (l) {
+    var w = pesoDeLinea(l, U), f = fuerza(w);
+    var col = colorPeso(w, 0.28 + f * 0.7);
+    if (ida) flechaEntre(ctx, l.ax, l.ay, l.bx, l.by, DG.R + 2, DG.R + 2, grosor(w), col, true);
+    else flechaEntre(ctx, l.bx, l.by, l.ax, l.ay, DG.R + 2, DG.R + 2, grosor(w), col, true);
+  });
+  // sus nombres
+  ctx.font = '12px system-ui, sans-serif';
+  LINEAS.forEach(function (l) {
+    var f = l.i === l.j ? 0.5 : 0.3, x = l.ax + (l.bx - l.ax) * f, y = l.ay + (l.by - l.ay) * f;
+    if (l.i === l.j) y += (l.i === 1 ? -11 : 12);
+    var tw = ctx.measureText(l.nombre).width + 6;
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fillRect(x - tw / 2, y - 8, tw, 16);
+    ctx.fillStyle = '#3a434b'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(l.nombre, x, y);
+  });
+
+  // pulsos de regreso, verde azulado, durante la animación
+  if (haySalida && est.anim && p1 < 1) {
+    var dSig = re.DEL[t + 1];
+    LINEAS.forEach(function (l) {
+      var aporte = pesoDeLinea(l, U) * dSig[l.i - 1];
+      var r = anchoAnillo(aporte); if (!r) return;
+      var x = l.bx + (l.ax - l.bx) * p1, y = l.by + (l.ay - l.by) * p1;
+      ctx.fillStyle = 'rgba(' + C_DELTA + ',0.9)';
+      ctx.beginPath(); ctx.arc(x, y, 1.5 + r * 0.55, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  // nodos
+  for (var j = 0; j < 2; j++) { nodo(ctx, DG.xIzq, DG.y[j], est.tanh); nodo(ctx, DG.xDer, DG.y[j], est.tanh); }
+  // el bit de entrada
+  ctx.fillStyle = xv ? '#3a434b' : '#ffffff'; ctx.strokeStyle = ida ? '#8a949c' : '#c9d0d6'; ctx.lineWidth = 1.5;
+  ctx.fillRect(DG.xX - DG.LX, DG.yX - DG.LX, 2 * DG.LX, 2 * DG.LX); ctx.strokeRect(DG.xX - DG.LX, DG.yX - DG.LX, 2 * DG.LX, 2 * DG.LX);
+  ctx.fillStyle = ida ? '#3a434b' : '#aab3bb'; ctx.font = '12.5px system-ui, sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillText('x' + sub(t + 1) + ' = ' + xv, DG.xX - DG.LX - 6, DG.yX);
+
+  // valores
+  ctx.font = '12px system-ui, sans-serif';
+  for (j = 0; j < 2; j++) {
+    if (ida) {
+      ctx.fillStyle = '#3a434b';
+      ctx.textAlign = 'right'; ctx.fillText(fmt(av.H[t][j]), DG.xIzq - DG.R - 6, DG.y[j]);
+      ctx.textAlign = 'left'; ctx.fillText(fmt(av.H[t + 1][j]), DG.xDer + DG.R + 6, DG.y[j]);
+    } else {
+      var dDer = re.DEL[t + 1][j];
+      anillo(ctx, DG.xDer, DG.y[j], dDer);
+      ctx.fillStyle = 'rgb(16,118,110)'; ctx.textAlign = 'left';
+      ctx.fillText(fmt(dDer), DG.xDer + DG.R + 12, DG.y[j]);
+      if (haySalida && (!est.anim || p1 >= 1)) {
+        var g = re.G[t][j], d = re.DEL[t][j];
+        // en la primera mitad llega Uᵀδ; en la segunda, la pendiente lo vuelve δ
+        var mostrado = p2 < 1 && est.anim ? g + (d - g) * p2 : d;
+        anillo(ctx, DG.xIzq, DG.y[j], mostrado);
+        ctx.fillStyle = 'rgb(16,118,110)'; ctx.textAlign = 'right';
+        ctx.fillText(fmt(d), DG.xIzq - DG.R - 10, DG.y[j] - 7);
+        ctx.fillStyle = '#5c666f'; ctx.font = '11.5px system-ui, sans-serif';
+        ctx.fillText('× ' + fmt(av.D[t][j]), DG.xIzq - DG.R - 10, DG.y[j] + 8);
+        ctx.font = '12px system-ui, sans-serif';
+      }
+    }
+  }
+  if (!ida && est.k === 0) {
+    ctx.fillStyle = '#8a949c'; ctx.font = '12px system-ui, sans-serif'; ctx.textAlign = 'right';
+    for (j = 0; j < 2; j++) ctx.fillText('aún nada', DG.xIzq - DG.R - 8, DG.y[j]);
+  }
+}
+
+/* La tira de la entrada: 40 bits. En verde, el par de momentos en turno; los
+   puntos verde azulado marcan hasta dónde ha llegado la señal. */
+function dibujarTira(v) {
+  var ctx = v.ctx, t = momentoT(), x0 = (v.w - 40 * 14 + 2) / 2;
+  limpiar(v);
+  ctx.font = '10px system-ui, sans-serif'; ctx.fillStyle = '#8a949c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (var s = 1; s <= T; s++) {
+    var x = x0 + (s - 1) * 14;
+    if (s === 1 || s % 5 === 0) ctx.fillText(String(s), x + 6, 6);
+    ctx.fillStyle = X[s] ? '#3a434b' : '#ffffff'; ctx.fillRect(x, 13, 12, 12);
+    ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, 13.5, 11, 11);
+    ctx.fillStyle = '#8a949c';
+    if (s >= T - est.k) { ctx.fillStyle = 'rgba(' + C_DELTA + ',0.9)'; ctx.beginPath(); ctx.arc(x + 6, 29.5, 2.2, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#8a949c'; }
+  }
+  ctx.strokeStyle = 'rgb(' + VERDE + ')'; ctx.lineWidth = 2;
+  ctx.strokeRect(x0 + (t - 1) * 14 - 2, 11, 2 * 14 + 2, 16);
+}
+
+/* El cuadrado de la décima: la memoria como punto, sólo en tanh. */
+function dibujarCuadrado(v) {
+  var ctx = v.ctx, av = est.rec.av, t = momentoT(), L = 64, cx = 68, cy = 8 + L;
+  limpiar(v);
+  var P = function (h) { return { x: cx + h[0] * L, y: cy - h[1] * L }; };
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1; ctx.strokeRect(cx - L + 0.5, cy - L + 0.5, 2 * L - 1, 2 * L - 1);
+  ctx.strokeStyle = '#e3e7eb'; ctx.beginPath(); ctx.moveTo(cx - L, cy); ctx.lineTo(cx + L, cy); ctx.moveTo(cx, cy - L); ctx.lineTo(cx, cy + L); ctx.stroke();
+  ctx.fillStyle = '#8a949c'; ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.textAlign = 'right'; ctx.fillText('h₁', cx + L - 4, cy + 9); ctx.textAlign = 'left'; ctx.fillText('h₂', cx + 5, cy - L + 9);
+  ctx.fillStyle = 'rgba(95,110,125,0.45)';
+  for (var s = 1; s <= T; s++) { var q = P(av.H[s]); ctx.beginPath(); ctx.arc(q.x, q.y, 2, 0, Math.PI * 2); ctx.fill(); }
+  var a = P(av.H[t]);
+  ctx.fillStyle = 'rgb(' + VERDE + ')'; ctx.beginPath(); ctx.arc(a.x, a.y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(a.x, a.y, 5, 0, Math.PI * 2); ctx.stroke();
+  /* a la derecha del cuadrado, lo que importa para el regreso: la pendiente */
+  var xt = cx + L + 12;
+  ctx.textAlign = 'left'; ctx.fillStyle = '#3a434b'; ctx.font = '12.5px system-ui, sans-serif';
+  ctx.fillText('h' + sub(t) + ', en verde', xt, cy - 40);
+  ctx.fillStyle = '#5c666f'; ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText('1 − h' + sub(t) + ',₁² = ' + fmt(av.D[t][0]), xt, cy - 14);
+  ctx.fillText('1 − h' + sub(t) + ',₂² = ' + fmt(av.D[t][1]), xt, cy + 4);
+  ctx.fillText('cerca del borde,', xt, cy + 30);
+  ctx.fillText('1 − h² es chico', xt, cy + 46);
+}
+
+/* ── Nivel 3: el plano ─────────────────────────────────────────────────── */
+function geometriaPlano(v) {
+  var esc = Math.max(1, est.rec.sv[0]);
+  return { cx: v.w / 2, cy: v.h / 2 + 4, R: (Math.min(v.w, v.h) / 2 - 22) / esc };
+}
+function dibujarPlano(v, p) {
+  var ctx = v.ctx, rec = est.rec, G = geometriaPlano(v), cx = G.cx, cy = G.cy, R = G.R, Ut = rec.re.Ut, t = momentoT();
+  limpiar(v);
+  var P = function (q) { return { x: cx + q[0] * R, y: cy - q[1] * R }; };
+  // ejes
+  ctx.strokeStyle = '#e3e7eb'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(8, cy); ctx.lineTo(v.w - 8, cy); ctx.moveTo(cx, 8); ctx.lineTo(cx, v.h - 8); ctx.stroke();
+  ctx.fillStyle = '#8a949c'; ctx.font = '11.5px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  ctx.textAlign = 'right'; ctx.fillText('neurona 1', v.w - 8, cy - 9);
+  ctx.textAlign = 'left'; ctx.fillText('neurona 2', cx + 6, 12);
+  // direcciones que Uᵀ no gira
+  ctx.save(); ctx.setLineDash([2, 4]); ctx.strokeStyle = '#9aa4ac'; ctx.lineWidth = 1.2;
+  rec.fijas.forEach(function (d) {
+    var L = 2 * Math.max(v.w, v.h);
+    ctx.beginPath(); ctx.moveTo(cx - d[0] * L, cy + d[1] * L); ctx.lineTo(cx + d[0] * L, cy - d[1] * L); ctx.stroke();
+  });
+  ctx.restore();
+  // círculo de radio 1
+  ctx.strokeStyle = '#aab3bb'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  // elipses: imagen del círculo bajo Uᵀ y, en tanh, bajo D_t·Uᵀ
+  var elipse = function (A, guion, color, ancho) {
+    ctx.save(); if (guion) ctx.setLineDash(guion); ctx.strokeStyle = color; ctx.lineWidth = ancho; ctx.beginPath();
+    for (var n = 0; n <= 120; n++) { var th = n / 120 * 2 * Math.PI, q = P(porVector(A, [Math.cos(th), Math.sin(th)])); if (n) ctx.lineTo(q.x, q.y); else ctx.moveTo(q.x, q.y); }
+    ctx.stroke(); ctx.restore();
+  };
+  elipse(Ut, null, '#5c666f', 1.6);
+  var Dt = rec.av.D[t];
+  if (est.tanh) elipse([[Dt[0] * Ut[0][0], Dt[0] * Ut[0][1]], [Dt[1] * Ut[1][0], Dt[1] * Ut[1][1]]], [5, 4], '#23282e', 1.3);
+
+  // rastro: las direcciones por las que ya pasó la señal
+  for (var kk = 0; kk <= est.k; kk++) {
+    var d = rec.re.DEL[T - kk], n = largo(d); if (!n) continue;
+    var q = P([d[0] / n, d[1] / n]), alfa = 0.15 + 0.45 * (kk + 1) / (est.k + 1);
+    ctx.fillStyle = 'rgba(' + C_DELTA + ',' + alfa.toFixed(2) + ')'; ctx.beginPath(); ctx.arc(q.x, q.y, 2.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  var dibFlecha = function (q, estilo, ancho, alfa) {
+    var A = P([0, 0]), B = P(q), len = Math.hypot(B.x - A.x, B.y - A.y);
+    ctx.save(); if (estilo) ctx.setLineDash(estilo);
+    if (len < 1.5) { ctx.restore(); return; }
+    var color = 'rgba(' + C_DELTA + ',' + alfa + ')', ang = Math.atan2(B.y - A.y, B.x - A.x), tam = Math.min(11, len * 0.5);
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = ancho;
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x - Math.cos(ang) * tam * 0.7, B.y - Math.sin(ang) * tam * 0.7); ctx.stroke();
+    ctx.setLineDash([]); punta(ctx, B.x, B.y, ang, tam); ctx.restore();
+  };
+  var rotulo = function (q, partes, col) {
+    var B = P(q), n = Math.hypot(q[0], q[1]) || 1, ux = q[0] / n, uy = -q[1] / n;
+    ctx.fillStyle = col || 'rgb(16,118,110)';
+    textoRico(ctx, partes, B.x + ux * 16, B.y + uy * 14, 12.5, ux > 0.3 ? 'left' : (ux < -0.3 ? 'right' : 'center'));
+  };
+
+  if (est.k === 0) {
+    var d0 = rec.re.DEL[T], g0 = porVector(Ut, d0);
+    dibFlecha(g0, [5, 4], 1.6, 0.55);
+    rotulo(g0, [['U'], ['T', 'sup'], ['δ' + sub(T) + ' (el primer paso)']], '#5c666f');
+    dibFlecha(d0, null, 3, 0.95);
+    var Q = P(d0); ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgb(' + C_DELTA + ')'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(Q.x, Q.y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    rotulo(d0, [['δ' + sub(T)]]);
+  } else {
+    var dIn = rec.re.DEL[t + 1], nIn = largo(dIn), ent = [dIn[0] / nIn, dIn[1] / nIn];
+    var med = [rec.re.G[t][0] / nIn, rec.re.G[t][1] / nIn], sal = [rec.re.DEL[t][0] / nIn, rec.re.DEL[t][1] / nIn];
+    var p1 = Math.min(1, p / 0.55), p2 = Math.max(0, Math.min(1, (p - 0.55) / 0.45));
+    var mezcla = function (a, b, u) { return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u]; };
+    dibFlecha(ent, null, 2, 0.35);
+    if (p1 < 1) dibFlecha(mezcla(ent, med, p1), null, 3, 0.95);
+    else {
+      if (est.tanh) { dibFlecha(med, [5, 4], 1.8, 0.7); }
+      dibFlecha(est.tanh ? mezcla(med, sal, p2) : sal, null, 3, 0.95);
+      if (p >= 1) {
+        if (est.tanh && largo([med[0] - sal[0], med[1] - sal[1]]) * R > 14) rotulo(med, [['U'], ['T', 'sup'], ['δ' + sub(t + 1)]], 'rgba(16,118,110,0.75)');
+        if (largo(sal) * R < 2) {
+          ctx.fillStyle = 'rgb(16,118,110)'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.font = '12.5px system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('δ' + sub(t) + ' = 0', cx + 8, cy + 12);
+        } else rotulo(sal, [['δ' + sub(t)]]);
+      }
+    }
+  }
+}
+
+/* ── La curva ──────────────────────────────────────────────────────────── */
+function rangoCurva() {
+  var L = est.rec.largos, mn = Infinity, mx = 1;
+  L.forEach(function (x) { if (x > 0) { mn = Math.min(mn, x); mx = Math.max(mx, x); } });
+  var lo = Math.max(-16, Math.floor(Math.log10(mn))), hi = Math.ceil(Math.log10(mx * 1.0001));
+  if (hi <= lo + 1) { lo -= 1; hi += 1; }
+  if (hi < 1) hi = 1;
+  return { lo: lo, hi: hi };
+}
+function dibujarCurva(v, p) {
+  var ctx = v.ctx, rec = est.rec, rg = rangoCurva(), IZ = 46, DE = 12, AR = 8, AB = 20;
+  var W = v.w - IZ - DE, H = v.h - AR - AB;
+  limpiar(v);
+  var X_ = function (k) { return IZ + k / (T - 1) * W; };
+  var Y_ = function (val) { return AR + (rg.hi - Math.log10(val)) / (rg.hi - rg.lo) * H; };
+  // rejilla de décadas
+  var dec = rg.hi - rg.lo, cada = dec > 12 ? 4 : (dec > 7 ? 2 : 1);
+  ctx.font = '11px system-ui, sans-serif'; ctx.textBaseline = 'middle';
+  for (var e = rg.lo; e <= rg.hi; e++) {
+    var y = Y_(Math.pow(10, e));
+    ctx.strokeStyle = e === 0 ? '#c9d0d6' : '#eef1f4'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(IZ, y); ctx.lineTo(IZ + W, y); ctx.stroke();
+    if ((e - rg.lo) % cada === 0 || e === 0) { ctx.fillStyle = '#6d777f'; ctx.textAlign = 'right'; ctx.fillText(e === 0 ? '1' : '10' + sup(e), IZ - 6, y); }
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#6d777f';
+  for (var k = 0; k < T; k += 5) ctx.fillText(String(k), X_(k), AR + H + 4);
+  ctx.fillText('39', X_(39), AR + H + 4);
+  ctx.save(); ctx.beginPath(); ctx.rect(IZ, AR - 1, W, H + 2); ctx.clip();
+  var curvaRef = function (f, guion) {
+    ctx.save(); ctx.setLineDash(guion); ctx.strokeStyle = '#5c666f'; ctx.lineWidth = 1.4; ctx.beginPath();
+    var dentro = false;
+    for (var kk = 0; kk < T; kk++) {
+      var val = f(kk); if (!(val > 0)) { dentro = false; continue; }
+      var yy = Y_(val); if (yy < AR - 40) yy = AR - 40;
+      if (dentro) ctx.lineTo(X_(kk), yy); else { ctx.moveTo(X_(kk), yy); dentro = true; }
+    }
+    ctx.stroke(); ctx.restore();
+  };
+  var s1 = rec.sv[0], rho = rec.esp.rho;
+  curvaRef(function (kk) { return Math.pow(s1, kk); }, [6, 4]);
+  if (!est.tanh && rho > 0 && Math.abs(rho - s1) > 1e-9) curvaRef(function (kk) { return Math.pow(rho, kk); }, [1.5, 3.5]);
+  // la señal, hasta el paso en turno
+  var hasta = est.k - (est.anim && p < 1 ? 1 : 0);
+  ctx.strokeStyle = 'rgb(' + C_DELTA + ')'; ctx.lineWidth = 2.2; ctx.beginPath();
+  var ab = false;
+  for (k = 0; k <= hasta; k++) {
+    var l = rec.largos[k];
+    if (l > 0) { var yl = Y_(l); if (ab) ctx.lineTo(X_(k), yl); else { ctx.moveTo(X_(k), yl); ab = true; } } else ab = false;
+  }
+  ctx.stroke();
+  for (k = 0; k <= hasta; k++) {
+    if (rec.largos[k] > 0) { ctx.fillStyle = 'rgb(' + C_DELTA + ')'; ctx.beginPath(); ctx.arc(X_(k), Y_(rec.largos[k]), 2.6, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.restore();
+  // ceros exactos, al pie
+  for (k = 0; k <= hasta; k++) if (rec.largos[k] === 0) {
+    ctx.fillStyle = 'rgb(16,118,110)'; ctx.font = '600 11px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('0', X_(k), AR + H - 1);
+  }
+  // el paso en turno
+  ctx.strokeStyle = 'rgba(' + VERDE + ',0.8)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(X_(est.k), AR); ctx.lineTo(X_(est.k), AR + H); ctx.stroke();
+  ctx.strokeStyle = '#c9d0d6'; ctx.lineWidth = 1; ctx.strokeRect(IZ + 0.5, AR + 0.5, W - 1, H - 1);
+}
+
+/* ── Arreglos en HTML ──────────────────────────────────────────────────── */
+function celda(v) { return '<span' + (v === 0 ? ' class="cero"' : '') + '>' + fmt(v) + '</span>'; }
+function col(v) { return '<span class="mat" style="grid-template-columns:auto">' + celda(v[0]) + celda(v[1]) + '</span>'; }
+function mat(A) { return '<span class="mat" style="grid-template-columns:auto auto">' + celda(A[0][0]) + celda(A[0][1]) + celda(A[1][0]) + celda(A[1][1]) + '</span>'; }
+function termino(cuerpo, nombre, clase) { return '<span class="termino' + (clase ? ' ' + clase : '') + '">' + cuerpo + '<span class="nom">' + nombre + '</span></span>'; }
+var OP = function (s) { return '<span class="op">' + s + '</span>'; };
+var UT = 'U<sup>T</sup>';
+
+function actualizarTextos() {
+  var m = matriz(), rec = est.rec, t = momentoT(), av = rec.av, re = rec.re, k = est.k;
+  // títulos
+  N.titIda.innerHTML = 'Hacia adelante, con U: del momento ' + t + ' al ' + (t + 1);
+  N.titVuelta.innerHTML = k === 0 ? 'Hacia atrás, con ' + UT + ': la señal empieza en el momento ' + T
+                                  : 'Hacia atrás, con ' + UT + ': del momento ' + (t + 1) + ' al ' + t + ' (paso ' + k + ' de ' + (T - 1) + ')';
+  // ecuación de ida
+  var s1 = '<sub>' + (t + 1) + '</sub>', s0 = '<sub>' + t + '</sub>';
+  N.ecIda1.innerHTML =
+    termino(col(av.Z[t + 1]), 'z' + s1) + OP('=') + termino(col(av.W), 'W') + OP('·') +
+    termino('<span class="escalar">' + X[t + 1] + '</span>', 'x' + s1) + OP('+') +
+    termino(mat(m.U), 'U: u<sub>ij</sub> va de j a i') + termino(col(av.H[t]), 'h' + s0) + OP('+') + termino(col(av.b), 'b');
+  N.ecIda2.innerHTML = '<span class="nota" style="margin:0">' + (est.tanh
+    ? 'Y h' + s1 + ' = tanh(z' + s1 + '), componente por componente: sus números están a la derecha de la red.'
+    : 'Y h' + s1 + ' = z' + s1 + ', porque la activación es lineal: sus números están a la derecha de la red.') + '</span>';
+  // ecuación de regreso
+  if (k === 0) {
+    N.ecVuelta1.innerHTML = termino(col(re.DEL[T]), 'δ<sub>' + T + '</sub>', 'delta') +
+      '<span class="nota">es el punto de partida. Se elige en el plano; en una red que se entrena vendría de la salida.</span>';
+    N.ecVuelta2.innerHTML = '';
+  } else {
+    var D = av.D[t];
+    N.ecVuelta1.innerHTML = termino(col(re.DEL[t]), 'δ' + s0, 'delta') + OP('=') +
+      termino(mat([[D[0], 0], [0, D[1]]]), 'D' + s0) + termino(mat(re.Ut), UT + ': u<sub>ij</sub> va de i a j') +
+      termino(col(re.DEL[t + 1]), 'δ' + s1, 'delta');
+    N.ecVuelta2.innerHTML = termino(col(re.G[t]), UT + 'δ' + s1) +
+      '<span class="nota">es lo que recibe la memoria h' + s0 + '. ' +
+      (est.tanh ? 'Después, D' + s0 + ' multiplica cada componente por 1 − h², la pendiente de su neurona.'
+                : 'En lineal, D' + s0 + ' es la identidad y no cambia nada.') + '</span>';
+  }
+  // cifras del paso
+  var sv = rec.sv;
+  if (k === 0) {
+    N.cifras.innerHTML = '<table class="cifras"><tr><td class="f">largo de</td></tr><tr><td>δ<sub>' + T + '</sub></td><td class="n">1.000</td></tr></table>' +
+      '<div class="cifras-nota">En cada paso, ' + UT + ' estira la señal a lo más σ<sub>1</sub> = ' + fmtFicha(sv[0]) +
+      ' veces, y D a lo más 1 vez.</div>';
+  } else {
+    var a0 = rec.largos[k - 1], ag = largo(re.G[t]), a1 = rec.largos[k];
+    var fac = function (x, y) { return y === 0 ? '—' : '×' + fmt(x / y); };
+    N.cifras.innerHTML = '<table class="cifras">' +
+      '<tr><td class="f">largo de</td><td></td><td class="f">el paso</td><td class="f">su techo</td></tr>' +
+      '<tr><td>δ' + s1 + '</td><td class="n">' + fmt(a0) + '</td><td></td><td></td></tr>' +
+      '<tr><td>' + UT + 'δ' + s1 + '</td><td class="n">' + fmt(ag) + '</td><td>' + fac(ag, a0) + '</td><td class="f">σ<sub>1</sub> = ' + fmtFicha(sv[0]) + '</td></tr>' +
+      '<tr><td>δ' + s0 + '</td><td class="n">' + fmt(a1) + '</td><td>' + fac(a1, ag) + '</td><td class="f">1</td></tr>' +
+      '</table><div class="cifras-nota">Desde δ<sub>' + T + '</sub>, en ' + k + (k === 1 ? ' paso' : ' pasos') +
+      ': ×' + fmt(a1) + '. El techo σ<sub>1</sub><sup>' + k + '</sup> permite ×' + fmt(Math.pow(sv[0], k)) + '.</div>';
+  }
+  // ficha y pista
+  var e = rec.esp, eig;
+  if (e.tipo === 'complejos') eig = fmtFicha(e.mod) + '·e<sup>±i' + fmtFicha(e.ang) + '°</sup>';
+  else if (e.tipo === 'doble') eig = fmtFicha(e.l[0]) + ' (doble)';
+  else eig = fmtFicha(e.l[0]) + ' y ' + fmtFicha(e.l[1]);
+  N.ficha.innerHTML = '<tr><th>eigenvalores</th><th>ρ</th><th>σ<sub>1</sub></th><th>σ<sub>2</sub></th><th>¿normal?</th></tr>' +
+    '<tr><td>' + eig + '</td><td>' + fmtFicha(e.rho) + '</td><td>' + fmtFicha(sv[0]) + '</td><td>' + fmtFicha(sv[1]) + '</td><td>' + (m.normal ? 'sí' : 'no') + '</td></tr>';
+  N.pista.textContent = m.pista;
+  // pie del plano
+  if (k === 0) N.piePlano.innerHTML = 'δ<sub>' + T + '</sub> mide 1; arrástrala para girarla. Los guiones son ' + UT + 'δ<sub>' + T + '</sub>, adonde la lleva el primer paso.';
+  else {
+    var nIn = rec.largos[k - 1];
+    N.piePlano.innerHTML = 'La flecha clara es δ' + s1 + ' con largo 1; mide ' + fmt(nIn) +
+      '. Este paso la deja en ' + fmt(rec.largos[k]) + (nIn ? ', ×' + fmt(rec.largos[k] / nIn) + '.' : '.') +
+      (est.tanh ? ' Los guiones son ' + UT + 'δ' + s1 + ', antes de D' + s0 + '.' : '');
+  }
+  // leyenda de la curva: ρᵏ sólo cuando se dibuja
+  var rhoVisible = !est.tanh && rec.esp.rho > 0 && Math.abs(rec.esp.rho - rec.sv[0]) > 1e-9;
+  N.itRho.style.display = rhoVisible ? '' : 'none';
+  N.notaRho.textContent = est.tanh ? 'en tanh, ρᵏ ya no aplica'
+    : (rec.esp.rho === 0 ? 'ρ = 0: ρᵏ es cero desde el paso 1' : (rhoVisible ? '' : 'aquí ρ = σ₁: es la misma línea'));
+  // narración
+  if (k === 0) N.narra.innerHTML = 'Paso 0: δ<sub>' + T + '</sub> mide 1.';
+  else if (rec.cero !== null && k >= rec.cero) N.narra.innerHTML = 'Paso ' + k + ': la señal es exactamente cero.';
+  else if (k === T - 1) N.narra.innerHTML = 'Paso ' + k + ', el último: la señal mide ' + fmt(rec.largos[k]) + '.';
+  else N.narra.innerHTML = 'Paso ' + k + ' de ' + (T - 1) + ': la señal mide ' + fmt(rec.largos[k]) + '.';
+  // botones
+  var tope = kTope();
+  N.bPaso.disabled = k >= tope; N.bFinal.disabled = k >= tope; N.bReiniciar.disabled = k === 0;
+  var dm = m.dT;
+  N.bDelta.disabled = est.dT[0] === dm[0] && est.dT[1] === dm[1];
+  // en lineal el empuje no toca la señal
+  N.empuje.title = est.tanh ? '' : 'En lineal el empuje cambia la memoria, pero no la señal de gradiente.';
+  // lo que sólo existe en tanh
+  V.cuadrado.c.style.display = est.tanh ? '' : 'none';
+  N.notaLineal.style.display = est.tanh ? 'none' : '';
+  N.itElipseD.style.display = est.tanh ? '' : 'none';
+}
+
+function redibujar() {
+  var p = progreso();
+  dibujarTira(V.tira);
+  dibujarRed(V.ida, 'ida', 1);
+  dibujarRed(V.vuelta, 'vuelta', p);
+  if (est.tanh) dibujarCuadrado(V.cuadrado);
+  dibujarPlano(V.plano, p);
+  dibujarCurva(V.curva, p);
+}
+function todo() { actualizarTextos(); redibujar(); }
+
+var REDUCIR = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function animar() {
+  if (!est.anim) return;
+  redibujar();
+  if (progreso() < 1) requestAnimationFrame(animar);
+  else { est.anim = null; redibujar(); }
+}
+function pasoAtras() {
+  if (est.k >= kTope()) return;
+  est.k += 1;
+  est.anim = REDUCIR ? null : { t0: performance.now() };
+  actualizarTextos();
+  if (est.anim) requestAnimationFrame(animar); else redibujar();
+}
+function hastaFinal() { est.anim = null; est.k = kTope(); todo(); }
+function reiniciar() { est.anim = null; est.k = 0; todo(); }
+
+/* ── Montaje ───────────────────────────────────────────────────────────── */
+function montar() {
+  var raiz = document.getElementById('raiz');
+  var barra = document.createElement('div'); barra.className = 'barra';
+  var html = '<span class="titulo">Matriz</span>';
+  MATRICES.forEach(function (m, i) {
+    html += '<label' + (i === est.im ? ' class="puesto"' : '') + '><input type="radio" name="matriz" value="' + i + '"' +
+            (i === est.im ? ' checked' : '') + '>' + (i + 1) + ' ' + m.nombre + '</label>';
+  });
+  html += '<span class="divisor"></span><span class="titulo">Activación</span>' +
+    '<label class="puesto"><input type="radio" name="act" value="lineal" checked>lineal</label>' +
+    '<label><input type="radio" name="act" value="tanh">tanh</label>' +
+    '<span class="salto"></span>' +
+    '<span class="empuje" id="empuje"><span>empuje a</span><input type="range" id="a" min="' + EMPUJE_MIN + '" max="' + EMPUJE_MAX +
+    '" step="' + EMPUJE_PASO + '" value="' + EMPUJE_INICIAL + '" aria-label="empuje a"><span class="val" id="a-val">' + EMPUJE_INICIAL.toFixed(2) + '</span></span>' +
+    '<span class="divisor"></span>' +
+    '<button type="button" id="b-paso" class="principal">Un paso atrás</button>' +
+    '<button type="button" id="b-final">Hasta el final</button>' +
+    '<button type="button" id="b-reiniciar">Reiniciar</button>' +
+    '<span class="divisor"></span>' +
+    '<button type="button" id="b-delta">δ<sub>' + T + '</sub> de la matriz</button>' +
+    '<span class="consigna" id="narra"></span>';
+  barra.innerHTML = html;
+  raiz.appendChild(barra);
+
+  var tablero = document.createElement('div'); tablero.className = 'tablero';
+  tablero.innerHTML =
+    '<div class="columna">' +
+      '<div class="caja" id="caja-ida"><div class="tit" id="tit-ida"></div><div id="sitio-tira"></div>' +
+        '<div class="fila" style="margin-top:4px"><div id="sitio-ida"></div><div id="sitio-cuadrado"></div>' +
+        '<div class="nota-lineal" id="nota-lineal">En lineal la memoria no tiene límite (con la matriz 2 pasa de 1000) y la pendiente vale 1 en todas partes: D es la identidad. Pasa a tanh para ver la memoria dentro del cuadrado.</div></div>' +
+        '<div class="ec" id="ec-ida1"></div><div class="ec" id="ec-ida2"></div></div>' +
+      '<div class="caja" id="caja-vuelta"><div class="tit" id="tit-vuelta"></div>' +
+        '<div class="fila"><div id="sitio-vuelta"></div><div id="cifras"></div></div>' +
+        '<div class="ec" id="ec-vuelta1"></div><div class="ec" id="ec-vuelta2"></div>' +
+        '<div class="leyenda">' +
+          '<span class="it"><span class="marca" style="background:rgb(60,100,210)"></span><span class="marca" style="background:rgb(210,60,60)"></span>signo del peso; grosor contra el tope 6</span>' +
+          '<span class="it"><span class="marca" style="background:rgb(23,150,140);height:5px"></span>anillo: |δ| en escala log, de 10⁻⁹ a 10</span>' +
+        '</div></div>' +
+    '</div>' +
+    '<div class="columna">' +
+      '<div class="caja"><div class="tit">El paso en el plano</div><table class="ficha" id="ficha"></table>' +
+        '<div class="pista" id="pista"></div><div id="sitio-plano"></div><div class="pie" id="pie-plano"></div>' +
+        '<div class="leyenda">' +
+          '<span class="it"><span class="marca" style="background:#aab3bb"></span>círculo de radio 1</span>' +
+          '<span class="it"><span class="marca" style="background:#5c666f"></span>imagen bajo U<sup>T</sup></span>' +
+          '<span class="it" id="it-elipse-d"><span class="marca guion" style="border-color:#23282e"></span>bajo D·U<sup>T</sup></span>' +
+          '<span class="it"><span class="marca punto" style="border-color:#9aa4ac"></span>sin giro bajo U<sup>T</sup></span>' +
+        '</div></div>' +
+      '<div class="caja"><div class="tit">El largo de la señal contra los pasos hacia atrás, k</div><div id="sitio-curva"></div>' +
+        '<div class="leyenda">' +
+          '<span class="it"><span class="marca" style="background:rgb(23,150,140)"></span>largo de δ</span>' +
+          '<span class="it"><span class="marca guion" style="border-color:#5c666f"></span>techo σ<sub>1</sub><sup>k</sup></span>' +
+          '<span class="it" id="it-rho"><span class="marca punto" style="border-color:#5c666f"></span>ρ<sup>k</sup></span>' +
+          '<span class="it" id="nota-rho"></span>' +
+        '</div></div>' +
+    '</div>';
+  raiz.appendChild(tablero);
+
+  V.tira = lienzo(580, 33); document.getElementById('sitio-tira').appendChild(V.tira.c);
+  V.ida = lienzo(DG.w, DG.h); document.getElementById('sitio-ida').appendChild(V.ida.c);
+  V.cuadrado = lienzo(262, 150); document.getElementById('sitio-cuadrado').appendChild(V.cuadrado.c);
+  V.vuelta = lienzo(DG.w, DG.h); document.getElementById('sitio-vuelta').appendChild(V.vuelta.c);
+  V.plano = lienzo(476, 256, 'plano'); document.getElementById('sitio-plano').appendChild(V.plano.c);
+  V.curva = lienzo(476, 150); document.getElementById('sitio-curva').appendChild(V.curva.c);
+  V.plano.c.tabIndex = 0;
+  V.plano.c.setAttribute('aria-label', 'Plano de la señal. En el paso 0, las flechas izquierda y derecha giran δ.');
+
+  ['tit-ida', 'tit-vuelta', 'ec-ida1', 'ec-ida2', 'ec-vuelta1', 'ec-vuelta2', 'cifras', 'ficha', 'pista', 'pie-plano',
+   'narra', 'nota-lineal', 'it-elipse-d', 'it-rho', 'nota-rho', 'empuje'].forEach(function (id) {
+    N[id.replace(/-(\w)/g, function (_, c) { return c.toUpperCase(); })] = document.getElementById(id);
+  });
+  N.bPaso = document.getElementById('b-paso'); N.bFinal = document.getElementById('b-final');
+  N.bReiniciar = document.getElementById('b-reiniciar'); N.bDelta = document.getElementById('b-delta');
+
+  // eventos
+  var marcar = function (nombre) {
+    barra.querySelectorAll('input[name=' + nombre + ']').forEach(function (inp) { inp.parentNode.classList.toggle('puesto', inp.checked); });
+  };
+  barra.querySelectorAll('input[name=matriz]').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      est.im = +inp.value; est.dT = matriz().dT.slice(); est.k = 0; est.anim = null; marcar('matriz'); recalcular(); todo();
+    });
+  });
+  barra.querySelectorAll('input[name=act]').forEach(function (inp) {
+    inp.addEventListener('change', function () { est.tanh = inp.value === 'tanh'; est.anim = null; marcar('act'); recalcular(); todo(); });
+  });
+  var rango = document.getElementById('a'), rv = document.getElementById('a-val');
+  rango.addEventListener('input', function () { est.a = +rango.value; rv.textContent = est.a.toFixed(2); est.anim = null; recalcular(); todo(); });
+  N.bPaso.addEventListener('click', function () { if (est.anim) { est.anim = null; } pasoAtras(); });
+  N.bFinal.addEventListener('click', hastaFinal);
+  N.bReiniciar.addEventListener('click', reiniciar);
+  N.bDelta.addEventListener('click', function () { est.dT = matriz().dT.slice(); est.k = 0; est.anim = null; recalcular(); todo(); });
+
+  // arrastrar δ_T en el plano, sólo en k = 0
+  var arrastrando = false;
+  var fijarDesde = function (ev) {
+    var r = V.plano.c.getBoundingClientRect(), G = geometriaPlano(V.plano);
+    var x = ev.clientX - r.left - G.cx, y = -(ev.clientY - r.top - G.cy);
+    if (Math.hypot(x, y) < 3) return;
+    var ang = Math.atan2(y, x); est.dT = [Math.cos(ang), Math.sin(ang)]; recalcular(); todo();
+  };
+  V.plano.c.addEventListener('pointerdown', function (ev) {
+    if (est.k !== 0) return;
+    arrastrando = true; V.plano.c.setPointerCapture(ev.pointerId); fijarDesde(ev);
+  });
+  V.plano.c.addEventListener('pointermove', function (ev) {
+    V.plano.c.style.cursor = est.k === 0 ? (arrastrando ? 'grabbing' : 'grab') : 'default';
+    if (arrastrando) fijarDesde(ev);
+  });
+  var soltar = function () { arrastrando = false; };
+  V.plano.c.addEventListener('pointerup', soltar); V.plano.c.addEventListener('pointercancel', soltar);
+  V.plano.c.addEventListener('keydown', function (ev) {
+    if (est.k !== 0 || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
+    ev.preventDefault();
+    var ang = Math.atan2(est.dT[1], est.dT[0]) + (ev.key === 'ArrowLeft' ? 5 : -5) * Math.PI / 180;
+    est.dT = [Math.cos(ang), Math.sin(ang)]; recalcular(); todo();
+  });
+
+  recalcular(); todo();
+}
+
+function fallar(err) {
+  var caja = document.createElement('div');
+  caja.id = 'fallo';
+  caja.textContent = 'La página no arrancó y no se dibujó ningún lienzo.\n\n' + err.message;
+  document.getElementById('raiz').appendChild(caja);
+}
+
+/* Las verificaciones corren ANTES de crear ningún lienzo. */
+var VERIFICADO = null;
+try {
+  LINEAS = verificarAncla(construirLineas());
+  VERIFICADO = verificarGradiente();
+  verificarCifras();
+  montar();
+} catch (err) {
+  fallar(err);
+}
+
+/* Para revisar desde la consola o desde un arnés. */
+window.EXPL = {
+  est: est, verificado: function () { return VERIFICADO; },
+  fijarMatriz: function (i) { var inp = document.querySelector('input[name=matriz][value="' + i + '"]'); inp.checked = true; inp.dispatchEvent(new Event('change')); },
+  fijarAct: function (tanh) { var inp = document.querySelector('input[name=act][value="' + (tanh ? 'tanh' : 'lineal') + '"]'); inp.checked = true; inp.dispatchEvent(new Event('change')); },
+  fijarEmpuje: function (a) { var r = document.getElementById('a'); r.value = a; r.dispatchEvent(new Event('input')); },
+  paso: pasoAtras, final: hastaFinal, reiniciar: reiniciar,
+  largos: function () { return est.rec.largos.slice(); }
+};
+</script>
+</body>
+</html>

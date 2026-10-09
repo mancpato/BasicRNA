@@ -82,3 +82,23 @@ sí mismo —colores, etiquetas, tamaños— no entra aquí.
   rótulo dice que con una sola neurona la casilla «de antes» y su línea son el
   lazo de la octava, con lo que las dos gramáticas de dibujo de la serie
   recurrente quedan unidas en pantalla y no sólo en clase.
+- **D17**, el lazo como matriz es la undécima (2026-10-09). La página del lazo
+  como matriz es la 11, `11-LazoComoMatriz.html`, y va después de la de varias
+  neuronas. Es la primera página que nace de una especificación escrita antes de
+  construirla, porque Miguel quiso estudiar la teoría primero; Claude la
+  construyó en el chat y Miguel la aprobó.
+- **D18**, la atención se queda sin número (2026-10-09). La atención ya no es la
+  undécima: antes puede venir otra página de recurrencia. `ESPEC-11-Atencion.md`
+  conserva su nombre y su contenido, y el número se le fija cuando le toque.
+  Deja sin efecto la parte de D12 que la hacía la undécima.
+- **D19**, la serie recurrente son cinco páginas (2026-10-09). De la 7 a la 11:
+  la neurona en el tiempo, la recurrente a mano, la retropropagación en el
+  tiempo, varias neuronas de estado y el lazo como matriz. Con eso queda cerrada;
+  D12 la cerraba en cuatro.
+- **D20**, la teoría de la undécima vive en `Explica.md` (2026-10-09). La
+  especificación previa, `BasicRNNspec.md`, pasa a una sección de la 11 en
+  `Explica.md`, con la notación matricial tal como estaba —vectores y matrices
+  escritos como arreglos—, y con tres correcciones que la página ya traía: k
+  llega a 39 y no a 40, el empuje va de 0 a 2 y empieza en 0.2, y donde la
+  especificación decía «verificar al construir» van las cifras medidas. El
+  original se mueve a `../BasicRNA-trabajo/` y no entra al repositorio.

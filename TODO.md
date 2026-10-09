@@ -308,12 +308,13 @@ el primero no: las ventanas salen iguales o más anchas y la prueba no añade
 nada. Las cifras son las de la sección LOS DATOS de la cabecera; no se
 volvieron a medir con Claude Code.
 
-## 6. Página 11: atención
+## 6. La página de atención
 
 Especificada en `ESPEC-11-Atencion.md` y todavía sin construir. Sus decisiones
-abiertas están en la sección 13 de ese archivo, «Pendiente de decidir». El
-número ya no: es el 11 desde que la página de varias neuronas entró como décima
-(D12) y recorrió la atención una vez más.
+abiertas están en la sección 13 de ese archivo, «Pendiente de decidir». Viene
+después de la serie recurrente, pero ya no tiene número: antes puede entrar otra
+página de recurrencia, y el número se le fija cuando le toque (D18). El archivo
+conserva su nombre.
 
 ## 7. Páginas recurrentes: de una neurona a varias
 
@@ -356,7 +357,7 @@ página construida.
 
 **Lo que sigue abierto.**
 
-a. Homogeneizar las cuatro, por fuera del dibujo. Las dos gramáticas ya no son
+a. Homogeneizar las cinco, por fuera del dibujo. Las dos gramáticas ya no son
 un pendiente: la octava y la novena dibujan la red con un lazo, la décima por
 capas (D13), y la décima lo dice en pantalla, con la copia yendo de capa a capa
 y un rótulo al pie que nombra el lazo de la octava (D16). Lo que queda es de
@@ -367,10 +368,13 @@ píxeles; y las miniaturas de `img/` de la octava y la novena siguen siendo las
 de antes de rehacerlas, así que se rehacen todas juntas.
 
 b. Qué hacer contra el desvanecimiento de la señal de error. La novena lo mide y
-lo escribe sobre cada flecha. Una vía quedó cerrada: no será mostrarlo en la
-atención, porque no habrá página que la entrene (D11), y el contraste de
-los dos caminos se dice en clase. Lo que sí se haga —LSTM y GRU existen por
-esto— se discute después, y hoy no es de BasicRNA.
+lo escribe sobre cada flecha, y la undécima, `11-LazoComoMatriz.html`, explica
+por qué pasa: con dos neuronas el factor de regreso es la matriz D_t·Uᵀ, y el
+radio espectral ρ y el mayor valor singular σ₁ dicen cosas distintas (D17, D19).
+Su teoría está en la sección 11 de `Explica.md` (D20). Una vía quedó cerrada: no
+será mostrarlo en la atención, porque no habrá página que la entrene (D11), y el
+contraste de los dos caminos se dice en clase. Lo que sí se haga —LSTM y GRU
+existen por esto— se discute después, y hoy no es de BasicRNA.
 
 ## Lo que no está pendiente
 
@@ -391,4 +395,7 @@ alcanza para eso.
 ## Pendientes de mantenimiento
 
 - `README.md` está sobre su tope de 40 líneas.
-- `README.md` dice «siete páginas» y no menciona la 8.
+- `README.md` dice «siete páginas», describe seis y de las recurrentes sólo
+  nombra la 8: le faltan la 7, la 9, la 10 y la 11.
+- `index.html` dice «cuatro páginas» en el título, la descripción y la entrada,
+  aunque ya lleva once tarjetas.
